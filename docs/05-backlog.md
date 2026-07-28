@@ -1,0 +1,131 @@
+# Atlas — Backlog & Roadmap
+
+**Companion to:** `01-product.md`, `02-architecture.md`, `03-design.md`, `04-development.md`
+**This is a living document** — updated every sprint. New ideas go in the Icebox (§5), not into the current phase, per the Non-Goals discipline in `01-product.md` §6.
+
+---
+
+## 1. How This Document Works
+
+```
+Epic → Story → (Subtask, ad hoc, only if a story genuinely needs splitting)
+```
+
+Every story carries: **ID · Title · Epic · Story Points · Priority · Dependencies · Status**. Larger/ambiguous stories also get a short **User Story** + **Acceptance Criteria** — small, obvious ones don't need the ceremony.
+
+**Status values:** `Backlog → Ready → In Progress → Done` (matches the app's own task statuses — fitting, given what you're building).
+
+**ID convention:** `ATLAS-###`, assigned in build order, never reused.
+
+---
+
+## 2. Phased Roadmap
+
+Rather than the original "notes/journal first" brainstorm, this reflects what you actually decided in `01-product.md`: **task management, gamification, and UX ship together from day one** — nothing here waits for a "gamification phase."
+
+| Phase | Focus | Epics |
+|---|---|---|
+| **v0.1 — Core Loop** | Smallest usable, already-satisfying version | EPIC-01 to 06 |
+| **v0.2 — Organize & Find** | Full task field set, relations, search | EPIC-07 to 13 |
+| **v0.3 — Full Gamification** | XP, levels, achievements, streaks, coins | EPIC-14 to 18 |
+| **v0.4 — Power Views & Time** | Remaining views, focus timer, stats, export | EPIC-19 to 23 |
+| **v1.0 — Polish** | Full test coverage, consistent theming, keyboard coverage | EPIC-24 |
+
+### Epic Index
+
+| Epic | Name | Phase |
+|---|---|---|
+| EPIC-01 | Auth & Foundation | v0.1 |
+| EPIC-02 | Task Core (CRUD, core fields) | v0.1 |
+| EPIC-03 | Projects (basic) | v0.1 |
+| EPIC-04 | Views I — Kanban, List | v0.1 |
+| EPIC-05 | Status History & Basic Completion Feedback | v0.1 |
+| EPIC-06 | Command Palette & Quick Capture | v0.1 |
+| EPIC-07 | Extended Task Fields (Effort, Attachments, Deliverables, Reporter, Owner) | v0.2 |
+| EPIC-08 | Tags | v0.2 |
+| EPIC-09 | Sprints | v0.2 |
+| EPIC-10 | Task Relations | v0.2 |
+| EPIC-11 | Search & Filters | v0.2 |
+| EPIC-12 | Views II — Table, Calendar | v0.2 |
+| EPIC-13 | Comments, Activity Log & Dashboard v1 | v0.2 |
+| EPIC-14 | XP & Leveling | v0.3 |
+| EPIC-15 | Achievements | v0.3 |
+| EPIC-16 | Streaks | v0.3 |
+| EPIC-17 | Coins & Room Decoration | v0.3 |
+| EPIC-18 | Sound & Motion Settings | v0.3 |
+| EPIC-19 | Views III — Timeline, Today, Waiting, Focus, Project, Archive | v0.4 |
+| EPIC-20 | Work Sessions (Focus Timer) | v0.4 |
+| EPIC-21 | Statistics | v0.4 |
+| EPIC-22 | Saved Filters | v0.4 |
+| EPIC-23 | Data Export | v0.4 |
+| EPIC-24 | Polish & Full Test Coverage | v1.0 |
+
+---
+
+## 3. v0.1 — Detailed Backlog (build this first)
+
+Two stories below are written out in full as a template; the rest follow the same shape, just condensed to the table.
+
+### Example — full format
+
+**ATLAS-005 — Create Task Server Action**
+- **Epic:** EPIC-02
+- **User Story:** As the sole user, I want to create a task with at least a title so I can capture work in under 10 seconds, per the success metric in `01-product.md` §13.
+- **Acceptance Criteria:**
+  - Title is the only required field; all others (project, status, etc.) default sensibly (status → `inbox`, reporter → `self`, per `02-architecture.md` §4.4/§4.8).
+  - Returns the uniform `ActionResult` shape from `04-development.md` §3.
+  - Invalid input returns `VALIDATION_ERROR` and writes nothing.
+- **Story Points:** 3 · **Priority:** P0 · **Dependencies:** ATLAS-004 · **Status:** Backlog
+
+**ATLAS-010 — Kanban View**
+- **Epic:** EPIC-04
+- **User Story:** As the sole user, I want to see and drag tasks between status columns so status changes feel immediate and physical.
+- **Acceptance Criteria:**
+  - Columns match the status list in `01-product.md` §8.2.
+  - Dragging a card calls `updateTaskStatus` and writes a `task_status_logs` row (`04-development.md` §3).
+  - Card style follows the dialogue-box pattern in `03-design.md` §5, not a generic flat card.
+- **Story Points:** 8 · **Priority:** P0 · **Dependencies:** ATLAS-006 · **Status:** Backlog
+
+### Full v0.1 list
+
+| ID | Title | Epic | SP | Priority | Dependencies | Status |
+|---|---|---|---|---|---|---|
+| ATLAS-001 | Next.js + Tailwind + shadcn/ui project setup, pixel theme tokens | EPIC-01 | 3 | P0 | — | Backlog |
+| ATLAS-002 | Auth.js config, single allow-listed email | EPIC-01 | 3 | P0 | ATLAS-001 | Backlog |
+| ATLAS-003 | Prisma + Neon setup, `users` migration | EPIC-01 | 2 | P0 | ATLAS-001 | Backlog |
+| ATLAS-004 | `tasks` table + Prisma schema (core fields) | EPIC-02 | 3 | P0 | ATLAS-003 | Backlog |
+| ATLAS-005 | `createTask` Server Action + Zod schema | EPIC-02 | 3 | P0 | ATLAS-004 | Backlog |
+| ATLAS-006 | `updateTask` / soft-delete `deleteTask` actions | EPIC-02 | 3 | P0 | ATLAS-005 | Backlog |
+| ATLAS-007 | Task creation form (slide-over panel) | EPIC-02 | 5 | P0 | ATLAS-005 | Backlog |
+| ATLAS-008 | `projects` table + CRUD actions | EPIC-03 | 3 | P0 | ATLAS-003 | Backlog |
+| ATLAS-009 | Project picker in task form | EPIC-03 | 2 | P0 | ATLAS-007, ATLAS-008 | Backlog |
+| ATLAS-010 | Kanban view (drag-and-drop status change) | EPIC-04 | 8 | P0 | ATLAS-006 | Backlog |
+| ATLAS-011 | List view | EPIC-04 | 3 | P1 | ATLAS-006 | Backlog |
+| ATLAS-012 | `task_status_logs` write-on-status-change | EPIC-05 | 2 | P0 | ATLAS-006 | Backlog |
+| ATLAS-013 | Task-complete animation + basic XP number | EPIC-05 | 3 | P1 | ATLAS-010 | Backlog |
+| ATLAS-014 | Command palette shell + "create task" quick action | EPIC-06 | 5 | P1 | ATLAS-007 | Backlog |
+
+**v0.1 total: ~46 story points** (≈ 46 hours at the 1 SP ≈ 1 hour convention from `04-development.md` §6 — a realistic first slice for evenings/weekends, not a "2–3 week sprint" fantasy).
+
+---
+
+## 4. v0.2–v1.0 — Scope Summary (not yet broken into stories)
+
+Detailed story breakdowns for these get written when v0.1 is actually done — writing them now would go stale before you get there. Scope per phase, traceable back to where each was specified:
+
+- **v0.2:** Effort/Attachments/Deliverables/Reporter/Owner fields (`01-product.md` §8.6–8.9), Tags & Sprints (§8.11), Task Relations (§8.10), Search & Filters (§9.3), Table & Calendar views (§9.2), Comments/Activity Log (§9.1), Dashboard v1 (§9.4).
+- **v0.3:** XP & Leveling, Achievements, Streaks, Coins & Room Decoration, Sound/Motion settings — all formulas already defined in `03-design.md` §11, just need implementing.
+- **v0.4:** Remaining views (Timeline, Today, Waiting, Focus, Project, Archive — `01-product.md` §9.2), Work Sessions (§9.5), Statistics (§9.7), Saved Filters, Data Export (`02-architecture.md` §8).
+- **v1.0:** Full test suite per `04-development.md` §5, consistent theming pass, full keyboard-shortcut coverage.
+
+---
+
+## 5. Icebox (future ideas — not scheduled)
+
+Straight from `01-product.md` §14 — kept here too so new ideas land in one obvious place instead of interrupting whatever phase is active:
+
+**v2 candidates:** Notes (task/note-linked), Knowledge Base, Team Load Tracking (read-only), Calendar free-time tracking, AI task breakdown/planning, GitHub integration, calendar sync.
+
+**v3 candidates:** Life journal, habit tracker, personal wiki, desktop/terminal widgets.
+
+New idea mid-build? It goes here, not into the current phase — that discipline is what keeps `01-product.md`'s vision stable.
