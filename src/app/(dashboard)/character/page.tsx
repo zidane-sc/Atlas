@@ -60,11 +60,14 @@ export default function Page() {
                   <span className="font-display">{sheet.completedCount}</span>
                 </div>
               </div>
-              <div className="grid grid-cols-6 gap-1.5">
+              <div className="grid grid-cols-3 gap-2">
                 {STATS.map((stat) => (
-                  <div key={stat} className="px-1.5 py-1 text-center text-[10px]" style={{ backgroundColor: "var(--color-bg-panel-alt)", border: "1px solid var(--color-border)" }}>
-                    <div className="font-display text-[11px] text-foreground">{sheet.statScore[stat]}</div>
-                    <div className="text-[7px] text-muted-foreground">{stat}</div>
+                  <div key={stat} className="px-2 py-1.5 text-center" style={{ backgroundColor: "var(--color-bg-panel-alt)", border: "1.5px solid var(--color-border)" }}>
+                    <div className="font-display text-[13px] font-bold text-foreground">{sheet.statScore[stat]}</div>
+                    <div className="text-[8px] text-muted-foreground tracking-wider">{stat}</div>
+                    <div className="text-[9px] mt-0.5" style={{ color: "var(--color-primary-gold)" }}>
+                      +{Math.floor((sheet.statScore[stat] - 10) / 2)}
+                    </div>
                   </div>
                 ))}
               </div>
