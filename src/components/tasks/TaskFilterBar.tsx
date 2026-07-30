@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { ChevronDown, X } from "lucide-react";
+import { useTasks } from "@/components/providers/TasksProvider";
 import { STATUS_LABEL, STATUS_SHAPE, TYPE_ICON } from "@/lib/mock-data";
 import { countActiveFilters, type TaskFilters } from "@/lib/task-filters";
 import type { Priority, TaskStatus, TaskType } from "@/types/task";
@@ -87,13 +88,77 @@ export function TaskFilterBar({
   onChange: (filters: TaskFilters) => void;
   projectNames: string[];
 }) {
+  const { savedFilters, saveFilter, deleteFilter } = useTasks();
+  const [viewsOpen, setViewsOpen] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveName, setSaveName] = useState("");
+
   const activeCount = countActiveFilters(filters);
+
+  const handleSave = async () => {
+    if (!saveName.trim()) return;
+    const ok = await saveFilter(saveName.trim(), filters);
+    if (ok) {
+      setSaveName("");
+      setIsSaving(false);
+    }
+  };
 
   return (
     <div
       className="flex flex-wrap items-center gap-2 px-4 py-2"
       style={{ borderBottom: "1px solid var(--color-border)", backgroundColor: "var(--color-bg-panel-alt)" }}
     >
+      {/* Saved Views Dropdown */}
+      <div className="relative">
+        <button
+          type="button"
+          onClick={() => setViewsOpen((o) => !o)}
+          className="flex items-center gap-1.5 border px-2 py-1 text-sm transition-colors text-muted-foreground hover:text-foreground"
+          style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-bg-panel)" }}
+        >
+          📑 Saved Views
+          {savedFilters.length > 0 && <span className="ml-1 text-xs">({savedFilters.length})</span>}
+          <ChevronDown size={10} />
+        </button>
+        {viewsOpen && (
+          <>
+            <div className="fixed inset-0 z-40" onClick={() => setViewsOpen(false)} />
+            <div
+              className="absolute top-full left-0 z-50 mt-1 max-h-64 w-52 overflow-y-auto border-2 border-primary bg-card p-1"
+              style={{ boxShadow: "4px 4px 0 var(--color-bg-deep)" }}
+            >
+              {savedFilters.length === 0 ? (
+                <div className="p-2 text-sm text-muted-foreground text-center">No saved views.</div>
+              ) : (
+                savedFilters.map((view) => (
+                  <div key={view.id} className="flex items-center justify-between gap-2 p-1 hover:bg-secondary">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onChange(view.filters);
+                        setViewsOpen(false);
+                      }}
+                      className="flex-1 text-left text-sm text-foreground hover:text-primary truncate font-bold"
+                    >
+                      {view.name}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => deleteFilter(view.id)}
+                      className="text-muted-foreground hover:text-destructive p-0.5"
+                      title="Delete view"
+                    >
+                      <X size={12} style={{ color: "var(--color-priority-p0)" }} />
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
+          </>
+        )}
+      </div>
+
       <FilterDropdown
         label="Status"
         options={STATUSES}
@@ -133,13 +198,53 @@ export function TaskFilterBar({
       />
 
       {activeCount > 0 && (
-        <button
-          type="button"
-          onClick={() => onChange({ statuses: [], priorities: [], projects: [], types: [], query: "" })}
-          className="flex items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
-        >
-          <X size={12} /> Clear ({activeCount})
-        </button>
+        <div className="flex items-center gap-2">
+          {isSaving ? (
+            <div className="flex items-center gap-1.5 border border-primary bg-card p-0.5">
+              <input
+                type="text"
+                value={saveName}
+                onChange={(e) => setSaveName(e.target.value)}
+                placeholder="View name..."
+                className="px-1.5 py-0.5 text-xs text-foreground bg-secondary border border-border outline-none"
+                style={{ fontFamily: "VT323, monospace" }}
+                autoFocus
+              />
+              <button
+                type="button"
+                onClick={handleSave}
+                className="px-2 py-0.5 text-xs font-bold bg-primary text-deep border border-primary hover:opacity-90 active:translate-y-0.5"
+                style={{ backgroundColor: "var(--color-primary-gold)", color: "var(--color-bg-deep)" }}
+              >
+                SAVE
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsSaving(false)}
+                className="p-1 text-muted-foreground hover:text-foreground"
+              >
+                <X size={10} />
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setIsSaving(true)}
+              className="flex items-center gap-1.5 border px-2 py-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
+              style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-bg-panel)" }}
+            >
+              💾 Save View
+            </button>
+          )}
+
+          <button
+            type="button"
+            onClick={() => onChange({ statuses: [], priorities: [], projects: [], types: [], query: "" })}
+            className="flex items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
+          >
+            <X size={12} /> Clear ({activeCount})
+          </button>
+        </div>
       )}
     </div>
   );

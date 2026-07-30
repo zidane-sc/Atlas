@@ -11,6 +11,7 @@ import { useCommandPalette } from "@/components/providers/CommandPaletteProvider
 import { computeCharacterSheet, getNextStreakMilestone, calculateStreak } from "@/lib/gamification";
 import { MOCK_NOW } from "@/lib/mock-data";
 import { NAV_CORE, NAV_MANAGE, NAV_SMART_VIEWS, NAV_TASKS, type NavItemBase } from "@/lib/nav-items";
+import { isOverdue } from "@/lib/task-utils";
 import type { Task } from "@/types/task";
 
 type NavItem = NavItemBase & {
@@ -21,6 +22,7 @@ type NavItem = NavItemBase & {
 const SMART_VIEW_BADGE_COLOR: Record<string, string> = {
   "/tasks/today": "--color-primary-gold",
   "/tasks/inbox": "--color-text-muted",
+  "/tasks/overdue": "--color-status-blocked",
   "/tasks/waiting": "--color-status-waiting-external",
   "/tasks/focus": "--color-priority-p1",
 };
@@ -28,6 +30,7 @@ const SMART_VIEW_BADGE_COLOR: Record<string, string> = {
 const SMART_VIEW_COUNT: Record<string, (tasks: Task[]) => number> = {
   "/tasks/today": (tasks) => tasks.filter((t) => t.status !== "done" && (t.dueDate === MOCK_NOW || t.status === "in_progress")).length,
   "/tasks/inbox": (tasks) => tasks.filter((t) => t.status === "inbox").length,
+  "/tasks/overdue": (tasks) => tasks.filter((t) => t.status !== "done" && isOverdue(t.dueDate, MOCK_NOW)).length,
   "/tasks/waiting": (tasks) => tasks.filter((t) => t.status === "waiting_external").length,
   "/tasks/focus": (tasks) => tasks.filter((t) => t.status === "ready" && (t.priority === "p0" || t.priority === "p1")).length,
 };
@@ -76,6 +79,11 @@ export function Sidebar() {
   const { setOpen: setCommandPaletteOpen } = useCommandPalette();
   const sheet = useMemo(() => computeCharacterSheet(tasks, bonusXp, bonusCoins), [tasks, bonusXp, bonusCoins]);
   const streakDays = useMemo(() => calculateStreak(tasks), [tasks]);
+  const todayCompletedCount = useMemo(() => {
+    const today = new Date();
+    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+    return tasks.filter((t) => t.status === "done").length;
+  }, [tasks]);
   const milestone = getNextStreakMilestone(streakDays);
   const pathname = usePathname();
 
@@ -85,7 +93,7 @@ export function Sidebar() {
     badgeColorVar: SMART_VIEW_BADGE_COLOR[item.href],
   }));
 
-  const tasksActive = pathname?.startsWith("/tasks") ?? false;
+  const tasksActive = pathname === "/tasks";
 
   return (
     <aside
@@ -184,7 +192,7 @@ export function Sidebar() {
         ))}
       </nav>
 
-      <Companion level={sheet.globalLevel} streakDays={streakDays} justCompleted={justCompleted} />
+      <Companion level={sheet.globalLevel} todayCompleted={todayCompletedCount} justCompleted={justCompleted} />
       <div className="p-3">
         <button
           type="button"

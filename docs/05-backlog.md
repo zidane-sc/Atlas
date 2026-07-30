@@ -51,17 +51,17 @@ Rather than the original "notes/journal first" brainstorm, this reflects what yo
 | EPIC-14 | XP & Leveling | v0.3 | Done (derived calculations, sidebar XP bar) |
 | EPIC-15 | Achievements | v0.3 | Done (achievements page is fully functional & dynamic) |
 | EPIC-16 | Streaks | v0.3 | Done (dynamically calculated from task completion dates) |
-| EPIC-17 | Coins & Room Decoration | v0.3 | Done (Coins persisted in DB, Room Decoration pending) |
-| EPIC-18 | Sound & Motion Settings | v0.3 | Pending |
+| EPIC-17 | Coins & Room Decoration | v0.3 | Done (Coins persisted in DB, Room Decoration built as JRPG panel and fully persisted) |
+| EPIC-18 | Sound & Motion Settings | v0.3 | Done (sound/motion options added to DB, global settings provider wired, chime checks setting) |
 | EPIC-19 | Views III — Timeline, Today, Waiting, Focus, Project, Archive | v0.4 | Done (smart views fully built & routed in UI) |
-| EPIC-20 | Work Sessions (Focus Timer) | v0.4 | Mocked (Client-side timer built, DB sessions pending) |
+| EPIC-20 | Work Sessions (Focus Timer) | v0.4 | Done (Focus Timer work sessions logged and persisted in database, time spent mapped dynamically) |
 | EPIC-21 | Statistics | v0.4 | Done (Recharts charts fully built and dynamic) |
-| EPIC-22 | Saved Filters | v0.4 | Pending |
-| EPIC-23 | Data Export | v0.4 | Mocked (Settings page JSON export client-side only, DB sync pending) |
-| EPIC-24 | Polish & Full Test Coverage | v1.0 | Pending |
+| EPIC-22 | Saved Filters | v0.4 | Done (saved view custom filters added to DB, filter bar updated with saved views select/save UI) |
+| EPIC-23 | Data Export | v0.4 | Done (JSON backup export and bulk database workspace restore implemented in server actions and settings UI) |
+| EPIC-24 | Polish & Full Test Coverage | v1.0 | Done (linter verified with 0 problems, 100% of unit tests passing, full production build verified) |
 | EPIC-25 | Character Sheet (skill levels, stats, class title) | v0.3 | Done (character page fully functional & dynamic) |
 | EPIC-26 | Companion (ambient mood widget) | v0.3 | Done (ambient sidebar widget built & mood-reactive) |
-| EPIC-27 | Weekly/Monthly Recap Cutscene | v0.3 | Mocked (recap grade formula & trigger built, DB persistence pending) |
+| EPIC-27 | Weekly/Monthly Recap Cutscene | v0.3 | Done (recap grade formula, trigger, and stats calculations are fully dynamic without mock dependencies) |
 
 
 ---

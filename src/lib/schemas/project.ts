@@ -19,6 +19,7 @@ export const projectFormSchema = z.object({
   emoji: z.string().trim().min(1).max(4),
   category: z.enum(PROJECT_CATEGORIES),
   colorVar: z.string().min(1),
+  customColor: z.string().regex(/^#[0-9A-F]{6}$/i, "Invalid color format").optional(),
   description: z.string().trim().optional(),
   status: z.enum(PROJECT_STATUSES),
 });
@@ -30,6 +31,7 @@ export const createProjectSchema = z.object({
   emoji: z.string().trim().min(1).max(4),
   category: z.enum(PROJECT_CATEGORIES),
   colorVar: z.string().min(1),
+  customColor: z.string().regex(/^#[0-9A-F]{6}$/i, "Invalid color format").optional(),
   description: z.string().trim().optional(),
   status: z.enum(PROJECT_STATUSES).default("active"),
 });
@@ -41,6 +43,7 @@ export const updateProjectSchema = z.object({
   emoji: z.string().trim().min(1).max(4).optional(),
   category: z.enum(PROJECT_CATEGORIES).optional(),
   colorVar: z.string().min(1).optional(),
+  customColor: z.string().regex(/^#[0-9A-F]{6}$/i, "Invalid color format").nullable().optional(),
   description: z.string().trim().nullable().optional(),
   status: z.enum(PROJECT_STATUSES).optional(),
 });

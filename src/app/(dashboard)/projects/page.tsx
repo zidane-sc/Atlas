@@ -20,7 +20,7 @@ export default function Page() {
         <Button size="sm" onClick={openCreateForm}><Plus size={12} /> New Project</Button>
       </div>
       <div className="flex-1 overflow-y-auto p-6">
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid gap-4 grid-cols-1 md:grid-cols-3">
           {projects.map((p) => {
             const projectTasks = allTasks.filter((t) => t.project === p.name);
             const completedTasks = projectTasks.filter((t) => t.status === "done").length;
@@ -33,7 +33,7 @@ export default function Page() {
                 key={p.id}
                 onClick={() => openEditForm(p)}
                 className="cursor-pointer border-2 border-l-4 bg-card p-5 transition-colors hover:border-primary"
-                style={{ borderColor: "var(--color-border)", borderLeftColor: `var(${p.colorVar})` }}
+                style={{ borderColor: "var(--color-border)", borderLeftColor: p.customColor || `var(${p.colorVar})` }}
               >
                 <div className="mb-3 flex items-start justify-between">
                   <div>

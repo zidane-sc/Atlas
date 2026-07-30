@@ -162,10 +162,10 @@ export function computeCharacterSheet(tasks: Task[], bonusXp = 0, bonusCoins = 0
 /** Companion mood — docs/03-design.md §11.9 */
 export type CompanionMood = "excited" | "happy" | "idle" | "sad";
 
-export function getCompanionMood(streakDays: number, justCompleted: boolean): CompanionMood {
+export function getCompanionMood(todayCompleted: number, justCompleted: boolean): CompanionMood {
   if (justCompleted) return "excited";
-  if (streakDays >= 7) return "happy";
-  if (streakDays >= 3) return "idle";
+  if (todayCompleted >= 5) return "happy";
+  if (todayCompleted >= 2) return "idle";
   return "sad";
 }
 

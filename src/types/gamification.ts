@@ -15,6 +15,7 @@ export interface Project {
   id: string;
   name: string;
   colorVar: string;
+  customColor?: string;
   emoji: string;
   category: string;
   description: string;

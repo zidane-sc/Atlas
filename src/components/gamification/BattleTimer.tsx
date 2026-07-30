@@ -33,25 +33,29 @@ export function BattleTimer({
   totalSeconds,
   onStart,
   onStop,
+  phase = "focus",
 }: {
   task: Task;
   isTiming: boolean;
   totalSeconds: number;
   onStart: () => void;
   onStop: () => void;
+  phase?: "focus" | "break";
 }) {
   const maxHp = estimatedSeconds(task);
   const remainingHp = Math.max(0, maxHp - totalSeconds);
   const hpPct = remainingHp / maxHp;
   const defeated = remainingHp <= 0;
 
-  const hpColorVar = defeated
-    ? "--color-dim"
-    : hpPct > 0.5
-      ? "--color-status-ready"
-      : hpPct > 0.2
-        ? "--color-priority-p1"
-        : "--color-status-blocked";
+  const hpColorVar = phase === "break"
+    ? "--color-status-waiting-external"
+    : defeated
+      ? "--color-dim"
+      : hpPct > 0.5
+        ? "--color-status-ready"
+        : hpPct > 0.2
+          ? "--color-priority-p1"
+          : "--color-status-blocked";
 
   return (
     <div className="border-b border-border p-3" style={{ backgroundColor: "var(--color-bg-panel-alt)" }}>
@@ -59,26 +63,34 @@ export function BattleTimer({
         <span
           className="text-2xl leading-none"
           style={{
-            filter: defeated ? "grayscale(1)" : "none",
-            animation: isTiming && !defeated ? "pixelPulse 1.5s ease-in-out infinite" : "none",
+            filter: phase === "break" || defeated ? "grayscale(1)" : "none",
+            animation: isTiming && !defeated && phase === "focus" ? "pixelPulse 1.5s ease-in-out infinite" : "none",
           }}
         >
-          {defeated ? "💀" : TYPE_ICON[task.type]}
+          {phase === "break" ? "☕" : defeated ? "💀" : TYPE_ICON[task.type]}
         </span>
         <div className="min-w-0 flex-1">
           <div className="truncate text-base font-bold text-foreground">{task.title}</div>
           <div className="text-base" style={{ color: `var(${hpColorVar})` }}>
-            {defeated ? "DEFEATED" : `HP ${formatDuration(remainingHp)}`}
+            {phase === "break" ? `☕ BREAK — ${formatDuration(remainingHp)}` : defeated ? "DEFEATED" : `HP ${formatDuration(remainingHp)}`}
           </div>
         </div>
         <Button
           type="button"
           variant="ghost"
           size="icon-sm"
-          title={isTiming ? "Stop session" : "Start session"}
+          title={isTiming ? "Stop session" : task.status === "in_progress" ? "Start session" : "Set status to In Progress to start"}
           onClick={isTiming ? onStop : onStart}
+          disabled={!isTiming && task.status !== "in_progress"}
         >
-          {isTiming ? <Pause size={14} style={{ color: "var(--color-status-blocked)" }} /> : <Play size={14} style={{ color: "var(--color-status-ready)" }} />}
+          {isTiming ? (
+            <Pause size={14} style={{ color: "var(--color-status-blocked)" }} />
+          ) : (
+            <Play
+              size={14}
+              style={{ color: task.status === "in_progress" ? "var(--color-status-ready)" : "var(--color-dim)" }}
+            />
+          )}
         </Button>
       </div>
 
@@ -90,6 +102,15 @@ export function BattleTimer({
         </span>
         <span>Est {formatDuration(maxHp)}</span>
       </div>
+
+      {!isTiming && task.status !== "in_progress" && !defeated && (
+        <div
+          className="mt-2 border border-dashed p-1.5 text-center text-base font-bold"
+          style={{ borderColor: "var(--color-border)", color: "var(--color-text-muted)" }}
+        >
+          ⚔ Set status to In Progress to start battle
+        </div>
+      )}
 
       {defeated && (
         <div

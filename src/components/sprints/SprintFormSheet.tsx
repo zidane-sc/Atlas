@@ -12,6 +12,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { ConfirmButton } from "@/components/ui/ConfirmButton";
 import { Separator } from "@/components/ui/separator";
+import { DatePicker } from "@/components/ui/DatePicker";
 import { useSprints } from "@/components/providers/SprintsProvider";
 import { SPRINT_STATUSES, sprintFormSchema, type SprintFormValues } from "@/lib/schemas/sprint";
 import type { Sprint } from "@/types/gamification";
@@ -125,22 +126,16 @@ function SprintFormBody({ mode, sprint }: { mode: "create" | "edit"; sprint: Spr
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className={LC}>Start Date</label>
-            <input
-              aria-label="Start Date"
-              type="date"
-              className={FIELD}
+            <DatePicker
               value={form.startDate}
-              onChange={(e) => set("startDate", e.target.value)}
+              onChange={(date) => set("startDate", date)}
             />
           </div>
           <div>
             <label className={LC}>End Date</label>
-            <input
-              aria-label="End Date"
-              type="date"
-              className={FIELD}
+            <DatePicker
               value={form.endDate}
-              onChange={(e) => set("endDate", e.target.value)}
+              onChange={(date) => set("endDate", date)}
             />
           </div>
         </div>

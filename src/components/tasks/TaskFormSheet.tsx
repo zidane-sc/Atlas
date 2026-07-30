@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Check, ChevronDown, Copy, Trash2 } from "lucide-react";
+import { useEffect, useState, useMemo } from "react";
+import { Check, ChevronDown, Copy, Trash2, Info, Pin } from "lucide-react";
+import { DatePicker } from "@/components/ui/DatePicker";
 import { BattleTimer } from "@/components/gamification/BattleTimer";
 import {
   Sheet,
@@ -51,14 +52,14 @@ import type {
 function Section({ title, shape, defaultOpen = false, children }: { title: string; shape: string; defaultOpen?: boolean; children: React.ReactNode }) {
   return (
     <Collapsible defaultOpen={defaultOpen} className="border-2 border-border">
-      <CollapsibleTrigger className="group flex w-full items-center justify-between px-3 py-2.5 text-left text-base tracking-widest text-muted-foreground hover:bg-[var(--color-bg-panel-alt)]">
+      <CollapsibleTrigger className="group flex w-full items-center justify-between px-3 py-2.5 text-left text-sm tracking-widest text-muted-foreground hover:bg-[var(--color-bg-panel-alt)]">
         <span className="flex items-center gap-2">
           <span style={{ color: "var(--color-primary-gold)" }}>{shape}</span>
           <span>{title}</span>
         </span>
         <ChevronDown size={12} className="transition-transform duration-200 group-data-[panel-open]:rotate-180" />
       </CollapsibleTrigger>
-      <CollapsibleContent className="border-t-2 border-border px-3 py-3 text-base">{children}</CollapsibleContent>
+      <CollapsibleContent className="border-t-2 border-border px-3 py-3 text-sm">{children}</CollapsibleContent>
     </Collapsible>
   );
 }
@@ -75,9 +76,9 @@ const EMPTY_FORM: Omit<TaskFormValues, "project"> = {
   deliverables: [],
 };
 
-const LC = "mb-1 block text-base tracking-widest text-muted-foreground uppercase";
+const LC = "mb-1 block text-sm tracking-widest text-muted-foreground uppercase";
 const FIELD =
-  "w-full border-2 border-border bg-secondary px-3 py-1.5 text-base text-foreground outline-none focus:border-primary";
+  "w-full border-2 border-border bg-secondary px-3 py-1.5 text-sm text-foreground outline-none focus:border-primary";
 
 function humanize(value: string) {
   return value.replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase());
@@ -92,7 +93,7 @@ export function TaskFormSheet() {
   const { sheet, closeForm } = useTasks();
   return (
     <Sheet open={sheet.open} onOpenChange={(open) => !open && closeForm()}>
-      <SheetContent className="w-full gap-0 overflow-y-auto border-l-2 border-border sm:max-w-md">
+      <SheetContent className="w-full gap-0 overflow-y-auto border-l-2 border-border" style={{ width: "520px", maxWidth: "90vw" }}>
         {sheet.open && <TaskFormBody key={sheet.task?.id ?? "create"} mode={sheet.mode} task={sheet.task} />}
       </SheetContent>
     </Sheet>
@@ -100,7 +101,7 @@ export function TaskFormSheet() {
 }
 
 function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | null }) {
-  const { tasks, closeForm, createTask, updateTask, deleteTask, duplicateTask, activeTimer, startTimer, stopTimer } = useTasks();
+  const { tasks, closeForm, createTask, updateTask, deleteTask, duplicateTask, togglePin, activeTimer, startTimer, stopTimer } = useTasks();
   const { projects } = useProjects();
   const { sprints } = useSprints();
   const [form, setForm] = useState<TaskFormValues>(() =>
@@ -134,7 +135,18 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
   const [attachmentUrl, setAttachmentUrl] = useState("");
   const [deliverableType, setDeliverableType] = useState<DeliverableType>("pr");
   const [deliverableLabel, setDeliverableLabel] = useState("");
+  const [deliverableUrl, setDeliverableUrl] = useState("");
   const [tagInput, setTagInput] = useState("");
+  const [relationSearch, setRelationSearch] = useState("");
+  const [projectSearch, setProjectSearch] = useState("");
+  const [sprintSearch, setSprintSearch] = useState("");
+  const [editingAttachmentIndex, setEditingAttachmentIndex] = useState<number | null>(null);
+  const [editingDeliverableIndex, setEditingDeliverableIndex] = useState<number | null>(null);
+
+  const currentTask = useMemo(
+    () => (task ? tasks.find((t) => t.id === task.id) || task : null),
+    [task, tasks]
+  );
 
   const set = <K extends keyof TaskFormValues>(key: K, value: TaskFormValues[K]) =>
     setForm((f) => ({ ...f, [key]: value }));
@@ -168,9 +180,10 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
 
   const addDeliverable = () => {
     if (!deliverableLabel.trim()) return;
-    const deliverable: TaskDeliverable = { type: deliverableType, label: deliverableLabel.trim() };
+    const deliverable: TaskDeliverable = { type: deliverableType, label: deliverableLabel.trim(), url: deliverableUrl.trim() || undefined };
     set("deliverables", [...form.deliverables, deliverable]);
     setDeliverableLabel("");
+    setDeliverableUrl("");
   };
   const removeDeliverable = (index: number) => set("deliverables", form.deliverables.filter((_, i) => i !== index));
 
@@ -206,8 +219,15 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
   const isTiming = mode === "edit" && task != null && activeTimer?.taskId === task.id;
   const [liveSeconds, setLiveSeconds] = useState(0);
   useEffect(() => {
-    if (!isTiming || !activeTimer) return;
-    const id = setInterval(() => setLiveSeconds(Math.floor((Date.now() - activeTimer.startedAt) / 1000)), 1000);
+    if (!isTiming || !activeTimer) {
+      Promise.resolve().then(() => setLiveSeconds(0));
+      return;
+    }
+    const update = () => {
+      setLiveSeconds(Math.floor((Date.now() - activeTimer.startedAt) / 1000));
+    };
+    Promise.resolve().then(update);
+    const id = setInterval(update, 1000);
     return () => clearInterval(id);
   }, [isTiming, activeTimer]);
   // `task` is a snapshot from when the sheet opened — look up the live copy so a stopped
@@ -225,21 +245,28 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
           {mode === "edit" ? "◈ QUEST DETAIL" : "+ NEW QUEST"}
         </SheetTitle>
         <SheetDescription className="sr-only">{mode === "edit" ? "Edit this quest." : "What needs to be done?"}</SheetDescription>
-        {mode === "edit" && task && (
+        {mode === "edit" && currentTask && (
           <div className="mr-8 flex gap-1.5">
-            <Button type="button" variant="ghost" size="icon-sm" title="Duplicate" onClick={() => duplicateTask(task.id)}>
+            <Button type="button" variant="ghost" size="icon-sm" title={currentTask.pinned ? "Unpin" : "Pin"} onClick={() => togglePin(currentTask.id, !currentTask.pinned)}>
+              <Pin size={14} style={{ color: currentTask.pinned ? "var(--color-primary-gold)" : "var(--color-text-muted)", fill: currentTask.pinned ? "var(--color-primary-gold)" : "none" }} />
+            </Button>
+            <Button type="button" variant="ghost" size="icon-sm" title="Duplicate" onClick={() => duplicateTask(currentTask.id)}>
               <Copy size={14} />
             </Button>
-            <ConfirmButton title="Delete" confirmLabel="Delete?" onConfirm={() => deleteTask(task.id)}>
+            <ConfirmButton title="Delete" confirmLabel="Delete?" onConfirm={() => deleteTask(currentTask.id)}>
               <Trash2 size={14} style={{ color: "var(--color-status-blocked)" }} />
             </ConfirmButton>
           </div>
         )}
       </SheetHeader>
 
-      <div className="flex items-center gap-4 border-b border-border px-4 py-2 text-base" style={{ backgroundColor: "var(--color-bg-panel-alt)" }}>
-        <span style={{ color: "var(--color-xp-gold)" }}>⚡ +{previewXP} XP on complete</span>
-        <span style={{ color: "var(--color-coin)" }}>🪙 +{previewCoins} coins</span>
+      <div className="flex items-center gap-4 border-b border-border px-4 py-2 text-sm" style={{ backgroundColor: "var(--color-bg-panel-alt)" }}>
+        <span className="flex items-center gap-1" style={{ color: "var(--color-xp-gold)" }} title={`XP = (Priority * 20) + (Story Points * 5)\nP0: 100, P1: 80, P2: 60, P3: 40, P4: 20`}>
+          ⚡ +{previewXP} XP on complete <Info size={12} className="opacity-50" style={{ cursor: "help" }} />
+        </span>
+        <span className="flex items-center gap-1" style={{ color: "var(--color-coin)" }} title="Coins = Priority * Story Points * 2">
+          🪙 +{previewCoins} coins <Info size={12} className="opacity-50" style={{ cursor: "help" }} />
+        </span>
       </div>
 
       <div className="border-b border-border px-4 pt-4 pb-3">
@@ -251,12 +278,12 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
           placeholder="What needs to be done?"
           autoFocus
         />
-        {errors.title && <p className="mt-1 text-base" style={{ color: "var(--color-status-blocked)" }}>{errors.title}</p>}
+        {errors.title && <p className="mt-1 text-sm" style={{ color: "var(--color-status-blocked)" }}>{errors.title}</p>}
       </div>
       <div className="flex items-center gap-4 border-b border-border px-4 py-2">
         <StatusBadge status={form.status} />
         <PriorityMark priority={form.priority} withLabel />
-        <span className="text-base">{TYPE_ICON[form.type]}</span>
+        <span className="text-sm">{TYPE_ICON[form.type]}</span>
       </div>
 
       {mode === "edit" && task && (
@@ -282,7 +309,9 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
                 </select>
               </div>
               <div>
-                <label className={LC}>Priority</label>
+                <label className={`${LC} flex items-center gap-1`} title="P0=Urgent, P1=High, P2=Medium, P3=Low, P4=Minimal">
+                  Priority <Info size={12} className="opacity-50" style={{ cursor: "help" }} />
+                </label>
                 <select aria-label="Priority" className={FIELD} value={form.priority} onChange={(e) => set("priority", e.target.value as Priority)}>
                   {(["p0", "p1", "p2", "p3", "p4"] as Priority[]).map((p) => (
                     <option key={p} value={p}>{p.toUpperCase()}</option>
@@ -291,7 +320,7 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
               </div>
             </div>
 
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className={LC}>Type</label>
                 <select aria-label="Type" className={FIELD} value={form.type} onChange={(e) => set("type", e.target.value as TaskType)}>
@@ -301,7 +330,9 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
                 </select>
               </div>
               <div>
-                <label className={LC}>Effort</label>
+                <label className={`${LC} flex items-center gap-1`} title="XS=<1hr, S=1-2hrs, M=2-4hrs, L=4-8hrs, XL=8-16hrs, XXL=>16hrs">
+                  Effort <Info size={12} className="opacity-50" style={{ cursor: "help" }} />
+                </label>
                 <select
                   aria-label="Effort"
                   className={FIELD}
@@ -314,8 +345,26 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
                   ))}
                 </select>
               </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className={LC}>Story Points</label>
+                <label className={LC}>Reporter</label>
+                <select
+                  aria-label="Reporter"
+                  className={FIELD}
+                  value={form.reporter ?? "self"}
+                  onChange={(e) => set("reporter", e.target.value as (typeof REPORTER_OPTIONS)[number])}
+                >
+                  {REPORTER_OPTIONS.map((r) => (
+                    <option key={r} value={r}>{humanize(r)}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className={`${LC} flex items-center gap-1`} title="Relative complexity/size. 0=Trivial, 21=Epic. Used to calculate rewards & estimate effort.">
+                  Story Points <Info size={12} className="opacity-50" style={{ cursor: "help" }} />
+                </label>
                 <select
                   aria-label="Story Points"
                   className={FIELD}
@@ -330,50 +379,78 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
               </div>
             </div>
 
-            <div>
-              <label className={LC}>Reporter</label>
-              <select
-                aria-label="Reporter"
-                className={FIELD}
-                value={form.reporter ?? "self"}
-                onChange={(e) => set("reporter", e.target.value as (typeof REPORTER_OPTIONS)[number])}
-              >
-                {REPORTER_OPTIONS.map((r) => (
-                  <option key={r} value={r}>{humanize(r)}</option>
-                ))}
-              </select>
-            </div>
-
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className={LC}>Project</label>
-                <select aria-label="Project" className={FIELD} value={form.project} onChange={(e) => set("project", e.target.value)}>
-                  {projects.map((p) => (
-                    <option key={p.id} value={p.name}>{p.emoji} {p.name}</option>
-                  ))}
-                </select>
-                {errors.project && <p className="mt-1 text-base" style={{ color: "var(--color-status-blocked)" }}>{errors.project}</p>}
+                <div className="relative">
+                  <input
+                    aria-label="Project"
+                    className={FIELD}
+                    placeholder="Search project..."
+                    value={projectSearch || (form.project ? `${projects.find(p => p.name === form.project)?.emoji} ${form.project}` : "")}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setProjectSearch(val);
+                      if (!projects.some(p => `${p.emoji} ${p.name}` === val)) {
+                        set("project", "");
+                      }
+                    }}
+                    onFocus={(e) => {
+                      setProjectSearch("");
+                      e.target.select();
+                    }}
+                  />
+                  {projectSearch && (
+                    <ul className="border border-border max-h-20 overflow-y-auto bg-secondary text-xs absolute top-full left-0 right-0 z-10">
+                      {projects.filter(p => p.name.toLowerCase().includes(projectSearch.toLowerCase())).map((p) => (
+                        <li key={p.id} className="px-2 py-1 cursor-pointer hover:bg-primary/10 border-b border-border last:border-b-0" onClick={() => { set("project", p.name); setProjectSearch(""); }}>
+                          {p.emoji} {p.name}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+                {errors.project && <p className="mt-1 text-sm" style={{ color: "var(--color-status-blocked)" }}>{errors.project}</p>}
               </div>
               <div>
                 <label className={LC}>Due Date</label>
-                <input
-                  aria-label="Due Date"
-                  type="date"
-                  className={FIELD}
-                  value={form.dueDate ?? ""}
-                  onChange={(e) => set("dueDate", e.target.value)}
+                <DatePicker
+                  value={form.dueDate}
+                  onChange={(date) => set("dueDate", date)}
                 />
               </div>
             </div>
 
             <div>
               <label className={LC}>Sprint</label>
-              <select aria-label="Sprint" className={FIELD} value={form.sprint ?? ""} onChange={(e) => set("sprint", e.target.value || undefined)}>
-                <option value="">—</option>
-                {sprints.map((s) => (
-                  <option key={s.id} value={s.name}>{s.name}</option>
-                ))}
-              </select>
+              <div className="relative">
+                <input
+                  aria-label="Sprint"
+                  className={FIELD}
+                  placeholder="Search sprint..."
+                  value={sprintSearch || form.sprint || ""}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setSprintSearch(val);
+                    if (!sprints.some(s => s.name === val)) {
+                      set("sprint", undefined);
+                    }
+                  }}
+                  onFocus={(e) => {
+                    setSprintSearch("");
+                    e.target.select();
+                  }}
+                />
+                {sprintSearch && (
+                  <ul className="border border-border max-h-20 overflow-y-auto bg-secondary text-xs absolute top-full left-0 right-0 z-10">
+                    {sprints.filter(s => s.name.toLowerCase().includes(sprintSearch.toLowerCase())).map((s) => (
+                      <li key={s.id} className="px-2 py-1 cursor-pointer hover:bg-primary/10 border-b border-border last:border-b-0" onClick={() => { set("sprint", s.name); setSprintSearch(""); }}>
+                        {s.name}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
             </div>
 
             {(form.status === "waiting_external" || form.status === "blocked") && (
@@ -405,7 +482,7 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
               <label className={LC}>Tags</label>
               <div className="mb-2 flex flex-wrap gap-1">
                 {form.tags.map((t) => (
-                  <span key={t} className="inline-flex items-center gap-1 border px-1.5 text-base text-muted-foreground" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-bg-panel-alt)" }}>
+                  <span key={t} className="inline-flex items-center gap-1 border px-1.5 text-xs text-muted-foreground" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-bg-panel-alt)" }}>
                     #{t}
                     <button type="button" onClick={() => removeTag(t)} style={{ color: "var(--color-status-blocked)" }}>✕</button>
                   </span>
@@ -445,18 +522,41 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
                 ))}
               </ul>
             )}
-            <div className="flex gap-2 border-t border-border pt-2">
-              <select aria-label="Relation type" className={FIELD} value={relationType} onChange={(e) => setRelationType(e.target.value as RelationType)}>
-                {RELATION_TYPES.map((rt) => (
-                  <option key={rt} value={rt}>{humanize(rt)}</option>
-                ))}
-              </select>
-              <select aria-label="Related quest" className={FIELD} value={relationTargetId} onChange={(e) => setRelationTargetId(e.target.value)}>
-                <option value="">Select quest...</option>
-                {otherTasks.map((t) => (
-                  <option key={t.id} value={t.id}>{t.title}</option>
-                ))}
-              </select>
+            <div className="flex flex-col gap-2 border-t border-border pt-2">
+              <div className="flex gap-2">
+                <select aria-label="Relation type" className="border-2 border-border bg-secondary px-3 py-1.5 text-sm text-foreground outline-none focus:border-primary w-32 shrink-0" value={relationType} onChange={(e) => setRelationType(e.target.value as RelationType)}>
+                  {RELATION_TYPES.map((rt) => (
+                    <option key={rt} value={rt}>{humanize(rt)}</option>
+                  ))}
+                </select>
+                <input
+                  aria-label="Search quest"
+                  className={FIELD}
+                  placeholder="Search quest..."
+                  value={relationSearch}
+                  onChange={(e) => setRelationSearch(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && relationTargetId) {
+                      e.preventDefault();
+                      addRelation();
+                    }
+                  }}
+                />
+              </div>
+              {relationSearch && (
+                <ul className="border border-border max-h-20 overflow-y-auto bg-secondary text-xs">
+                  {otherTasks.filter(t => t.title.toLowerCase().includes(relationSearch.toLowerCase())).slice(0, 5).map((t) => (
+                    <li key={t.id} className="px-2 py-1 cursor-pointer hover:bg-primary/10 border-b border-border last:border-b-0" onClick={() => { setRelationTargetId(t.id); setRelationSearch(""); }}>
+                      {t.title}
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {relationTargetId && (
+                <div className="text-sm text-muted-foreground px-3 py-1.5 border border-border bg-muted/20">
+                  Selected: <span className="font-medium">{otherTasks.find(t => t.id === relationTargetId)?.title}</span>
+                </div>
+              )}
               <Button type="button" size="sm" aria-label="Add relation" onClick={addRelation} disabled={!relationTargetId}>Add</Button>
             </div>
           </div>
@@ -469,30 +569,66 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
             ) : (
               <ul className="flex flex-col gap-1">
                 {form.attachments.map((a, i) => (
-                  <li key={i} className="flex items-center justify-between gap-2">
-                    <span className="text-muted-foreground capitalize">{humanize(a.type)}</span>
-                    <span className="flex-1 truncate text-right">{a.label}</span>
-                    <button type="button" onClick={() => removeAttachment(i)} className="shrink-0" style={{ color: "var(--color-status-blocked)" }}>
-                      ✕
-                    </button>
-                  </li>
+                  editingAttachmentIndex === i ? (
+                    <li key={i} className="flex flex-col gap-2 border border-border p-2 bg-muted/20">
+                      <div className="flex gap-2">
+                        <select aria-label="Attachment type" className={FIELD} value={attachmentType} onChange={(e) => setAttachmentType(e.target.value as AttachmentType)}>
+                          {ATTACHMENT_TYPES.map((t) => (
+                            <option key={t} value={t}>{humanize(t)}</option>
+                          ))}
+                        </select>
+                        <input aria-label="Attachment label" className={FIELD} placeholder="Label" value={attachmentLabel} onChange={(e) => setAttachmentLabel(e.target.value)} />
+                      </div>
+                      <input aria-label="Attachment URL" className={FIELD} placeholder="URL" value={attachmentUrl} onChange={(e) => setAttachmentUrl(e.target.value)} />
+                      <div className="flex gap-1 justify-end">
+                        <Button type="button" size="sm" onClick={() => {
+                          const newAttachments = [...form.attachments];
+                          newAttachments[i] = { type: attachmentType, label: attachmentLabel, url: attachmentUrl };
+                          set("attachments", newAttachments);
+                          setEditingAttachmentIndex(null);
+                          setAttachmentType("github_pr");
+                          setAttachmentLabel("");
+                          setAttachmentUrl("");
+                        }}>Save</Button>
+                        <Button type="button" variant="ghost" size="sm" onClick={() => setEditingAttachmentIndex(null)}>Cancel</Button>
+                      </div>
+                    </li>
+                  ) : (
+                    <li key={i} className="flex flex-col gap-1 border border-border p-2 bg-muted/20 cursor-pointer hover:bg-muted/30" onClick={() => {
+                      setAttachmentType(a.type);
+                      setAttachmentLabel(a.label);
+                      setAttachmentUrl(a.url || "");
+                      setEditingAttachmentIndex(i);
+                    }}>
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-muted-foreground capitalize text-xs">{humanize(a.type)}</span>
+                        <span className="flex-1 text-right text-sm">{a.label}</span>
+                        <button type="button" onClick={(e) => { e.stopPropagation(); removeAttachment(i); }} className="shrink-0" style={{ color: "var(--color-status-blocked)" }}>
+                          ✕
+                        </button>
+                      </div>
+                      {a.url && <a href={a.url} target="_blank" rel="noopener noreferrer" className="text-xs text-primary truncate hover:underline">{a.url}</a>}
+                    </li>
+                  )
                 ))}
               </ul>
             )}
-            <div className="flex flex-col gap-2 border-t border-border pt-2">
-              <div className="flex gap-2">
-                <select aria-label="Attachment type" className={FIELD} value={attachmentType} onChange={(e) => setAttachmentType(e.target.value as AttachmentType)}>
-                  {ATTACHMENT_TYPES.map((t) => (
-                    <option key={t} value={t}>{humanize(t)}</option>
-                  ))}
-                </select>
-                <input aria-label="Attachment label" className={FIELD} placeholder="Label" value={attachmentLabel} onChange={(e) => setAttachmentLabel(e.target.value)} />
+            {editingAttachmentIndex === null && (
+              <div className="flex flex-col gap-2 border-t border-border pt-2">
+                <div className="flex gap-2">
+                  <select aria-label="Attachment type" className={FIELD} value={attachmentType} onChange={(e) => setAttachmentType(e.target.value as AttachmentType)}>
+                    {ATTACHMENT_TYPES.map((t) => (
+                      <option key={t} value={t}>{humanize(t)}</option>
+                    ))}
+                  </select>
+                  <input aria-label="Attachment label" className={FIELD} placeholder="Label" value={attachmentLabel} onChange={(e) => setAttachmentLabel(e.target.value)} />
+                </div>
+                <div className="flex gap-2">
+                  <input aria-label="Attachment URL" className={FIELD} placeholder="URL (optional)" value={attachmentUrl} onChange={(e) => setAttachmentUrl(e.target.value)} />
+                  <Button type="button" size="sm" aria-label="Add attachment" onClick={addAttachment} disabled={!attachmentLabel.trim()}>Add</Button>
+                </div>
               </div>
-              <div className="flex gap-2">
-                <input aria-label="Attachment URL" className={FIELD} placeholder="URL (optional)" value={attachmentUrl} onChange={(e) => setAttachmentUrl(e.target.value)} />
-                <Button type="button" size="sm" aria-label="Add attachment" onClick={addAttachment} disabled={!attachmentLabel.trim()}>Add</Button>
-              </div>
-            </div>
+            )}
           </div>
         </Section>
 
@@ -503,25 +639,66 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
             ) : (
               <ul className="flex flex-col gap-1">
                 {form.deliverables.map((d, i) => (
-                  <li key={i} className="flex items-center justify-between gap-2">
-                    <span className="text-muted-foreground capitalize">{humanize(d.type)}</span>
-                    <span className="flex-1 truncate text-right">{d.label}</span>
-                    <button type="button" onClick={() => removeDeliverable(i)} className="shrink-0" style={{ color: "var(--color-status-blocked)" }}>
-                      ✕
-                    </button>
-                  </li>
+                  editingDeliverableIndex === i ? (
+                    <li key={i} className="flex flex-col gap-2 border border-border p-2 bg-muted/20">
+                      <div className="flex gap-2">
+                        <select aria-label="Deliverable type" className={FIELD} value={deliverableType} onChange={(e) => setDeliverableType(e.target.value as DeliverableType)}>
+                          {DELIVERABLE_TYPES.map((t) => (
+                            <option key={t} value={t}>{humanize(t)}</option>
+                          ))}
+                        </select>
+                        <input aria-label="Deliverable label" className={FIELD} placeholder="Label" value={deliverableLabel} onChange={(e) => setDeliverableLabel(e.target.value)} />
+                      </div>
+                      <input aria-label="Deliverable URL" className={FIELD} placeholder="URL (optional)" value={deliverableUrl} onChange={(e) => setDeliverableUrl(e.target.value)} />
+                      <div className="flex gap-1 justify-end">
+                        <Button type="button" size="sm" onClick={() => {
+                          const newDeliverables = [...form.deliverables];
+                          newDeliverables[i] = { type: deliverableType, label: deliverableLabel, url: deliverableUrl || undefined };
+                          set("deliverables", newDeliverables);
+                          setEditingDeliverableIndex(null);
+                          setDeliverableType("pr");
+                          setDeliverableLabel("");
+                          setDeliverableUrl("");
+                        }}>Save</Button>
+                        <Button type="button" variant="ghost" size="sm" onClick={() => setEditingDeliverableIndex(null)}>Cancel</Button>
+                      </div>
+                    </li>
+                  ) : (
+                    <li key={i} className="flex flex-col gap-1 border border-border p-2 bg-muted/20 cursor-pointer hover:bg-muted/30" onClick={() => {
+                      setDeliverableType(d.type);
+                      setDeliverableLabel(d.label);
+                      setDeliverableUrl(d.url || "");
+                      setEditingDeliverableIndex(i);
+                    }}>
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-muted-foreground capitalize text-xs">{humanize(d.type)}</span>
+                        <span className="flex-1 text-right text-sm">{d.label}</span>
+                        <button type="button" onClick={(e) => { e.stopPropagation(); removeDeliverable(i); }} className="shrink-0" style={{ color: "var(--color-status-blocked)" }}>
+                          ✕
+                        </button>
+                      </div>
+                      {d.url && <a href={d.url} target="_blank" rel="noopener noreferrer" className="text-xs text-primary truncate hover:underline">{d.url}</a>}
+                    </li>
+                  )
                 ))}
               </ul>
             )}
-            <div className="flex gap-2 border-t border-border pt-2">
-              <select aria-label="Deliverable type" className={FIELD} value={deliverableType} onChange={(e) => setDeliverableType(e.target.value as DeliverableType)}>
-                {DELIVERABLE_TYPES.map((t) => (
-                  <option key={t} value={t}>{humanize(t)}</option>
-                ))}
-              </select>
-              <input aria-label="Deliverable label" className={FIELD} placeholder="Label" value={deliverableLabel} onChange={(e) => setDeliverableLabel(e.target.value)} />
-              <Button type="button" size="sm" aria-label="Add deliverable" onClick={addDeliverable} disabled={!deliverableLabel.trim()}>Add</Button>
-            </div>
+            {editingDeliverableIndex === null && (
+              <div className="flex flex-col gap-2 border-t border-border pt-2">
+                <div className="flex gap-2">
+                  <select aria-label="Deliverable type" className={FIELD} value={deliverableType} onChange={(e) => setDeliverableType(e.target.value as DeliverableType)}>
+                    {DELIVERABLE_TYPES.map((t) => (
+                      <option key={t} value={t}>{humanize(t)}</option>
+                    ))}
+                  </select>
+                  <input aria-label="Deliverable label" className={FIELD} placeholder="Label" value={deliverableLabel} onChange={(e) => setDeliverableLabel(e.target.value)} />
+                </div>
+                <div className="flex gap-2">
+                  <input aria-label="Deliverable URL" className={FIELD} placeholder="URL (optional)" value={deliverableUrl} onChange={(e) => setDeliverableUrl(e.target.value)} />
+                  <Button type="button" size="sm" aria-label="Add deliverable" onClick={addDeliverable} disabled={!deliverableLabel.trim()}>Add</Button>
+                </div>
+              </div>
+            )}
           </div>
         </Section>
 
@@ -530,14 +707,14 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
             <Section title="Comments" shape="💬">
               <div className="flex flex-col gap-2">
                 <ul className="flex flex-col gap-2 max-h-48 overflow-y-auto border-b border-border pb-2">
-                  {(!task.comments || task.comments.length === 0) ? (
+                  {(!liveTask?.comments || liveTask.comments.length === 0) ? (
                     <li className="text-xs text-muted-foreground italic">No comments yet</li>
                   ) : (
-                    task.comments.map((c) => (
+                    liveTask.comments.map((c) => (
                       <li key={c.id} className="flex flex-col gap-0.5 text-xs bg-muted/30 p-1.5 border border-border">
                         <div className="flex justify-between font-bold text-muted-foreground">
                           <span>{c.authorName}</span>
-                          <span>{new Date(c.createdAt).toLocaleDateString()}</span>
+                          <span>{new Date(c.createdAt).toLocaleDateString()} {new Date(c.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                         </div>
                         <p className="text-foreground">{c.content}</p>
                       </li>
@@ -548,6 +725,8 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
               </div>
             </Section>
 
+
+
             <Section title="History" shape="◫">
               <ul className="flex flex-col gap-1">
                 {task.statusHistory.map((h, i) => (
@@ -555,7 +734,7 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
                     <span className="text-muted-foreground">
                       {h.fromStatus ? STATUS_LABEL[h.fromStatus] : "Created"} → {STATUS_LABEL[h.toStatus]}
                     </span>
-                    <span className="text-muted-foreground">{new Date(h.changedAt).toLocaleDateString()}</span>
+                    <span className="text-muted-foreground">{new Date(h.changedAt).toLocaleDateString()} {new Date(h.changedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                   </li>
                 ))}
               </ul>
@@ -590,7 +769,7 @@ function CommentInput({ taskId }: { taskId: string }) {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="flex gap-1.5 mt-1">
+    <form onSubmit={handleSubmit} className="flex gap-1.5 mt-1" autoComplete="off">
       <input
         aria-label="Add a comment"
         className="flex-1 text-xs bg-background border border-border px-2 py-1 text-foreground focus:outline-none focus:border-primary-gold"
@@ -598,8 +777,17 @@ function CommentInput({ taskId }: { taskId: string }) {
         value={content}
         onChange={(e) => setContent(e.target.value)}
         disabled={loading}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" && !e.shiftKey) {
+            e.preventDefault();
+            handleSubmit(e as any);
+          }
+        }}
       />
-      <Button type="submit" size="sm" disabled={!content.trim() || loading}>
+      <Button type="button" size="sm" disabled={!content.trim() || loading} onClick={(e) => {
+        e.preventDefault();
+        handleSubmit(e as any);
+      }}>
         Post
       </Button>
     </form>

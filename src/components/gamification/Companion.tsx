@@ -87,16 +87,16 @@ function Mouth({ mood }: { mood: CompanionMood }) {
 
 export function Companion({
   level,
-  streakDays,
+  todayCompleted,
   justCompleted = false,
 }: {
   level: number;
-  streakDays: number;
+  todayCompleted: number;
   justCompleted?: boolean;
 }) {
   const [tip, setTip] = useState(false);
   const [msgIdx] = useState(() => Math.floor(Math.random() * 4));
-  const mood = getCompanionMood(streakDays, justCompleted);
+  const mood = getCompanionMood(todayCompleted, justCompleted);
   const compLv = Math.max(1, Math.round(level * 0.65));
   const colorVar = MOOD_COLOR_VAR[mood];
 
@@ -124,7 +124,7 @@ export function Companion({
             {MOOD_MESSAGES[mood][msgIdx]}
           </div>
           <div className="mt-1 text-xs" style={{ color: "var(--color-dim)" }}>
-            {MOOD_ICON[mood]} {mood.toUpperCase()} · streak {streakDays}d
+            {MOOD_ICON[mood]} {mood.toUpperCase()} · {todayCompleted} done today
           </div>
         </div>
       )}

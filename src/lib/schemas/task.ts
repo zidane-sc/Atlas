@@ -63,6 +63,7 @@ const attachmentSchema = z.object({
 const deliverableSchema = z.object({
   type: z.enum(DELIVERABLE_TYPES),
   label: z.string().trim().min(1, "Label is required"),
+  url: z.string().trim().optional(),
 });
 
 /**

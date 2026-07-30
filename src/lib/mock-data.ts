@@ -423,8 +423,16 @@ export const DAILY_QUEST_POOL: {
   { label: "Complete a tagged quest", icon: "🏷", goal: 1, xp: 90, coins: 6, matches: (t) => t.tags.length > 0 },
 ];
 
-/** Fixed reference "now" so recap/statistics windows line up with the authored mock dates. */
-export const MOCK_NOW = "2026-07-29";
+/** Get today's date in YYYY-MM-DD format. */
+export function getTodayDate(): string {
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, "0");
+  const day = String(today.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+export const MOCK_NOW = getTodayDate();
 
 export const todaysDailyQuest = DAILY_QUEST_POOL[new Date(MOCK_NOW).getDate() % DAILY_QUEST_POOL.length];
 

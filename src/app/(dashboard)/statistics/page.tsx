@@ -1,12 +1,13 @@
 "use client";
 
+import { useState, useMemo } from "react";
 import { Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { RecapTrigger } from "@/components/gamification/RecapTrigger";
 import type { RecapData } from "@/components/gamification/RecapCutscene";
 import { useTasks } from "@/components/providers/TasksProvider";
 import { useProjects } from "@/components/providers/ProjectsProvider";
-import { calcTaskXP, completedAt, computeRecapGrade, createdAt, isTaskOnTime } from "@/lib/gamification";
-import { MOCK_NOW, TYPE_ICON, dashboardMock } from "@/lib/mock-data";
+import { calcTaskXP, completedAt, computeRecapGrade, createdAt, isTaskOnTime, calculateStreak } from "@/lib/gamification";
+import { TYPE_ICON } from "@/lib/mock-data";
 import type { Project } from "@/types/gamification";
 import type { Priority, Task, TaskType } from "@/types/task";
 
@@ -65,9 +66,8 @@ const TOOLTIP_STYLE = {
   fontSize: "14px",
 };
 
-function buildRecap(allTasks: Task[], projects: Project[], periodDays: number, period: "week" | "month"): RecapData {
+function buildRecap(allTasks: Task[], projects: Project[], periodDays: number, period: "week" | "month", now: number): RecapData {
   const day = 86_400_000;
-  const now = new Date(MOCK_NOW).getTime();
   const from = now - periodDays * day;
   const prevFrom = now - periodDays * 2 * day;
 
@@ -102,7 +102,7 @@ function buildRecap(allTasks: Task[], projects: Project[], periodDays: number, p
     prevDone: donePrev.length,
     created,
     xpEarned,
-    streak: dashboardMock.streakDays,
+    streak: calculateStreak(allTasks),
     topProject: { name: topProject.name, emoji: topProject.emoji, colorVar: topProject.colorVar },
     grade: computeRecapGrade(doneThis.length, created),
   };
@@ -111,6 +111,14 @@ function buildRecap(allTasks: Task[], projects: Project[], periodDays: number, p
 export default function Page() {
   const { tasks: allTasks } = useTasks();
   const { projects } = useProjects();
+
+  const [nowTime] = useState(() => {
+    const doneTasks = allTasks.filter((t) => completedAt(t) != null);
+    const latestCompletion = doneTasks.length > 0 
+      ? Math.max(...doneTasks.map((t) => new Date(completedAt(t)!).getTime()))
+      : 0;
+    return Math.max(Date.now(), latestCompletion);
+  });
   const kpis = [
     { label: "TOTAL", value: allTasks.length, colorVar: "--color-text-primary" },
     { label: "DONE", value: allTasks.filter((t) => t.status === "done").length, colorVar: "--color-status-done" },
@@ -146,9 +154,10 @@ export default function Page() {
     })
     .filter((p) => p.total > 0);
 
-  const weekly = buildRecap(allTasks, projects, 7, "week");
-  const monthly = buildRecap(allTasks, projects, 30, "month");
-  const weeklyThroughput = buildWeeklyThroughput(allTasks, MOCK_NOW);
+  const weekly = useMemo(() => buildRecap(allTasks, projects, 7, "week", nowTime), [allTasks, projects, nowTime]);
+  const monthly = useMemo(() => buildRecap(allTasks, projects, 30, "month", nowTime), [allTasks, projects, nowTime]);
+  const nowAnchor = useMemo(() => new Date(nowTime).toISOString().slice(0, 10), [nowTime]);
+  const weeklyThroughput = useMemo(() => buildWeeklyThroughput(allTasks, nowAnchor), [allTasks, nowAnchor]);
 
   const doneThisWeek = weeklyThroughput.reduce((s, d) => s + d.done, 0);
   const donePrevWeek = weeklyThroughput.reduce((s, d) => s + d.prevDone, 0);

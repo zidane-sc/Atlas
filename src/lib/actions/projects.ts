@@ -80,7 +80,10 @@ export async function updateProject(id: string, input: unknown): Promise<ActionR
       const updated = await tx.project.update({
         where: { id },
         data: {
-          ...parsed.data,
+          name: parsed.data.name,
+          emoji: parsed.data.emoji,
+          colorVar: parsed.data.colorVar,
+          customColor: parsed.data.customColor === null ? null : parsed.data.customColor,
           category: parsed.data.category ? (toDbProjectCategory(parsed.data.category) as ProjectCategory) : undefined,
           status: parsed.data.status ? (parsed.data.status as ProjectStatus) : undefined,
           description: parsed.data.description === null ? null : parsed.data.description,

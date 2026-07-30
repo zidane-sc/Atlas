@@ -77,6 +77,7 @@ export interface TaskAttachment {
 export interface TaskDeliverable {
   type: DeliverableType;
   label: string;
+  url?: string;
 }
 
 export interface TaskStatusLogEntry {
@@ -101,6 +102,7 @@ export interface Task {
   reporter?: Reporter;
   /** Accumulated Focus Timer time on this task, in seconds. */
   timeSpentSeconds?: number;
+  pinned: boolean;
   tags: string[];
   relations: TaskRelation[];
   attachments: TaskAttachment[];

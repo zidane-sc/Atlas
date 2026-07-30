@@ -52,6 +52,7 @@ export function mapDbTaskToClient(dbTask: DbTaskWithLogs, dbProjects?: DbProject
     effort: (dbTask.effort ?? undefined) as Effort | undefined,
     storyPoint: dbTask.storyPoint ?? undefined,
     timeSpentSeconds: dbTask.timeSpentSeconds,
+    pinned: dbTask.pinned,
     dueDate: dbTask.dueDate ? dbTask.dueDate.toISOString().split("T")[0] : undefined,
     sprint: sprint ? sprint.name : (dbTask.sprintId ? (SPRINT_REV_MAP[dbTask.sprintId] ?? undefined) : undefined),
     reporter: dbTask.reporter as Reporter,
@@ -92,6 +93,7 @@ export type TasksAction =
   | { type: "restore"; task: Task }
   | { type: "addTime"; id: string; seconds: number }
   | { type: "reset"; tasks: Task[] }
+  | { type: "togglePin"; id: string; pinned: boolean }
   | { type: "addComment"; taskId: string; comment: TaskComment };
 
 /** Builds a fresh Task from form values — shared by `create` and by duplicateTask in TasksProvider. */
@@ -173,6 +175,9 @@ export function tasksReducer(tasks: Task[], action: TasksAction): Task[] {
     case "reset": {
       return action.tasks;
     }
+    case "togglePin": {
+      return tasks.map((t) => (t.id === action.id ? { ...t, pinned: action.pinned } : t));
+    }
     case "addComment": {
       return tasks.map((t) =>
         t.id === action.taskId
@@ -190,6 +195,7 @@ export function mapDbProjectToClient(dbProject: DbProject): Project {
     id: dbProject.id,
     name: dbProject.name,
     colorVar: dbProject.colorVar,
+    customColor: dbProject.customColor ?? undefined,
     emoji: dbProject.emoji,
     category: dbProject.category as string,
     description: dbProject.description ?? "",

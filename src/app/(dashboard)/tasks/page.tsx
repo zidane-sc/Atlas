@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { List as ListIcon, Plus, Table2, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { KanbanBoard } from "@/components/tasks/KanbanBoard";
@@ -16,7 +17,7 @@ import { formatDueDate, isOverdue } from "@/lib/task-utils";
 import { applyTaskFilters, EMPTY_TASK_FILTERS, type TaskFilters } from "@/lib/task-filters";
 import { MOCK_NOW, PRIORITY_COLOR_VAR, STATUS_COLOR_VAR, TYPE_ICON } from "@/lib/mock-data";
 import type { Project } from "@/types/gamification";
-import type { Priority, Task } from "@/types/task";
+import type { Priority, Task, TaskStatus } from "@/types/task";
 
 type Tab = "kanban" | "list" | "calendar" | "timeline" | "by-project" | "archive";
 const TABS: [Tab, string, string][] = [
@@ -30,11 +31,20 @@ const TABS: [Tab, string, string][] = [
 const PRIORITY_ORDER: Priority[] = ["p0", "p1", "p2", "p3", "p4"];
 
 export default function Page() {
+  const searchParams = useSearchParams();
   const { tasks: allTasks, openEditForm, openCreateForm } = useTasks();
   const { projects } = useProjects();
   const [tab, setTab] = useState<Tab>("kanban");
   const [listMode, setListMode] = useState<"list" | "table">("list");
   const [filters, setFilters] = useState<TaskFilters>(EMPTY_TASK_FILTERS);
+
+  useEffect(() => {
+    const filterParam = searchParams.get("filter");
+    if (filterParam === "blocked") {
+      setTab("list");
+      setFilters((prev) => ({ ...prev, statuses: ["blocked"] as TaskStatus[] }));
+    }
+  }, [searchParams]);
 
   const projectNames = useMemo(() => projects.map((p) => p.name), [projects]);
   const filteredTasks = useMemo(() => applyTaskFilters(allTasks, filters), [allTasks, filters]);

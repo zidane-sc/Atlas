@@ -22,6 +22,7 @@ const EMPTY_FORM: ProjectFormValues = {
   category: "Side Project",
   colorVar: PROJECT_COLOR_OPTIONS[2].colorVar,
   status: "active",
+  customColor: undefined,
 };
 
 const LC = "mb-1 block text-sm tracking-widest text-muted-foreground uppercase";
@@ -48,6 +49,7 @@ function ProjectFormBody({ mode, project }: { mode: "create" | "edit"; project: 
           emoji: project.emoji,
           category: project.category as ProjectFormValues["category"],
           colorVar: project.colorVar,
+          customColor: project.customColor,
           status: project.status,
           description: project.description,
         }
@@ -142,20 +144,53 @@ function ProjectFormBody({ mode, project }: { mode: "create" | "edit"; project: 
 
         <div>
           <label className={LC}>Color</label>
-          <div className="mt-1 flex flex-wrap gap-2">
+          <div className="mt-1 grid grid-cols-3 gap-2">
             {PROJECT_COLOR_OPTIONS.map((c) => (
               <button
                 key={c.colorVar}
                 type="button"
                 title={c.label}
-                onClick={() => set("colorVar", c.colorVar)}
-                className="h-7 w-7 border-[3px]"
+                onClick={() => {
+                  set("colorVar", c.colorVar);
+                  set("customColor", undefined);
+                }}
+                className="h-10 border-[3px] flex items-center justify-center text-xs font-bold"
                 style={{
                   backgroundColor: `var(${c.colorVar})`,
-                  borderColor: form.colorVar === c.colorVar ? "var(--color-text-primary)" : "transparent",
+                  borderColor: form.colorVar === c.colorVar && !form.customColor ? "var(--color-text-primary)" : "transparent",
                 }}
-              />
+              >
+                {form.colorVar === c.colorVar && !form.customColor && "✓"}
+              </button>
             ))}
+          </div>
+
+          <div className="mt-3">
+            <label className={LC}>Custom Color</label>
+            <div className="flex gap-2">
+              <input
+                type="color"
+                value={form.customColor || "#f0b429"}
+                onChange={(e) => {
+                  set("customColor", e.target.value);
+                  set("colorVar", e.target.value);
+                }}
+                className="h-10 w-16 border-2 border-border cursor-pointer"
+              />
+              <input
+                type="text"
+                placeholder="#f0b429"
+                value={form.customColor || ""}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  if (val === "" || /^#[0-9A-F]{6}$/i.test(val)) {
+                    set("customColor", val || undefined);
+                    if (val) set("colorVar", val);
+                  }
+                }}
+                className={`flex-1 ${FIELD}`}
+              />
+            </div>
           </div>
         </div>
 

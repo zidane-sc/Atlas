@@ -128,7 +128,10 @@ export async function updateTask(id: string, input: unknown): Promise<ActionResu
         },
       });
 
+      const changes: Record<string, { from: any; to: any }> = {};
+
       if (status && status !== existing.status) {
+        changes.status = { from: existing.status, to: updated.status };
         await tx.taskStatusLog.create({
           data: {
             taskId: updated.id,
@@ -136,19 +139,27 @@ export async function updateTask(id: string, input: unknown): Promise<ActionResu
             toStatus: updated.status,
           },
         });
-
-        await logActivity(tx, owner.id, {
-          taskId: updated.id,
-          action: status === "done" ? "completed" : "status_changed",
-          details: { from: existing.status, to: updated.status, title: updated.title },
-        });
-      } else {
-        await logActivity(tx, owner.id, {
-          taskId: updated.id,
-          action: "updated",
-          details: { title: updated.title },
-        });
       }
+
+      if (input.priority && input.priority !== existing.priority) {
+        changes.priority = { from: existing.priority, to: input.priority };
+      }
+      if (input.effort && input.effort !== existing.effort) {
+        changes.effort = { from: existing.effort, to: input.effort };
+      }
+      if (input.storyPoint && input.storyPoint !== existing.storyPoint) {
+        changes.storyPoint = { from: existing.storyPoint, to: input.storyPoint };
+      }
+      if (input.title && input.title !== existing.title) {
+        changes.title = { from: existing.title, to: input.title };
+      }
+
+      const action = status === "done" ? "completed" : (Object.keys(changes).length > 0 ? "updated" : "updated");
+      await logActivity(tx, owner.id, {
+        taskId: updated.id,
+        action,
+        details: { changes, title: updated.title },
+      });
 
       return updated;
     });
@@ -254,5 +265,77 @@ export async function logWorkSession(
       return { success: false, error: { code: "NOT_FOUND", message: "Task not found." } };
     }
     return { success: false, error: { code: "INTERNAL", message: "Failed to log work session." } };
+  }
+}
+
+export async function startFocusTimerAction(taskId: string, phase: "focus" | "break" = "focus"): Promise<ActionResult<{ success: boolean }>> {
+  const session = await auth();
+  if (!session?.user?.email) {
+    return { success: false, error: { code: "UNAUTHORIZED", message: "Sign in required." } };
+  }
+
+  try {
+    await db.user.update({
+      where: { email: session.user.email },
+      data: {
+        activeTimerTaskId: taskId,
+        activeTimerStartedAt: new Date(),
+        activeTimerPhase: phase,
+      },
+    });
+    return { success: true, data: { success: true } };
+  } catch (error) {
+    console.error("Failed to start focus timer:", error);
+    return { success: false, error: { code: "INTERNAL", message: "Failed to start focus timer." } };
+  }
+}
+
+export async function stopFocusTimerAction(): Promise<
+  ActionResult<{ taskId: string; seconds: number; startedAt: string; endedAt: string; phase: string }>
+> {
+  const session = await auth();
+  if (!session?.user?.email) {
+    return { success: false, error: { code: "UNAUTHORIZED", message: "Sign in required." } };
+  }
+
+  try {
+    const user = await db.user.findUnique({
+      where: { email: session.user.email },
+      select: { activeTimerTaskId: true, activeTimerStartedAt: true, activeTimerPhase: true },
+    });
+
+    if (!user || !user.activeTimerTaskId || !user.activeTimerStartedAt) {
+      return { success: false, error: { code: "NOT_FOUND", message: "No active focus timer found." } };
+    }
+
+    const taskId = user.activeTimerTaskId;
+    const startedAt = user.activeTimerStartedAt;
+    const phase = user.activeTimerPhase;
+    const endedAt = new Date();
+    const seconds = Math.max(1, Math.round((endedAt.getTime() - startedAt.getTime()) / 1000));
+
+    // Clear active timer fields on user
+    await db.user.update({
+      where: { email: session.user.email },
+      data: {
+        activeTimerTaskId: null,
+        activeTimerStartedAt: null,
+        activeTimerPhase: "focus",
+      },
+    });
+
+    return {
+      success: true,
+      data: {
+        taskId,
+        seconds,
+        startedAt: startedAt.toISOString(),
+        endedAt: endedAt.toISOString(),
+        phase,
+      },
+    };
+  } catch (error) {
+    console.error("Failed to stop focus timer:", error);
+    return { success: false, error: { code: "INTERNAL", message: "Failed to stop focus timer." } };
   }
 }

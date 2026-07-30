@@ -1,8 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import Link from "next/link";
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, Info } from "lucide-react";
 import { PixBar } from "@/components/ui/PixBar";
 import { StreakCampfire } from "@/components/gamification/StreakCampfire";
 import { StatPanel } from "@/components/gamification/StatPanel";
@@ -15,12 +15,12 @@ import { formatDueDate, isDueToday, isOverdue } from "@/lib/task-utils";
 import { MOCK_NOW, TYPE_ICON, todaysDailyQuest } from "@/lib/mock-data";
 
 export default function Page() {
-  const { tasks, activityLogs, bonusXp, bonusCoins, claimDailyQuest } = useTasks();
+  const { tasks, activityLogs, bonusXp, bonusCoins, lastQuestClaimedAt, claimDailyQuest } = useTasks();
   const { sprints } = useSprints();
   const sheet = useMemo(() => computeCharacterSheet(tasks, bonusXp, bonusCoins), [tasks, bonusXp, bonusCoins]);
   const streakDays = useMemo(() => calculateStreak(tasks), [tasks]);
   const { classTitle } = sheet;
-  const [dailyQuestClaimed, setDailyQuestClaimed] = useState(false);
+  const dailyQuestClaimed = lastQuestClaimedAt != null && lastQuestClaimedAt.slice(0, 10) === MOCK_NOW;
 
   const notDone = tasks.filter((t) => t.status !== "done");
   const dueToday = notDone.filter((t) => isDueToday(t.dueDate, MOCK_NOW)).length;
@@ -84,8 +84,8 @@ export default function Page() {
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         <StatPanel label="Due Today" value={dueToday} shape="◆" colorVar="--color-primary-gold" href="/tasks/today" />
-        <StatPanel label="Overdue" value={overdue} shape="▲" colorVar="--color-status-blocked" href="/tasks" />
-        <StatPanel label="Blocked" value={blocked} shape="✕" colorVar="--color-status-blocked" href="/tasks" />
+        <StatPanel label="Overdue" value={overdue} shape="▲" colorVar="--color-status-blocked" href="/tasks/overdue" />
+        <StatPanel label="Blocked" value={blocked} shape="✕" colorVar="--color-status-blocked" href="/tasks?filter=blocked" />
         <StatPanel label="Waiting Ext." value={waitingExternal} shape="⏸" colorVar="--color-status-waiting-external" href="/tasks/waiting" />
       </div>
 
@@ -93,8 +93,7 @@ export default function Page() {
         tasks={tasks}
         claimed={dailyQuestClaimed}
         onClaim={() => {
-          setDailyQuestClaimed(true);
-          claimDailyQuest(todaysDailyQuest.xp, todaysDailyQuest.coins);
+          claimDailyQuest(MOCK_NOW, todaysDailyQuest.xp, todaysDailyQuest.coins);
         }}
       />
 
@@ -139,29 +138,55 @@ export default function Page() {
 
       {activityLogs && activityLogs.length > 0 && (
         <div className="border-2 border-border bg-card p-4">
-          <div className="mb-3 text-sm tracking-widest" style={{ color: "var(--color-primary-gold)" }}>◫ RECENT ACTIVITIES</div>
+          <div className="mb-3 flex items-center gap-2" title="Tracks: task created/completed/updated/deleted/focused, comments, projects, sprints">
+            <span className="text-sm tracking-widest" style={{ color: "var(--color-primary-gold)" }}>◫ RECENT ACTIVITIES</span>
+            <Info size={14} className="opacity-50" style={{ cursor: "help" }} />
+          </div>
           <div className="flex flex-col gap-2">
-            {activityLogs.map((log) => (
-              <div key={log.id} className="flex justify-between items-center text-xs border-b border-border/40 pb-1.5 last:border-b-0 last:pb-0">
-                <div className="flex items-center gap-1.5">
-                  <span className="font-bold text-muted-foreground">{log.actorName}</span>
-                  <span className="text-muted-foreground">{log.action}</span>
-                  {log.taskTitle && (
-                    <span className="text-foreground font-semibold">&quot;{log.taskTitle}&quot;</span>
-                  )}
-                  {log.projectName && (
-                    <span className="inline-flex items-center gap-1 text-foreground font-semibold">
-                      <span>{log.projectEmoji}</span>
-                      <span>{log.projectName}</span>
-                    </span>
-                  )}
-                  {log.sprintName && (
-                    <span className="text-foreground font-semibold">{log.sprintName}</span>
-                  )}
+            {activityLogs.map((log) => {
+              const details = log.details as any;
+              const getChangesSummary = () => {
+                if (!details?.changes) return null;
+                const changes = details.changes as Record<string, { from: any; to: any }>;
+                const summary = Object.entries(changes)
+                  .map(([key, value]) => {
+                    if (key === "status") return `status ${value.from} → ${value.to}`;
+                    if (key === "priority") return `priority to ${value.to}`;
+                    if (key === "effort") return `effort to ${value.to}`;
+                    if (key === "storyPoint") return `points to ${value.to}`;
+                    if (key === "title") return `title`;
+                    return null;
+                  })
+                  .filter(Boolean)
+                  .join(", ");
+                return summary ? `(${summary})` : null;
+              };
+
+              return (
+                <div key={log.id} className="flex justify-between items-start text-xs border-b border-border/40 pb-1.5 last:border-b-0 last:pb-0 gap-2">
+                  <div className="flex items-center gap-1.5 flex-1">
+                    <span className="font-bold text-muted-foreground">{log.actorName}</span>
+                    <span className="text-muted-foreground">{log.action}</span>
+                    {getChangesSummary() && (
+                      <span className="text-muted-foreground">{getChangesSummary()}</span>
+                    )}
+                    {log.taskTitle && (
+                      <span className="text-foreground font-semibold truncate">&quot;{log.taskTitle}&quot;</span>
+                    )}
+                    {log.projectName && (
+                      <span className="inline-flex items-center gap-1 text-foreground font-semibold">
+                        <span>{log.projectEmoji}</span>
+                        <span>{log.projectName}</span>
+                      </span>
+                    )}
+                    {log.sprintName && (
+                      <span className="text-foreground font-semibold">{log.sprintName}</span>
+                    )}
+                  </div>
+                  <span className="text-muted-foreground shrink-0">{new Date(log.createdAt).toLocaleDateString()} {new Date(log.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                 </div>
-                <span className="text-muted-foreground">{new Date(log.createdAt).toLocaleDateString()}</span>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}

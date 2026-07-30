@@ -4,6 +4,7 @@ import { CommandPalette } from "@/components/layout/CommandPalette";
 import { TaskFormSheet } from "@/components/tasks/TaskFormSheet";
 import { ProjectFormSheet } from "@/components/projects/ProjectFormSheet";
 import { SprintFormSheet } from "@/components/sprints/SprintFormSheet";
+import { PinnedTaskFABWrapper } from "@/components/tasks/PinnedTaskFABWrapper";
 import { TasksProvider } from "@/components/providers/TasksProvider";
 import { ProjectsProvider } from "@/components/providers/ProjectsProvider";
 import { SprintsProvider } from "@/components/providers/SprintsProvider";
@@ -16,7 +17,8 @@ import { db } from "@/lib/db";
 import { mapDbTaskToClient, mapDbProjectToClient, mapDbSprintToClient } from "@/lib/tasks-reducer";
 import { ProjectCategory, ProjectStatus, SprintStatus } from "@/generated/prisma/client";
 import { toDbProjectCategory } from "@/lib/schemas/project";
-
+import type { SavedFilterClient } from "@/lib/actions/filters";
+import type { UserSetting } from "@/types/settings";
 export default async function DashboardLayout({
   children,
 }: {
@@ -141,9 +143,16 @@ export default async function DashboardLayout({
     sprintName: l.sprint?.name || undefined,
   }));
 
+  const initialActiveTimer = owner.activeTimerTaskId && owner.activeTimerStartedAt
+    ? {
+        taskId: owner.activeTimerTaskId,
+        startedAt: owner.activeTimerStartedAt.getTime(),
+      }
+    : null;
+
   return (
     <ToastProvider>
-      <SettingsProvider>
+      <SettingsProvider initialSettings={owner.settings as unknown as UserSetting[]}>
         <ProjectsProvider initialProjects={projects}>
           <SprintsProvider initialSprints={sprints}>
             <TasksProvider
@@ -151,6 +160,11 @@ export default async function DashboardLayout({
               initialActivityLogs={activityLogs}
               initialBonusXp={owner.bonusXp}
               initialBonusCoins={owner.bonusCoins}
+              initialPurchasedDecorations={owner.purchasedDecorations}
+              initialPlacedDecorations={owner.placedDecorations as Record<string, string | null>}
+              initialSavedFilters={owner.savedFilters as unknown as SavedFilterClient[]}
+              initialLastQuestClaimedAt={owner.lastQuestClaimedAt ? owner.lastQuestClaimedAt.toISOString() : null}
+              initialActiveTimer={initialActiveTimer}
             >
               <CommandPaletteProvider>
                 <div className="flex h-full flex-1 overflow-hidden">
@@ -160,6 +174,7 @@ export default async function DashboardLayout({
                 <TaskFormSheet />
                 <ProjectFormSheet />
                 <SprintFormSheet />
+                <PinnedTaskFABWrapper />
                 <CommandPalette />
               </CommandPaletteProvider>
             </TasksProvider>

@@ -1,5 +1,6 @@
 import type { ComponentType } from "react";
 import {
+  AlertCircle,
   BarChart2,
   Clock,
   Crosshair,
@@ -28,6 +29,7 @@ export const NAV_TASKS: NavItemBase = { href: "/tasks", label: "Tasks", icon: Gr
 export const NAV_SMART_VIEWS: NavItemBase[] = [
   { href: "/tasks/today", label: "Today", icon: Sun },
   { href: "/tasks/inbox", label: "Inbox", icon: InboxIcon },
+  { href: "/tasks/overdue", label: "Overdue", icon: AlertCircle },
   { href: "/tasks/waiting", label: "Waiting Ext.", icon: Clock },
   { href: "/tasks/focus", label: "Focus", icon: Crosshair },
 ];

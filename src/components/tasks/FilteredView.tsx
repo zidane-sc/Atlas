@@ -4,7 +4,7 @@ import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useTasks } from "@/components/providers/TasksProvider";
 import type { Task } from "@/types/task";
-import { TaskRow } from "./TaskRow";
+import { SmartViewTaskCard } from "./SmartViewTaskCard";
 
 /** Matches reference-design's FilteredView — docs/03-design.md §10 (Today/Inbox/Waiting/Focus smart views). */
 export function FilteredView({
@@ -25,6 +25,7 @@ export function FilteredView({
   showNewQuest?: boolean;
 }) {
   const { openEditForm, openCreateForm } = useTasks();
+  const sortedTasks = [...tasks].sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0));
 
   return (
     <div className="flex h-full flex-col">
@@ -51,9 +52,9 @@ export function FilteredView({
             <div className="text-sm">Clear skies, adventurer.</div>
           </div>
         ) : (
-          <div className="flex flex-col">
-            {tasks.map((t) => (
-              <TaskRow key={t.id} task={t} onSelect={openEditForm} />
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-4 auto-rows-max">
+            {sortedTasks.map((t) => (
+              <SmartViewTaskCard key={t.id} task={t} onSelect={openEditForm} />
             ))}
           </div>
         )}
