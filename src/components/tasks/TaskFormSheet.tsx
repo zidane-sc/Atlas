@@ -19,6 +19,7 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { useTasks } from "@/components/providers/TasksProvider";
+import { useSettings } from "@/components/providers/SettingsProvider";
 import { calcTaskCoins, calcTaskXP } from "@/lib/gamification";
 import { PriorityMark } from "./PriorityMark";
 import { StatusBadge } from "./StatusBadge";
@@ -101,7 +102,7 @@ export function TaskFormSheet() {
 }
 
 function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | null }) {
-  const { tasks, closeForm, createTask, updateTask, deleteTask, duplicateTask, togglePin, activeTimer, startTimer, stopTimer } = useTasks();
+  const { tasks, closeForm, createTask, updateTask, deleteTask, duplicateTask, togglePin, activeTimer, startTimer, stopTimer, switchPhase } = useTasks();
   const { projects } = useProjects();
   const { sprints } = useSprints();
   const [form, setForm] = useState<TaskFormValues>(() =>
@@ -216,6 +217,7 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
   const previewXP = calcTaskXP(form.priority, form.storyPoint, true);
   const previewCoins = calcTaskCoins(form.priority, form.storyPoint);
 
+  const { focusMinutes, breakMinutes } = useSettings();
   const isTiming = mode === "edit" && task != null && activeTimer?.taskId === task.id;
   const [liveSeconds, setLiveSeconds] = useState(0);
   useEffect(() => {
@@ -224,16 +226,24 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
       return;
     }
     const update = () => {
-      setLiveSeconds(Math.floor((Date.now() - activeTimer.startedAt) / 1000));
+      const elapsed = Math.floor((Date.now() - activeTimer.startedAt) / 1000);
+      setLiveSeconds(elapsed);
+
+      const phaseLimitSeconds = activeTimer.phase === "focus" ? focusMinutes * 60 : breakMinutes * 60;
+      if (elapsed >= phaseLimitSeconds) {
+        switchPhase(task!.id);
+      }
     };
     Promise.resolve().then(update);
     const id = setInterval(update, 1000);
     return () => clearInterval(id);
-  }, [isTiming, activeTimer]);
+  }, [isTiming, activeTimer, focusMinutes, breakMinutes, task, switchPhase]);
   // `task` is a snapshot from when the sheet opened — look up the live copy so a stopped
   // timer's freshly-added time shows immediately instead of waiting for a form reopen.
   const liveTask = task ? (tasks.find((t) => t.id === task.id) ?? task) : null;
-  const totalSeconds = (liveTask?.timeSpentSeconds ?? 0) + (isTiming ? liveSeconds : 0);
+  const totalSeconds = activeTimer?.phase === "break"
+    ? Math.max(0, breakMinutes * 60 - liveSeconds)
+    : (liveTask?.timeSpentSeconds ?? 0) + (isTiming ? liveSeconds : 0);
 
   return (
     <form onSubmit={onSubmit} className="flex h-full flex-col">
@@ -293,6 +303,7 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
           totalSeconds={totalSeconds}
           onStart={() => startTimer(task.id)}
           onStop={stopTimer}
+          phase={activeTimer?.phase}
         />
       )}
 

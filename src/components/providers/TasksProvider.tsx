@@ -93,8 +93,9 @@ interface TasksContextValue {
   claimDailyQuest: (dateStr: string, xp: number, coins: number) => Promise<boolean>;
   /** Focus Timer — only one task can be timed at once; starting another stops the current one. */
   activeTimer: ActiveTimer | null;
-  startTimer: (taskId: string) => Promise<void>;
+  startTimer: (taskId: string, phase?: "focus" | "break") => Promise<void>;
   stopTimer: () => Promise<void>;
+  switchPhase: (taskId: string) => Promise<void>;
   /** Settings → Reset All. */
   reset: () => void;
   /** Settings → Import Data — replaces tasks + bonus XP/coins with an imported snapshot. */
@@ -413,10 +414,10 @@ export function TasksProvider({
           dispatch({ type: "togglePin", id: taskId, pinned: !pinned });
         }
       },
-      startTimer: async (taskId) => {
+      startTimer: async (taskId, phase = "focus") => {
         const startedAt = Date.now();
-        setActiveTimer({ taskId, startedAt });
-        const res = await apiStartFocusTimer(taskId);
+        setActiveTimer({ taskId, startedAt, phase });
+        const res = await apiStartFocusTimer(taskId, phase);
         if (!res.success) {
           toast(res.error.message, "error");
           setActiveTimer(null);
@@ -428,20 +429,52 @@ export function TasksProvider({
         const seconds = Math.max(1, Math.round((Date.now() - current.startedAt) / 1000));
 
         setActiveTimer(null);
-        dispatch({ type: "addTime", id: current.taskId, seconds });
 
         const res = await apiStopFocusTimer();
         if (res.success) {
-          const { taskId, seconds: finalSeconds, startedAt, endedAt } = res.data;
-          const logRes = await apiLogWorkSession(taskId, finalSeconds, startedAt, endedAt);
-          if (!logRes.success) {
-            toast(logRes.error.message, "error");
-            dispatch({ type: "addTime", id: current.taskId, seconds: -seconds });
+          const { taskId, seconds: finalSeconds, startedAt, endedAt, phase } = res.data;
+
+          if (phase === "focus") {
+            dispatch({ type: "addTime", id: current.taskId, seconds });
+            const logRes = await apiLogWorkSession(taskId, finalSeconds, startedAt, endedAt);
+            if (!logRes.success) {
+              toast(logRes.error.message, "error");
+              dispatch({ type: "addTime", id: current.taskId, seconds: -seconds });
+            }
           }
         } else {
           toast(res.error.message, "error");
           setActiveTimer(current);
-          dispatch({ type: "addTime", id: current.taskId, seconds: -seconds });
+        }
+      },
+      switchPhase: async (taskId) => {
+        const current = activeTimer;
+        if (!current || current.taskId !== taskId) return;
+
+        const res = await apiStopFocusTimer();
+        if (!res.success) {
+          toast(res.error.message, "error");
+          return;
+        }
+
+        const nextPhase = current.phase === "focus" ? "break" : "focus";
+        setActiveTimer(null);
+
+        if (soundEnabled) playChime();
+        toast(nextPhase === "focus" ? "Focus session done — break time! ☕" : "Break's over — back to it! 🔥", "success");
+
+        if ("Notification" in window && Notification.permission === "granted") {
+          new Notification(nextPhase === "focus" ? "Break Time!" : "Focus Time!", {
+            body: nextPhase === "focus" ? "Take a quick 5-minute break." : "Ready to focus for 25 minutes?"
+          });
+        }
+
+        const startedAt = Date.now();
+        setActiveTimer({ taskId, startedAt, phase: nextPhase });
+        const startRes = await apiStartFocusTimer(taskId, nextPhase);
+        if (!startRes.success) {
+          toast(startRes.error.message, "error");
+          setActiveTimer(null);
         }
       },
       reset: async () => {

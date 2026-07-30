@@ -147,6 +147,7 @@ export default async function DashboardLayout({
     ? {
         taskId: owner.activeTimerTaskId,
         startedAt: owner.activeTimerStartedAt.getTime(),
+        phase: (owner.activeTimerPhase || "focus") as "focus" | "break",
       }
     : null;
 
