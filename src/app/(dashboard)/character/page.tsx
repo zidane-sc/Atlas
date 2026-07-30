@@ -21,7 +21,8 @@ export default function Page() {
           className="p-4"
           style={{ background: "linear-gradient(135deg, var(--color-bg-panel-alt) 0%, var(--color-bg-deep) 100%)", borderBottom: "1px solid var(--color-border)" }}
         >
-          <div className="flex gap-4">
+          <div className="flex gap-4 items-start">
+            {/* Left: Avatar */}
             <div className="relative shrink-0">
               <div
                 className="flex items-center justify-center bg-card"
@@ -37,12 +38,13 @@ export default function Page() {
               </div>
             </div>
 
+            {/* Center: Name, Class, Quick Stats */}
             <div className="flex-1 min-w-0">
               <div className="mb-1 font-display text-sm text-foreground">Aric Stormcloak</div>
               <div className="mb-3 font-display text-[9px]" style={{ color: "var(--color-primary-gold)" }}>
                 {sheet.classTitle.toUpperCase()}
               </div>
-              <div className="mb-3 flex gap-2">
+              <div className="flex gap-2">
                 <div className="flex items-center gap-1 px-2 py-1 text-[11px]" style={{ backgroundColor: "var(--color-bg-panel-alt)", border: "1px solid var(--color-border)", color: "var(--color-xp-gold)" }}>
                   <span>⚡</span>
                   <span className="font-display">{sheet.globalXP.toLocaleString()}</span>
@@ -60,8 +62,12 @@ export default function Page() {
                   <span className="font-display">{sheet.completedCount}</span>
                 </div>
               </div>
-              <div className="font-display text-[8px] mb-2 tracking-widest" style={{ color: "var(--color-status-ready)" }}>ATTRIBUTES</div>
-              <div className="grid grid-cols-6 gap-1.5">
+            </div>
+
+            {/* Right: Attributes */}
+            <div className="shrink-0">
+              <div className="font-display text-[8px] mb-2 tracking-widest" style={{ color: "var(--color-status-ready)" }}>ATTR</div>
+              <div className="grid grid-cols-3 gap-1.5">
                 {STATS.map((stat) => (
                   <div key={stat} className="px-2 py-2 text-center" style={{ backgroundColor: "var(--color-bg-panel-alt)", border: "1.5px solid var(--color-border)" }}>
                     <div className="font-display text-[14px] font-bold text-foreground">{sheet.statScore[stat]}</div>
