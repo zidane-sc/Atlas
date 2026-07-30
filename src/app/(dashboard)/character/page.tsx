@@ -66,11 +66,11 @@ export default function Page() {
 
             {/* Right: Attributes */}
             <div className="shrink-0">
-              <div className="grid grid-cols-6 gap-1">
+              <div className="grid grid-cols-6 gap-2">
                 {STATS.map((stat) => (
-                  <div key={stat} className="px-2 py-2 text-center" style={{ backgroundColor: "var(--color-bg-panel-alt)", border: "1.5px solid var(--color-border)" }}>
-                    <div className="font-display text-[15px] font-bold text-foreground">{sheet.statScore[stat]}</div>
-                    <div className="text-[8px] text-muted-foreground mt-0.5">{stat}</div>
+                  <div key={stat} className="px-3 py-3 text-center" style={{ backgroundColor: "var(--color-bg-panel-alt)", border: "1.5px solid var(--color-border)" }}>
+                    <div className="font-display text-[18px] font-bold text-foreground">{sheet.statScore[stat]}</div>
+                    <div className="text-[9px] text-muted-foreground mt-1">{stat}</div>
                   </div>
                 ))}
               </div>
