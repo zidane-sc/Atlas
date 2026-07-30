@@ -1,23 +1,69 @@
 "use client";
 
-import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useContext, useEffect, useMemo, useState, useCallback } from "react";
+import type { UserSetting } from "@/types/settings";
 
 interface SettingsContextValue {
+  settings: UserSetting[];
+  updateSetting: (key: string, value: unknown) => Promise<boolean>;
   reduceMotion: boolean;
-  setReduceMotion: (value: boolean) => void;
+  soundEnabled: boolean;
+  focusMinutes: number;
+  breakMinutes: number;
 }
 
 const SettingsContext = createContext<SettingsContextValue | null>(null);
 
-/** App-level preferences that actually do something — currently just Reduce Motion. */
-export function SettingsProvider({ children }: { children: React.ReactNode }) {
-  const [reduceMotion, setReduceMotion] = useState(false);
+/** App-level dynamic preferences with DB persistence. */
+export function SettingsProvider({
+  initialSettings = [],
+  children,
+}: {
+  initialSettings: UserSetting[];
+  children: React.ReactNode;
+}) {
+  const [settings, setSettings] = useState<UserSetting[]>(initialSettings);
+
+  const getSettingValue = useCallback(
+    (key: string) => settings.find((s) => s.key === key)?.value,
+    [settings]
+  );
+
+  const reduceMotion = !!getSettingValue("reduceMotion");
+  const soundEnabled = getSettingValue("soundEnabled") !== false;
+  const focusMinutes = Number(getSettingValue("focusMinutes")) || 25;
+  const breakMinutes = Number(getSettingValue("breakMinutes")) || 5;
 
   useEffect(() => {
     document.documentElement.classList.toggle("reduce-motion", reduceMotion);
   }, [reduceMotion]);
 
-  const value = useMemo<SettingsContextValue>(() => ({ reduceMotion, setReduceMotion }), [reduceMotion]);
+  const updateSetting = useCallback(async (key: string, value: unknown) => {
+    // Optimistic update
+    setSettings((prev) =>
+      prev.map((s) => (s.key === key ? { ...s, value } : s))
+    );
+
+    const { updateUserSettingAction } = await import("@/lib/actions/user");
+    const res = await updateUserSettingAction(key, value);
+    if (res.success) {
+      setSettings(res.data);
+      return true;
+    }
+    return false;
+  }, []);
+
+  const value = useMemo<SettingsContextValue>(
+    () => ({
+      settings,
+      updateSetting,
+      reduceMotion,
+      soundEnabled,
+      focusMinutes,
+      breakMinutes,
+    }),
+    [settings, updateSetting, reduceMotion, soundEnabled, focusMinutes, breakMinutes]
+  );
 
   return <SettingsContext.Provider value={value}>{children}</SettingsContext.Provider>;
 }

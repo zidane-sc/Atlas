@@ -18,6 +18,18 @@ model User {
   bonusXp    Int @default(0) @map("bonus_xp")
   bonusCoins Int @default(0) @map("bonus_coins")
 
+  purchasedDecorations String[] @default([]) @map("purchased_decorations")
+  placedDecorations    Json     @default("{}") @map("placed_decorations")
+
+  settings             Json     @default("[{\"key\":\"notifications\",\"label\":\"Notifications\",\"description\":\"Overdue and sprint deadline alerts\",\"type\":\"boolean\",\"value\":true},{\"key\":\"soundEnabled\",\"label\":\"Sound Effects\",\"description\":\"Subtle chimes on task complete and level-up\",\"type\":\"boolean\",\"value\":true},{\"key\":\"reduceMotion\",\"label\":\"Reduce Motion\",\"description\":\"Shortens all animation durations\",\"type\":\"boolean\",\"value\":false},{\"key\":\"defaultView\",\"label\":\"Default View\",\"description\":\"Screen shown on app open\",\"type\":\"select\",\"options\":[\"dashboard\",\"today\",\"focus\",\"kanban\"],\"value\":\"dashboard\"},{\"key\":\"focusMinutes\",\"label\":\"Focus Duration\",\"description\":\"Minutes per focus interval\",\"type\":\"number\",\"value\":25},{\"key\":\"breakMinutes\",\"label\":\"Break Duration\",\"description\":\"Minutes per break interval\",\"type\":\"number\",\"value\":5}]")
+
+  savedFilters         Json     @default("[]") @map("saved_filters")
+  lastQuestClaimedAt   DateTime? @map("last_quest_claimed_at")
+
+  activeTimerTaskId    String?   @map("active_timer_task_id") @db.Uuid
+  activeTimerStartedAt DateTime? @map("active_timer_started_at")
+  activeTimerPhase     String    @default("focus") @map("active_timer_phase")
+
   tasks        Task[]
   comments     Comment[]
   activityLogs ActivityLog[]
@@ -131,6 +143,7 @@ model Task {
   deliverables Json     @default("[]")
 
   timeSpentSeconds Int @default(0) @map("time_spent_seconds")
+  pinned           Boolean @default(false)
 
   completedAt DateTime? @map("completed_at")
   archivedAt  DateTime? @map("archived_at")
@@ -175,6 +188,7 @@ model Project {
   name        String
   category    ProjectCategory
   colorVar    String          @map("color_var")
+  customColor String?         @map("custom_color")
   emoji       String
   description String?
   status      ProjectStatus   @default(active)

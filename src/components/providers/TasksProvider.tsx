@@ -5,17 +5,24 @@ import type { TaskFormValues } from "@/lib/schemas/task";
 import { buildTaskFromValues, tasksReducer } from "@/lib/tasks-reducer";
 import type { Task, ActivityLogClient } from "@/types/task";
 import { createComment as apiCreateComment } from "@/lib/actions/comments";
-import { updateUserStats as apiUpdateUserStats } from "@/lib/actions/user";
+import { updateUserStats as apiUpdateUserStats, claimDailyQuestAction as apiClaimDailyQuest } from "@/lib/actions/user";
 import { useToast } from "@/components/providers/ToastProvider";
 import { useProjects } from "@/components/providers/ProjectsProvider";
 import { useSprints } from "@/components/providers/SprintsProvider";
+import { useSettings } from "@/components/providers/SettingsProvider";
 import {
   createTask as apiCreateTask,
   updateTask as apiUpdateTask,
   deleteTask as apiDeleteTask,
   logWorkSession as apiLogWorkSession,
+  startFocusTimerAction as apiStartFocusTimer,
+  stopFocusTimerAction as apiStopFocusTimer,
 } from "@/lib/actions/tasks";
 import { calcTaskXP } from "@/lib/gamification";
+import { purchaseDecoration as apiPurchaseDecoration, placeDecoration as apiPlaceDecoration } from "@/lib/actions/decorations";
+import type { TaskFilters } from "@/lib/task-filters";
+import type { SavedFilterClient } from "@/lib/actions/filters";
+import { saveFilterAction as apiSaveFilter, deleteFilterAction as apiDeleteFilter } from "@/lib/actions/filters";
 
 interface SheetState {
   open: boolean;
@@ -26,6 +33,7 @@ interface SheetState {
 interface ActiveTimer {
   taskId: string;
   startedAt: number;
+  phase: "focus" | "break";
 }
 
 interface CompletionOverlay {
@@ -72,6 +80,7 @@ interface TasksContextValue {
   deleteTask: (id: string) => void;
   duplicateTask: (id: string) => void;
   addComment: (taskId: string, content: string) => Promise<void>;
+  togglePin: (taskId: string, pinned: boolean) => Promise<void>;
   sheet: SheetState;
   openCreateForm: () => void;
   openEditForm: (task: Task) => void;
@@ -80,15 +89,23 @@ interface TasksContextValue {
   justCompleted: boolean;
   bonusXp: number;
   bonusCoins: number;
-  claimDailyQuest: (xp: number, coins: number) => void;
+  lastQuestClaimedAt: string | null;
+  claimDailyQuest: (dateStr: string, xp: number, coins: number) => Promise<boolean>;
   /** Focus Timer — only one task can be timed at once; starting another stops the current one. */
   activeTimer: ActiveTimer | null;
-  startTimer: (taskId: string) => void;
-  stopTimer: () => void;
+  startTimer: (taskId: string) => Promise<void>;
+  stopTimer: () => Promise<void>;
   /** Settings → Reset All. */
   reset: () => void;
   /** Settings → Import Data — replaces tasks + bonus XP/coins with an imported snapshot. */
-  loadTasks: (tasks: Task[], bonusXp: number, bonusCoins: number) => void;
+  loadTasks: (tasks: Task[], bonusXp: number, bonusCoins: number, savedFilters?: SavedFilterClient[]) => void;
+  purchasedDecorations: string[];
+  placedDecorations: Record<string, string | null>;
+  purchaseDecoration: (itemId: string) => Promise<boolean>;
+  placeDecoration: (category: "desk" | "chair" | "decor" | "wallpaper" | "floor", itemId: string | null) => Promise<boolean>;
+  savedFilters: SavedFilterClient[];
+  saveFilter: (name: string, filters: TaskFilters) => Promise<boolean>;
+  deleteFilter: (id: string) => Promise<boolean>;
 }
 
 const TasksContext = createContext<TasksContextValue | null>(null);
@@ -103,26 +120,41 @@ export function TasksProvider({
   initialActivityLogs,
   initialBonusXp,
   initialBonusCoins,
+  initialPurchasedDecorations = [],
+  initialPlacedDecorations = {},
+  initialSavedFilters = [],
+  initialLastQuestClaimedAt = null,
+  initialActiveTimer = null,
   children,
 }: {
   initialTasks: Task[];
   initialActivityLogs: ActivityLogClient[];
   initialBonusXp: number;
   initialBonusCoins: number;
+  initialPurchasedDecorations?: string[];
+  initialPlacedDecorations?: Record<string, string | null>;
+  initialSavedFilters?: SavedFilterClient[];
+  initialLastQuestClaimedAt?: string | null;
+  initialActiveTimer?: ActiveTimer | null;
   children: React.ReactNode;
 }) {
   const initialTasksRef = useRef(initialTasks);
   const [tasks, dispatch] = useReducer(tasksReducer, initialTasks);
   const [activityLogs, setActivityLogs] = useState<ActivityLogClient[]>(initialActivityLogs);
+  const [savedFilters, setSavedFilters] = useState<SavedFilterClient[]>(initialSavedFilters);
+  const [lastQuestClaimedAt, setLastQuestClaimedAt] = useState<string | null>(initialLastQuestClaimedAt);
   const [sheet, setSheet] = useState<SheetState>({ open: false, mode: "create", task: null });
   const [justCompletedAt, setJustCompletedAt] = useState<number | null>(null);
   const [bonusXp, setBonusXp] = useState(initialBonusXp);
   const [bonusCoins, setBonusCoins] = useState(initialBonusCoins);
-  const [activeTimer, setActiveTimer] = useState<ActiveTimer | null>(null);
+  const [purchasedDecorations, setPurchasedDecorations] = useState<string[]>(initialPurchasedDecorations);
+  const [placedDecorations, setPlacedDecorations] = useState<Record<string, string | null>>(initialPlacedDecorations);
+  const [activeTimer, setActiveTimer] = useState<ActiveTimer | null>(initialActiveTimer);
   const [completions, setCompletions] = useState<CompletionOverlay[]>([]);
   const { toast } = useToast();
   const { projects } = useProjects();
   const { sprints } = useSprints();
+  const { soundEnabled } = useSettings();
 
   useEffect(() => {
     if (justCompletedAt == null) return;
@@ -136,22 +168,22 @@ export function TasksProvider({
       createTask: async (values) => {
         const tempId = crypto.randomUUID();
         const changedAt = new Date().toISOString();
-        
+
         // Optimistic insert
         dispatch({ type: "create", id: tempId, changedAt, values });
 
         const input = {
           title: values.title,
-          description: values.description || null,
-          projectId: projects.find((p) => p.name === values.project)?.id || null,
-          sprintId: values.sprint ? (sprints.find((s) => s.name === values.sprint)?.id || null) : null,
+          description: values.description || undefined,
+          projectId: projects.find((p) => p.name === values.project)?.id,
+          sprintId: values.sprint ? sprints.find((s) => s.name === values.sprint)?.id : undefined,
           status: values.status,
           type: values.type,
           priority: values.priority,
-          effort: values.effort || null,
-          storyPoint: values.storyPoint || null,
+          effort: values.effort,
+          storyPoint: values.storyPoint,
           reporter: values.reporter || "self",
-          dueDate: values.dueDate || null,
+          dueDate: values.dueDate || undefined,
           tags: values.tags,
           relations: values.relations,
           attachments: values.attachments,
@@ -172,13 +204,36 @@ export function TasksProvider({
 
         const oldTask = { ...prev };
 
+        if (activeTimer && activeTimer.taskId === id && values.status !== "in_progress") {
+          const seconds = Math.max(1, Math.round((Date.now() - activeTimer.startedAt) / 1000));
+          setActiveTimer(null);
+          dispatch({ type: "addTime", id, seconds });
+
+          apiStopFocusTimer().then((res) => {
+            if (res.success) {
+              const { taskId, seconds: finalSeconds, startedAt, endedAt } = res.data;
+              apiLogWorkSession(taskId, finalSeconds, startedAt, endedAt).catch((err) => {
+                toast(err?.error?.message ?? "Failed to log work session", "error");
+              });
+            } else {
+              toast(res.error.message, "error");
+              dispatch({ type: "addTime", id, seconds: -seconds });
+            }
+          }).catch((err) => {
+            toast(err?.error?.message ?? "Failed to stop timer", "error");
+            dispatch({ type: "addTime", id, seconds: -seconds });
+          });
+        }
+
         if (prev.status !== "done" && values.status === "done") {
           setJustCompletedAt(Date.now());
           const onTime = !prev.dueDate || new Date() <= new Date(`${prev.dueDate}T23:59:59`);
           const xp = calcTaskXP(values.priority, values.storyPoint, onTime);
           const cid = crypto.randomUUID();
           setCompletions((c) => [...c, { id: cid, xp, title: values.title }]);
-          playChime();
+          if (soundEnabled) {
+            playChime();
+          }
           setTimeout(() => {
             setCompletions((c) => c.filter((x) => x.id !== cid));
           }, 1500);
@@ -189,16 +244,16 @@ export function TasksProvider({
 
         const input = {
           title: values.title,
-          description: values.description || null,
-          projectId: projects.find((p) => p.name === values.project)?.id || null,
-          sprintId: values.sprint ? (sprints.find((s) => s.name === values.sprint)?.id || null) : null,
+          description: values.description || undefined,
+          projectId: projects.find((p) => p.name === values.project)?.id,
+          sprintId: values.sprint ? sprints.find((s) => s.name === values.sprint)?.id : undefined,
           status: values.status,
           type: values.type,
           priority: values.priority,
-          effort: values.effort || null,
-          storyPoint: values.storyPoint || null,
+          effort: values.effort,
+          storyPoint: values.storyPoint,
           reporter: values.reporter || "self",
-          dueDate: values.dueDate || null,
+          dueDate: values.dueDate || undefined,
           tags: values.tags,
           relations: values.relations,
           attachments: values.attachments,
@@ -309,12 +364,19 @@ export function TasksProvider({
       justCompleted: justCompletedAt != null,
       bonusXp,
       bonusCoins,
-      claimDailyQuest: async (xp, coins) => {
-        const nextXp = bonusXp + xp;
-        const nextCoins = bonusCoins + coins;
-        setBonusXp(nextXp);
-        setBonusCoins(nextCoins);
-        await apiUpdateUserStats({ bonusXp: nextXp, bonusCoins: nextCoins });
+      lastQuestClaimedAt,
+      claimDailyQuest: async (dateStr, xp, coins) => {
+        const res = await apiClaimDailyQuest({ dateStr, xp, coins });
+        if (res.success) {
+          setBonusXp(res.data.bonusXp);
+          setBonusCoins(res.data.bonusCoins);
+          setLastQuestClaimedAt(res.data.lastQuestClaimedAt);
+          toast("Daily quest claimed! +XP and +Coins!", "success");
+          return true;
+        } else {
+          toast(res.error.message, "error");
+          return false;
+        }
       },
       activeTimer,
       activityLogs,
@@ -339,28 +401,48 @@ export function TasksProvider({
           ...prev,
         ].slice(0, 10));
       },
-      startTimer: (taskId) => {
-        setActiveTimer((current) => {
-          if (current) {
-            dispatch({ type: "addTime", id: current.taskId, seconds: Math.round((Date.now() - current.startedAt) / 1000) });
-          }
-          return { taskId, startedAt: Date.now() };
-        });
+      togglePin: async (taskId, pinned) => {
+        dispatch({ type: "togglePin", id: taskId, pinned });
+
+        const { togglePin: apiTogglePin } = await import("@/lib/actions/pinned");
+        const result = await apiTogglePin(taskId, pinned);
+        if (result.success) {
+          toast(pinned ? "📌 Task pinned!" : "Pinned removed", "success");
+        } else {
+          toast("Failed to toggle pin", "error");
+          dispatch({ type: "togglePin", id: taskId, pinned: !pinned });
+        }
+      },
+      startTimer: async (taskId) => {
+        const startedAt = Date.now();
+        setActiveTimer({ taskId, startedAt });
+        const res = await apiStartFocusTimer(taskId);
+        if (!res.success) {
+          toast(res.error.message, "error");
+          setActiveTimer(null);
+        }
       },
       stopTimer: async () => {
-        setActiveTimer((current) => {
-          if (current) {
-            const seconds = Math.round((Date.now() - current.startedAt) / 1000);
-            dispatch({ type: "addTime", id: current.taskId, seconds });
-            const startedAtISO = new Date(current.startedAt).toISOString();
-            const endedAtISO = new Date().toISOString();
-            // fire-and-forget logging; errors will be shown via toast
-            apiLogWorkSession(current.taskId, seconds, startedAtISO, endedAtISO).catch((err) => {
-              toast(err?.error?.message ?? "Failed to log work session", "error");
-            });
+        const current = activeTimer;
+        if (!current) return;
+        const seconds = Math.max(1, Math.round((Date.now() - current.startedAt) / 1000));
+
+        setActiveTimer(null);
+        dispatch({ type: "addTime", id: current.taskId, seconds });
+
+        const res = await apiStopFocusTimer();
+        if (res.success) {
+          const { taskId, seconds: finalSeconds, startedAt, endedAt } = res.data;
+          const logRes = await apiLogWorkSession(taskId, finalSeconds, startedAt, endedAt);
+          if (!logRes.success) {
+            toast(logRes.error.message, "error");
+            dispatch({ type: "addTime", id: current.taskId, seconds: -seconds });
           }
-          return null;
-        });
+        } else {
+          toast(res.error.message, "error");
+          setActiveTimer(current);
+          dispatch({ type: "addTime", id: current.taskId, seconds: -seconds });
+        }
       },
       reset: async () => {
         dispatch({ type: "reset", tasks: initialTasksRef.current });
@@ -368,20 +450,92 @@ export function TasksProvider({
         setJustCompletedAt(null);
         setBonusXp(0);
         setBonusCoins(0);
+        setPurchasedDecorations([]);
+        setPlacedDecorations({});
+        setSavedFilters([]);
+        setLastQuestClaimedAt(null);
         setActiveTimer(null);
         await apiUpdateUserStats({ bonusXp: 0, bonusCoins: 0 });
       },
-      loadTasks: async (loaded, loadedBonusXp, loadedBonusCoins) => {
+      loadTasks: async (loaded, loadedBonusXp, loadedBonusCoins, loadedSavedFilters = []) => {
         dispatch({ type: "reset", tasks: loaded });
         setSheet({ open: false, mode: "create", task: null });
         setJustCompletedAt(null);
         setBonusXp(loadedBonusXp);
         setBonusCoins(loadedBonusCoins);
+        setPurchasedDecorations([]);
+        setPlacedDecorations({});
+        setSavedFilters(loadedSavedFilters);
+        setLastQuestClaimedAt(null);
         setActiveTimer(null);
         await apiUpdateUserStats({ bonusXp: loadedBonusXp, bonusCoins: loadedBonusCoins });
       },
+      purchasedDecorations,
+      placedDecorations,
+      purchaseDecoration: async (itemId) => {
+        const res = await apiPurchaseDecoration(itemId);
+        if (res.success) {
+          setBonusCoins(res.data.bonusCoins);
+          setPurchasedDecorations(res.data.purchasedDecorations);
+          toast("Item purchased successfully!", "success");
+          return true;
+        } else {
+          toast(res.error.message, "error");
+          return false;
+        }
+      },
+      placeDecoration: async (category, itemId) => {
+        const res = await apiPlaceDecoration(category, itemId);
+        if (res.success) {
+          setPlacedDecorations(res.data.placedDecorations as Record<string, string | null>);
+          toast("Item placed in room!", "success");
+          return true;
+        } else {
+          toast(res.error.message, "error");
+          return false;
+        }
+      },
+      savedFilters,
+      saveFilter: async (name, filters) => {
+        const res = await apiSaveFilter(name, filters);
+        if (res.success) {
+          setSavedFilters(res.data);
+          toast("Filter view saved!", "success");
+          return true;
+        } else {
+          toast(res.error.message, "error");
+          return false;
+        }
+      },
+      deleteFilter: async (id) => {
+        const res = await apiDeleteFilter(id);
+        if (res.success) {
+          setSavedFilters(res.data);
+          toast("Saved filter deleted.", "success");
+          return true;
+        } else {
+          toast(res.error.message, "error");
+          return false;
+        }
+      },
     }),
-    [tasks, activityLogs, sheet, justCompletedAt, bonusXp, bonusCoins, activeTimer, toast, projects, sprints]
+    [
+      tasks,
+      activityLogs,
+      sheet,
+      justCompletedAt,
+      bonusXp,
+      bonusCoins,
+      lastQuestClaimedAt,
+      purchasedDecorations,
+      placedDecorations,
+      savedFilters,
+      activeTimer,
+      toast,
+      projects,
+      sprints,
+      soundEnabled,
+    ]
   );
 
   return (
