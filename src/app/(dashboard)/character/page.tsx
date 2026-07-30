@@ -39,10 +39,10 @@ export default function Page() {
 
             <div className="flex-1 min-w-0">
               <div className="mb-1 font-display text-sm text-foreground">Aric Stormcloak</div>
-              <div className="mb-2 font-display text-[9px]" style={{ color: "var(--color-primary-gold)" }}>
+              <div className="mb-3 font-display text-[9px]" style={{ color: "var(--color-primary-gold)" }}>
                 {sheet.classTitle.toUpperCase()}
               </div>
-              <div className="mb-2 flex gap-2">
+              <div className="mb-3 flex gap-2">
                 <div className="flex items-center gap-1 px-2 py-1 text-[11px]" style={{ backgroundColor: "var(--color-bg-panel-alt)", border: "1px solid var(--color-border)", color: "var(--color-xp-gold)" }}>
                   <span>⚡</span>
                   <span className="font-display">{sheet.globalXP.toLocaleString()}</span>
@@ -60,14 +60,12 @@ export default function Page() {
                   <span className="font-display">{sheet.completedCount}</span>
                 </div>
               </div>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="font-display text-[8px] mb-2 tracking-widest" style={{ color: "var(--color-status-ready)" }}>ATTRIBUTES</div>
+              <div className="grid grid-cols-6 gap-1.5">
                 {STATS.map((stat) => (
-                  <div key={stat} className="px-2 py-1.5 text-center" style={{ backgroundColor: "var(--color-bg-panel-alt)", border: "1.5px solid var(--color-border)" }}>
-                    <div className="font-display text-[13px] font-bold text-foreground">{sheet.statScore[stat]}</div>
-                    <div className="text-[8px] text-muted-foreground tracking-wider">{stat}</div>
-                    <div className="text-[9px] mt-0.5" style={{ color: "var(--color-primary-gold)" }}>
-                      +{Math.floor((sheet.statScore[stat] - 10) / 2)}
-                    </div>
+                  <div key={stat} className="px-2 py-2 text-center" style={{ backgroundColor: "var(--color-bg-panel-alt)", border: "1.5px solid var(--color-border)" }}>
+                    <div className="font-display text-[14px] font-bold text-foreground">{sheet.statScore[stat]}</div>
+                    <div className="text-[7px] text-muted-foreground mt-1">{stat}</div>
                   </div>
                 ))}
               </div>
