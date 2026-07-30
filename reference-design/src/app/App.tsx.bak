@@ -1,0 +1,1968 @@
+import { useState, useEffect, useRef, useMemo } from "react";
+import { clsx } from "clsx";
+import * as Accordion from "@radix-ui/react-accordion";
+import {
+  LayoutDashboard, Grid3X3, List, Table2, Calendar, GitBranch,
+  Sun, Clock, Crosshair, BookOpen, Folder, Zap, Trophy,
+  BarChart2, Settings, Plus, Search, X, ChevronRight,
+  ChevronDown, ChevronLeft, Check, ArrowUp, ArrowDown,
+  Minus, Square, Play, CheckCircle2, Pencil, Trash2,
+  Lock, Filter, Hash, Inbox, Copy, Link, MessageSquare,
+  Paperclip, RefreshCw, FolderOpen, Archive
+} from "lucide-react";
+import {
+  BarChart as ReBarChart, Bar, XAxis, YAxis, Tooltip,
+  ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell,
+  CartesianGrid
+} from "recharts";
+
+// ─── TYPES ────────────────────────────────────────────────────
+
+type Screen =
+  | "dashboard" | "kanban" | "list" | "table" | "calendar"
+  | "timeline" | "today" | "inbox-view" | "waiting" | "focus"
+  | "project-group" | "archive" | "projects" | "sprints"
+  | "achievements" | "statistics" | "settings";
+
+type Status =
+  | "inbox" | "todo" | "ready" | "in-progress"
+  | "blocked" | "waiting-external" | "testing" | "done" | "archived";
+
+type Priority = "p0" | "p1" | "p2" | "p3" | "p4";
+
+type TaskType =
+  | "coding" | "investigation" | "study" | "analysis" | "documentation"
+  | "bug" | "deployment" | "testing" | "meeting" | "research"
+  | "design" | "maintenance" | "refactor" | "incident" | "communication";
+
+type Effort = "xs" | "s" | "m" | "l" | "xl" | "xxl";
+type Reporter = "self" | "qa" | "manager" | "pm" | "client" | "lecturer" | "friend" | "other";
+
+interface Task {
+  id: string;
+  title: string;
+  description: string;
+  status: Status;
+  priority: Priority;
+  type: TaskType;
+  effort: Effort;
+  storyPoints: number;
+  project: string;
+  projectId: string;
+  sprint: string | null;
+  tags: string[];
+  dueDate: string | null;
+  createdAt: string;
+  completedAt: string | null;
+  waitingOn: string | null;
+  reporter: Reporter;
+  parentId: string | null;
+  attachments: string[];
+  deliverables: string[];
+}
+
+interface Project {
+  id: string;
+  name: string;
+  color: string;
+  emoji: string;
+  category: string;
+  description: string;
+  totalTasks: number;
+  completedTasks: number;
+  status: "active" | "on-hold" | "completed";
+}
+
+interface Sprint {
+  id: string;
+  name: string;
+  startDate: string;
+  endDate: string;
+  status: "active" | "completed" | "planning";
+  taskIds: string[];
+  goal: string;
+}
+
+interface Achievement {
+  id: string;
+  name: string;
+  description: string;
+  icon: string;
+  unlocked: boolean;
+  unlockedAt: string | null;
+  xp: number;
+  category: "combat" | "exploration" | "crafting" | "social";
+}
+
+// ─── CONFIG MAPS ──────────────────────────────────────────────
+
+// Priority shapes from design.md §8: P0=■ P1=▲ P2=● P3=○ P4=·
+const PRIORITY_CFG: Record<Priority, { label: string; color: string; shape: string; xpBase: number; coin: number }> = {
+  p0: { label: "P0 Critical", color: "#e94560", shape: "■", xpBase: 100, coin: 5 },
+  p1: { label: "P1 High",     color: "#f6c90e", shape: "▲", xpBase: 60,  coin: 3 },
+  p2: { label: "P2 Normal",   color: "#4ecca3", shape: "●", xpBase: 30,  coin: 1 },
+  p3: { label: "P3 Low",      color: "#8891a3", shape: "○", xpBase: 15,  coin: 0 },
+  p4: { label: "P4 Someday",  color: "#4a4a68", shape: "·", xpBase: 5,   coin: 0 },
+};
+
+// Status: shape + color (never color alone) per design.md §2
+const STATUS_CFG: Record<Status, { label: string; color: string; shape: string }> = {
+  inbox:             { label: "Inbox",           color: "#8891a3", shape: "▣" },
+  todo:              { label: "Todo",             color: "#8891a3", shape: "□" },
+  ready:             { label: "Ready",            color: "#4ecca3", shape: "◈" },
+  "in-progress":     { label: "In Progress",      color: "#f6c90e", shape: "▶" },
+  blocked:           { label: "Blocked",          color: "#e94560", shape: "✕" },
+  "waiting-external":{ label: "Waiting Ext.",     color: "#a29bfe", shape: "⏸" },
+  testing:           { label: "Testing",          color: "#00b8d9", shape: "◆" },
+  done:              { label: "Done",             color: "#52c41a", shape: "✓" },
+  archived:          { label: "Archived",         color: "#4a4a68", shape: "◫" },
+};
+
+const TASK_TYPE_CFG: Record<TaskType, { label: string; emoji: string }> = {
+  coding:        { label: "Coding",         emoji: "💻" },
+  investigation: { label: "Investigation",  emoji: "🔍" },
+  study:         { label: "Study",          emoji: "📖" },
+  analysis:      { label: "Analysis",       emoji: "📊" },
+  documentation: { label: "Documentation",  emoji: "📝" },
+  bug:           { label: "Bug",            emoji: "🐞" },
+  deployment:    { label: "Deployment",     emoji: "🚀" },
+  testing:       { label: "Testing",        emoji: "🧪" },
+  meeting:       { label: "Meeting",        emoji: "👥" },
+  research:      { label: "Research",       emoji: "💡" },
+  design:        { label: "Design",         emoji: "🎨" },
+  maintenance:   { label: "Maintenance",    emoji: "⚙️" },
+  refactor:      { label: "Refactor",       emoji: "📦" },
+  incident:      { label: "Incident",       emoji: "🔥" },
+  communication: { label: "Communication",  emoji: "📞" },
+};
+
+const EFFORT_ORDER: Effort[] = ["xs", "s", "m", "l", "xl", "xxl"];
+const STORY_POINTS = [0, 1, 2, 3, 5, 8, 13, 21];
+const REPORTER_OPTS: Reporter[] = ["self", "qa", "manager", "pm", "client", "lecturer", "friend", "other"];
+
+// ─── GAMIFICATION FORMULAS (design.md §11) ───────────────────
+
+function xpForLevel(n: number): number {
+  return Math.round((100 * Math.pow(n, 1.5)) / 10) * 10;
+}
+
+function getLevelInfo(totalXP: number): { level: number; currentXP: number; nextLevelXP: number } {
+  let cumulative = 0;
+  let level = 1;
+  while (true) {
+    const needed = xpForLevel(level);
+    if (cumulative + needed > totalXP) return { level, currentXP: totalXP - cumulative, nextLevelXP: needed };
+    cumulative += needed;
+    level++;
+  }
+}
+
+function calcTaskXP(priority: Priority, storyPoints: number, onTime: boolean): number {
+  const base = PRIORITY_CFG[priority].xpBase + storyPoints * 10;
+  return Math.round(base * (onTime ? 1.2 : 1.0));
+}
+
+function calcCoins(priority: Priority, storyPoints: number): number {
+  return storyPoints + PRIORITY_CFG[priority].coin;
+}
+
+function streakEmoji(days: number): { icon: string; label: string } {
+  if (days >= 30) return { icon: "🔥🔥", label: "Blaze" };
+  if (days >= 14) return { icon: "🏕️",   label: "Bonfire" };
+  if (days >= 7)  return { icon: "🔥",    label: "Steady Fire" };
+  if (days >= 3)  return { icon: "🕯️",   label: "Small Flame" };
+  return             { icon: "✨",   label: "Spark" };
+}
+
+// ─── MOCK DATA ────────────────────────────────────────────────
+
+const PROJECTS: Project[] = [
+  { id: "p1", name: "ATS Platform",       color: "#e94560", emoji: "🏢", category: "Full-time",   description: "Applicant Tracking System — squad lead project", totalTasks: 24, completedTasks: 18, status: "active" },
+  { id: "p2", name: "Thesis",             color: "#a29bfe", emoji: "🎓", category: "University",  description: "Distributed systems thesis — defense Q3 2026",   totalTasks: 15, completedTasks: 4,  status: "active" },
+  { id: "p3", name: "Atlas",              color: "#4ecca3", emoji: "🚀", category: "Side Project", description: "This app — personal second brain system",        totalTasks: 20, completedTasks: 6,  status: "active" },
+  { id: "p4", name: "Freelance — Shire",  color: "#f6c90e", emoji: "💼", category: "Freelance",   description: "E-commerce client: Shire & Sons Ltd.",            totalTasks: 12, completedTasks: 9,  status: "active" },
+  { id: "p5", name: "Personal",           color: "#8891a3", emoji: "🏠", category: "Personal",    description: "Health, finance, home maintenance",               totalTasks: 8,  completedTasks: 5,  status: "active" },
+];
+
+const INITIAL_TASKS: Task[] = [
+  // In-Progress
+  { id: "t1", title: "Fix auth bypass in session invalidation", description: "Session tokens not invalidated on logout — users can access protected routes after signing out. Must patch before next release.", status: "in-progress", priority: "p0", type: "bug", effort: "m", storyPoints: 3, project: "ATS Platform", projectId: "p1", sprint: "s1", tags: ["security", "auth", "hotfix"], dueDate: "2026-07-28", createdAt: "2026-07-20", completedAt: null, waitingOn: null, reporter: "qa", parentId: null, attachments: [], deliverables: [] },
+  { id: "t2", title: "Deploy API gateway with rate limiting", description: "Set up rate limiting, API key rotation, and canary routing for the public API surface.", status: "in-progress", priority: "p1", type: "deployment", effort: "l", storyPoints: 5, project: "ATS Platform", projectId: "p1", sprint: "s1", tags: ["infra", "api"], dueDate: "2026-07-30", createdAt: "2026-07-18", completedAt: null, waitingOn: null, reporter: "self", parentId: null, attachments: [], deliverables: [] },
+  { id: "t3", title: "Write thesis chapter 3 — consensus algorithms", description: "Cover Raft, Paxos, and PBFT with comparative analysis. Supervisor wants draft by end of sprint.", status: "in-progress", priority: "p1", type: "study", effort: "xl", storyPoints: 8, project: "Thesis", projectId: "p2", sprint: "s1", tags: ["writing", "distributed"], dueDate: "2026-08-02", createdAt: "2026-07-15", completedAt: null, waitingOn: null, reporter: "lecturer", parentId: null, attachments: [], deliverables: [] },
+  // Waiting External
+  { id: "t4", title: "Design review — new candidate pipeline UI", description: "Wireframes sent to Zara (design lead). Waiting on feedback before starting implementation.", status: "waiting-external", priority: "p1", type: "design", effort: "s", storyPoints: 2, project: "ATS Platform", projectId: "p1", sprint: "s1", tags: ["design", "ui"], dueDate: "2026-07-31", createdAt: "2026-07-22", completedAt: null, waitingOn: "Zara (Design Lead)", reporter: "self", parentId: null, attachments: [], deliverables: [] },
+  { id: "t5", title: "Stripe live-mode approval", description: "Business verification docs submitted. Stripe needs to review before live payments can be processed.", status: "waiting-external", priority: "p0", type: "communication", effort: "xs", storyPoints: 1, project: "Freelance — Shire", projectId: "p4", sprint: null, tags: ["payments", "stripe"], dueDate: "2026-08-10", createdAt: "2026-07-19", completedAt: null, waitingOn: "Stripe Support", reporter: "client", parentId: null, attachments: [], deliverables: [] },
+  { id: "t6", title: "Thesis supervisor sign-off on methodology", description: "Chapter 2 methodology section needs approval before Chapter 3 submission.", status: "waiting-external", priority: "p1", type: "meeting", effort: "xs", storyPoints: 1, project: "Thesis", projectId: "p2", sprint: "s1", tags: ["thesis", "supervisor"], dueDate: "2026-07-30", createdAt: "2026-07-21", completedAt: null, waitingOn: "Dr. Miriam Voss", reporter: "lecturer", parentId: null, attachments: [], deliverables: [] },
+  { id: "t7", title: "Client feedback on Shire checkout prototype", description: "Clickable Figma prototype shared for review. Awaiting go/no-go from client.", status: "waiting-external", priority: "p1", type: "design", effort: "s", storyPoints: 2, project: "Freelance — Shire", projectId: "p4", sprint: null, tags: ["client", "ux"], dueDate: "2026-07-29", createdAt: "2026-07-23", completedAt: null, waitingOn: "Shire & Sons Product Team", reporter: "client", parentId: null, attachments: [], deliverables: [] },
+  // Blocked
+  { id: "t8", title: "Migrate ATS DB to PostgreSQL 16", description: "Blocked on DBA team completing the backup verification before we can run migration scripts.", status: "blocked", priority: "p1", type: "maintenance", effort: "xl", storyPoints: 8, project: "ATS Platform", projectId: "p1", sprint: "s1", tags: ["database", "migration"], dueDate: "2026-08-05", createdAt: "2026-07-15", completedAt: null, waitingOn: "DBA Team backup verification", reporter: "self", parentId: null, attachments: [], deliverables: [] },
+  // Testing
+  { id: "t9", title: "E2E tests for Shire checkout flow", description: "Playwright test suite covering the full checkout path — add to cart through payment confirmation.", status: "testing", priority: "p1", type: "testing", effort: "m", storyPoints: 3, project: "Freelance — Shire", projectId: "p4", sprint: null, tags: ["playwright", "e2e"], dueDate: "2026-07-30", createdAt: "2026-07-24", completedAt: null, waitingOn: null, reporter: "self", parentId: null, attachments: [], deliverables: [] },
+  // Ready (Focus view candidates)
+  { id: "t10", title: "Implement full-text search with Elasticsearch", description: "Add search across candidates, jobs, and applications. Fuzzy matching + date/status filters required.", status: "ready", priority: "p1", type: "coding", effort: "xl", storyPoints: 8, project: "ATS Platform", projectId: "p1", sprint: "s1", tags: ["search", "elasticsearch"], dueDate: "2026-08-08", createdAt: "2026-07-22", completedAt: null, waitingOn: null, reporter: "self", parentId: null, attachments: [], deliverables: [] },
+  { id: "t11", title: "Set up GitHub Actions CI/CD pipeline", description: "Auto test on PR, deploy to staging on main merge, deploy to prod on tag release.", status: "ready", priority: "p1", type: "deployment", effort: "l", storyPoints: 5, project: "Atlas", projectId: "p3", sprint: null, tags: ["devops", "ci"], dueDate: "2026-08-06", createdAt: "2026-07-20", completedAt: null, waitingOn: null, reporter: "self", parentId: null, attachments: [], deliverables: [] },
+  { id: "t12", title: "Optimize slow ATS reporting queries", description: "5 queries >2s identified via Datadog APM. Root causes: missing indexes, N+1 patterns.", status: "ready", priority: "p1", type: "coding", effort: "m", storyPoints: 3, project: "ATS Platform", projectId: "p1", sprint: "s1", tags: ["performance", "sql"], dueDate: "2026-08-04", createdAt: "2026-07-25", completedAt: null, waitingOn: null, reporter: "self", parentId: null, attachments: [], deliverables: [] },
+  // Todo
+  { id: "t13", title: "Write unit tests for Atlas auth module", description: "Coverage at 48%. Target 85%. Focus on token expiry, concurrent sessions, OAuth edge cases.", status: "todo", priority: "p2", type: "testing", effort: "m", storyPoints: 3, project: "Atlas", projectId: "p3", sprint: "s1", tags: ["testing", "auth"], dueDate: "2026-08-10", createdAt: "2026-07-23", completedAt: null, waitingOn: null, reporter: "self", parentId: null, attachments: [], deliverables: [] },
+  { id: "t14", title: "Atlas onboarding flow", description: "Interactive tutorial: create a project, add a task, start a focus session. First-run only.", status: "todo", priority: "p2", type: "design", effort: "l", storyPoints: 5, project: "Atlas", projectId: "p3", sprint: "s1", tags: ["ux", "onboarding"], dueDate: "2026-08-14", createdAt: "2026-07-24", completedAt: null, waitingOn: null, reporter: "self", parentId: null, attachments: [], deliverables: [] },
+  { id: "t15", title: "Research distributed consensus for thesis lit review", description: "Survey latest papers on Raft optimizations (leader leases, read indices) for literature review section.", status: "todo", priority: "p2", type: "research", effort: "l", storyPoints: 5, project: "Thesis", projectId: "p2", sprint: "s1", tags: ["research", "raft", "distributed"], dueDate: "2026-08-12", createdAt: "2026-07-25", completedAt: null, waitingOn: null, reporter: "self", parentId: null, attachments: [], deliverables: [] },
+  // Inbox
+  { id: "t16", title: "Idea: personal finance tracker tab in Atlas", description: "Quick brain dump — could add monthly expense tracking. Not triaged yet.", status: "inbox", priority: "p4", type: "research", effort: "xs", storyPoints: 0, project: "Atlas", projectId: "p3", sprint: null, tags: ["idea", "finance"], dueDate: null, createdAt: "2026-07-26", completedAt: null, waitingOn: null, reporter: "self", parentId: null, attachments: [], deliverables: [] },
+  { id: "t17", title: "Buy ergonomic chair before Sept", description: "Current chair is causing back pain. Research and purchase before uni semester starts.", status: "inbox", priority: "p3", type: "research", effort: "xs", storyPoints: 0, project: "Personal", projectId: "p5", sprint: null, tags: ["health", "home"], dueDate: null, createdAt: "2026-07-27", completedAt: null, waitingOn: null, reporter: "self", parentId: null, attachments: [], deliverables: [] },
+  // Done (Sprint 6)
+  { id: "t18", title: "JWT authentication (access + refresh tokens)", description: "Implemented 15-min access tokens, 30-day refresh tokens, httpOnly cookies, and automatic rotation.", status: "done", priority: "p0", type: "coding", effort: "l", storyPoints: 5, project: "ATS Platform", projectId: "p1", sprint: "s2", tags: ["auth", "security", "jwt"], dueDate: "2026-07-18", createdAt: "2026-07-12", completedAt: "2026-07-17", waitingOn: null, reporter: "self", parentId: null, attachments: [], deliverables: ["PR"] },
+  { id: "t19", title: "Core database schema and Prisma migrations", description: "Full entity-relationship model, all relationships, constraints, and indexes created.", status: "done", priority: "p1", type: "coding", effort: "l", storyPoints: 5, project: "ATS Platform", projectId: "p1", sprint: "s2", tags: ["database", "prisma"], dueDate: "2026-07-16", createdAt: "2026-07-11", completedAt: "2026-07-16", waitingOn: null, reporter: "self", parentId: null, attachments: [], deliverables: ["PR"] },
+  { id: "t20", title: "REST API documentation (OpenAPI 3.1)", description: "Full spec, interactive Swagger UI at /api/docs. Covers all 47 endpoints with request/response examples.", status: "done", priority: "p2", type: "documentation", effort: "m", storyPoints: 3, project: "ATS Platform", projectId: "p1", sprint: "s2", tags: ["docs", "api"], dueDate: "2026-07-20", createdAt: "2026-07-15", completedAt: "2026-07-19", waitingOn: null, reporter: "self", parentId: null, attachments: [], deliverables: ["Confluence Page"] },
+  { id: "t21", title: "Datadog APM + Sentry + PagerDuty setup", description: "All production services covered: APM, error tracking, and on-call alerting configured.", status: "done", priority: "p1", type: "maintenance", effort: "m", storyPoints: 3, project: "ATS Platform", projectId: "p1", sprint: "s2", tags: ["monitoring", "datadog"], dueDate: "2026-07-21", createdAt: "2026-07-16", completedAt: "2026-07-21", waitingOn: null, reporter: "self", parentId: null, attachments: [], deliverables: [] },
+  { id: "t22", title: "Shire product catalogue import from CSV", description: "Bulk import tool for 3,000 products from legacy system. Includes image URL mapping and category normalization.", status: "done", priority: "p1", type: "coding", effort: "m", storyPoints: 3, project: "Freelance — Shire", projectId: "p4", sprint: "s2", tags: ["import", "csv"], dueDate: "2026-07-19", createdAt: "2026-07-14", completedAt: "2026-07-19", waitingOn: null, reporter: "client", parentId: null, attachments: [], deliverables: ["PR"] },
+  { id: "t23", title: "Monorepo setup with pnpm workspaces", description: "Initialized shared ESLint, TypeScript project references, and shared test utilities across packages.", status: "done", priority: "p2", type: "maintenance", effort: "s", storyPoints: 2, project: "Atlas", projectId: "p3", sprint: "s2", tags: ["setup", "monorepo"], dueDate: "2026-07-14", createdAt: "2026-07-10", completedAt: "2026-07-13", waitingOn: null, reporter: "self", parentId: null, attachments: [], deliverables: [] },
+];
+
+const SPRINTS: Sprint[] = [
+  { id: "s1", name: "Sprint 7 — The Awakening", startDate: "2026-07-21", endDate: "2026-08-03", status: "active", taskIds: ["t1", "t2", "t3", "t4", "t6", "t8", "t10", "t12", "t13", "t14", "t15"], goal: "Ship the API gateway, patch critical auth bug, and deliver thesis Chapter 3 draft." },
+  { id: "s2", name: "Sprint 6 — Dark Passage", startDate: "2026-07-07", endDate: "2026-07-20", status: "completed", taskIds: ["t18", "t19", "t20", "t21", "t22", "t23"], goal: "Establish auth, DB schema, monitoring, and first client deliverables." },
+  { id: "s3", name: "Sprint 8 — The Reckoning", startDate: "2026-08-04", endDate: "2026-08-17", status: "planning", taskIds: [], goal: "Elasticsearch integration, Atlas onboarding flow, thesis Chapter 4." },
+];
+
+const ACHIEVEMENTS: Achievement[] = [
+  { id: "a1", name: "First Blood",    description: "Complete your first quest",                  icon: "⚔",  unlocked: true,  unlockedAt: "2026-07-10", xp: 50,   category: "combat"      },
+  { id: "a2", name: "Task Slayer",    description: "Complete 10 quests total",                   icon: "🗡", unlocked: true,  unlockedAt: "2026-07-15", xp: 100,  category: "combat"      },
+  { id: "a3", name: "Speed Runner",   description: "Complete 5 quests in a single day",          icon: "⚡",  unlocked: true,  unlockedAt: "2026-07-16", xp: 200,  category: "combat"      },
+  { id: "a4", name: "Night Owl",      description: "Complete a quest between 10 PM and 4 AM",    icon: "🦉",  unlocked: true,  unlockedAt: "2026-07-17", xp: 75,   category: "exploration" },
+  { id: "a5", name: "Guild Master",   description: "Complete an entire project",                 icon: "🛡",  unlocked: true,  unlockedAt: "2026-07-20", xp: 500,  category: "social"      },
+  { id: "a6", name: "Morning Hero",   description: "Complete a quest before 7 AM",               icon: "🌅",  unlocked: true,  unlockedAt: "2026-07-21", xp: 75,   category: "exploration" },
+  { id: "a7", name: "Bug Hunter",     description: "Complete 50 quests of type Bug",             icon: "🐞",  unlocked: false, unlockedAt: null,         xp: 300,  category: "combat"      },
+  { id: "a8", name: "Sprint Hero",    description: "Complete every quest in an active sprint",   icon: "🏆",  unlocked: false, unlockedAt: null,         xp: 400,  category: "combat"      },
+  { id: "a9", name: "Code Warrior",   description: "Complete 100 coding quests",                 icon: "💻",  unlocked: false, unlockedAt: null,         xp: 500,  category: "crafting"    },
+  { id: "a10", name: "Scholar",       description: "Complete 50 quests in a University project", icon: "📚",  unlocked: false, unlockedAt: null,         xp: 300,  category: "crafting"    },
+  { id: "a11", name: "Perfect Week",  description: "7 consecutive days with all tasks done",     icon: "🌟",  unlocked: false, unlockedAt: null,         xp: 700,  category: "social"      },
+  { id: "a12", name: "100 Quests",    description: "Complete 100 quests total",                  icon: "💎",  unlocked: false, unlockedAt: null,         xp: 300,  category: "combat"      },
+];
+
+// Mock user state
+const MOCK_TOTAL_XP = 2340;
+const MOCK_STREAK = 9;
+const MOCK_COINS = 47;
+
+// ─── HELPERS ──────────────────────────────────────────────────
+
+function fmtDate(d: string | null) {
+  if (!d) return "—";
+  return new Date(d).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
+
+function isOverdue(d: string | null) {
+  if (!d) return false;
+  const due = new Date(d); due.setHours(23, 59, 59);
+  return due < new Date();
+}
+
+function isDueToday(d: string | null) {
+  if (!d) return false;
+  return new Date(d).toDateString() === new Date().toDateString();
+}
+
+// ─── BASE COMPONENTS ──────────────────────────────────────────
+
+// RPG dialogue-box panel (design.md §5)
+function PixelPanel({ children, className, variant = "default" }: {
+  children: React.ReactNode;
+  className?: string;
+  variant?: "default" | "accent" | "gold" | "flat";
+}) {
+  const borders = {
+    default: "border-[#e94560]",
+    accent:  "border-[#ffd93d]",
+    gold:    "border-[#ffd93d]",
+    flat:    "border-[#252547]",
+  };
+  return (
+    <div className={clsx("bg-[#0f3460] border-2", borders[variant], className)}>
+      {children}
+    </div>
+  );
+}
+
+// Button with 2px border + pressed-2px state (design.md §5)
+function PixelBtn({
+  onClick, children, className, variant = "primary", size = "md", disabled,
+}: {
+  onClick?: () => void;
+  children: React.ReactNode;
+  className?: string;
+  variant?: "primary" | "secondary" | "ghost" | "danger";
+  size?: "sm" | "md" | "lg";
+  disabled?: boolean;
+}) {
+  const v = {
+    primary:   "bg-[#e94560] text-[#eaeaea] border-2 border-[#e94560] shadow-[0_2px_0_#8b1a2e] hover:bg-[#c73050] active:shadow-none active:translate-y-[2px]",
+    secondary: "bg-[#16213e] text-[#eaeaea] border-2 border-[#252547] shadow-[0_2px_0_#0d1220] hover:border-[#e94560] hover:text-[#e94560] active:shadow-none active:translate-y-[2px]",
+    ghost:     "bg-transparent text-[#8891a3] border-2 border-transparent hover:border-[#252547] hover:text-[#eaeaea]",
+    danger:    "bg-[#e94560] text-white border-2 border-[#e94560] shadow-[0_2px_0_#8b1a2e] hover:bg-[#c73050] active:shadow-none active:translate-y-[2px]",
+  }[variant];
+  const s = { sm: "px-2 py-0.5 text-sm", md: "px-3 py-1.5 text-base", lg: "px-4 py-2 text-lg" }[size];
+  return (
+    <button onClick={onClick} disabled={disabled}
+      className={clsx("inline-flex items-center gap-1.5 cursor-pointer font-['VT323'] transition-all duration-75 select-none", v, s, disabled && "opacity-40 cursor-not-allowed", className)}>
+      {children}
+    </button>
+  );
+}
+
+function StatusBadge({ status }: { status: Status }) {
+  const { label, color, shape } = STATUS_CFG[status];
+  return (
+    <span className="inline-flex items-center gap-1 whitespace-nowrap text-sm" style={{ color }}>
+      <span>{shape}</span>{label}
+    </span>
+  );
+}
+
+function PriorityBadge({ priority }: { priority: Priority }) {
+  const { label, color, shape } = PRIORITY_CFG[priority];
+  return (
+    <span className="inline-flex items-center gap-1 whitespace-nowrap text-sm" style={{ color }}>
+      <span className="text-base leading-none">{shape}</span>{label}
+    </span>
+  );
+}
+
+// Small pip — priority shape only (for card corners, design.md §5)
+function PriorityPip({ priority }: { priority: Priority }) {
+  const { color, shape } = PRIORITY_CFG[priority];
+  return <span className="text-base leading-none font-bold" style={{ color }} title={PRIORITY_CFG[priority].label}>{shape}</span>;
+}
+
+function PixelProgress({ value, max, color = "#4ecca3", blocks = 16 }: { value: number; max: number; color?: string; blocks?: number }) {
+  const filled = max > 0 ? Math.round((value / max) * blocks) : 0;
+  return (
+    <div className="flex gap-[2px] items-center">
+      {Array.from({ length: blocks }).map((_, i) => (
+        <div key={i} className="h-2.5 w-2.5" style={{ backgroundColor: i < filled ? color : "#16213e", border: "1px solid #252547" }} />
+      ))}
+      <span className="ml-2 text-sm" style={{ color }}>{value}/{max}</span>
+    </div>
+  );
+}
+
+function TagPill({ tag }: { tag: string }) {
+  return <span className="inline-block px-1.5 text-xs border border-[#252547] text-[#8891a3] bg-[#16213e]">#{tag}</span>;
+}
+
+function SectionDivider({ title }: { title: string }) {
+  return (
+    <div className="flex items-center gap-2 mt-5 mb-2 first:mt-0">
+      <span className="text-[#8891a3] text-sm">▸</span>
+      <span className="text-[#8891a3] text-sm tracking-widest uppercase">{title}</span>
+      <div className="flex-1 h-px bg-[#252547]" />
+    </div>
+  );
+}
+
+// Pixel input — focus turns border xp-gold (design.md §5)
+function PixelInput({ className, ...props }: React.InputHTMLAttributes<HTMLInputElement>) {
+  return (
+    <input
+      {...props}
+      className={clsx(
+        "w-full bg-[#16213e] border-2 border-[#252547] text-[#eaeaea] px-3 py-1.5 font-['VT323'] text-base outline-none",
+        "focus:border-[#ffd93d] transition-colors placeholder:text-[#4a4a68]",
+        className
+      )}
+    />
+  );
+}
+
+function PixelSelect({ className, children, ...props }: React.SelectHTMLAttributes<HTMLSelectElement>) {
+  return (
+    <select
+      {...props}
+      className={clsx(
+        "w-full bg-[#16213e] border-2 border-[#252547] text-[#eaeaea] px-3 py-1.5 font-['VT323'] text-base outline-none",
+        "focus:border-[#ffd93d] transition-colors",
+        className
+      )}
+    >
+      {children}
+    </select>
+  );
+}
+
+function PixelTextarea({ className, ...props }: React.TextareaHTMLAttributes<HTMLTextAreaElement>) {
+  return (
+    <textarea
+      {...props}
+      className={clsx(
+        "w-full bg-[#16213e] border-2 border-[#252547] text-[#eaeaea] px-3 py-1.5 font-['VT323'] text-base outline-none resize-none",
+        "focus:border-[#ffd93d] transition-colors placeholder:text-[#4a4a68]",
+        className
+      )}
+    />
+  );
+}
+
+// ─── TASK ROW (list/table views) ──────────────────────────────
+
+function TaskRow({ task, onClick }: { task: Task; onClick: () => void }) {
+  const overdue = isOverdue(task.dueDate) && task.status !== "done" && task.status !== "archived";
+  const today = isDueToday(task.dueDate);
+  return (
+    <div onClick={onClick}
+      className="flex items-center gap-3 px-4 py-2.5 border-b border-[#252547] hover:bg-[#16213e] cursor-pointer group transition-colors">
+      <PriorityBadge priority={task.priority} />
+      <StatusBadge status={task.status} />
+      <span className="flex-1 text-base text-[#eaeaea] group-hover:text-[#4ecca3] truncate transition-colors">{task.title}</span>
+      <span className="text-lg mr-1" title={TASK_TYPE_CFG[task.type].label}>{TASK_TYPE_CFG[task.type].emoji}</span>
+      <span className="hidden md:block text-sm text-[#8891a3] truncate max-w-[120px]">{task.project}</span>
+      <span className={clsx("text-sm whitespace-nowrap", overdue ? "text-[#e94560]" : today ? "text-[#ffd93d]" : "text-[#8891a3]")}>
+        {overdue && "⚠ "}{fmtDate(task.dueDate)}
+      </span>
+    </div>
+  );
+}
+
+// ─── TASK CARD (kanban) ───────────────────────────────────────
+// Cards styled like RPG dialogue/inventory boxes (design.md §5)
+
+function TaskCard({ task, onClick }: { task: Task; onClick: () => void }) {
+  const overdue = isOverdue(task.dueDate) && task.status !== "done";
+  const { color: statusColor } = STATUS_CFG[task.status];
+  return (
+    <div onClick={onClick}
+      className="bg-[#16213e] border-2 p-3 cursor-pointer hover:brightness-110 transition-all group"
+      style={{ borderColor: statusColor }}>
+      {/* Top: type icon (corner) + priority pip (design.md §5) */}
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-base" title={TASK_TYPE_CFG[task.type].label}>{TASK_TYPE_CFG[task.type].emoji}</span>
+        <PriorityPip priority={task.priority} />
+      </div>
+      <p className="text-base text-[#eaeaea] group-hover:text-[#4ecca3] leading-tight mb-2 line-clamp-2 transition-colors">{task.title}</p>
+      <div className="flex items-center justify-between mt-2">
+        <div className="flex gap-1 flex-wrap">
+          {task.tags.slice(0, 2).map(t => <TagPill key={t} tag={t} />)}
+        </div>
+        {task.dueDate && (
+          <span className={clsx("text-xs whitespace-nowrap", overdue ? "text-[#e94560]" : "text-[#8891a3]")}>
+            {overdue && "⚠ "}{fmtDate(task.dueDate)}
+          </span>
+        )}
+      </div>
+      {task.storyPoints > 0 && (
+        <div className="mt-1 text-xs text-[#8891a3]">{task.storyPoints} SP · {task.effort.toUpperCase()}</div>
+      )}
+      {task.status === "waiting-external" && task.waitingOn && (
+        <div className="mt-1.5 text-xs text-[#a29bfe]">⏸ {task.waitingOn}</div>
+      )}
+      {task.status === "blocked" && task.waitingOn && (
+        <div className="mt-1.5 text-xs text-[#e94560]">✕ {task.waitingOn}</div>
+      )}
+    </div>
+  );
+}
+
+// ─── GAMIFICATION STRIP ───────────────────────────────────────
+
+function GamificationStrip({ totalXP, streak, coins }: { totalXP: number; streak: number; coins: number }) {
+  const { level, currentXP, nextLevelXP } = getLevelInfo(totalXP);
+  const { icon: flameIcon, label: flameLabel } = streakEmoji(streak);
+  const xpPct = Math.round((currentXP / nextLevelXP) * 100);
+
+  return (
+    <div className="px-4 py-3 border-b border-[#252547] bg-[#16213e]">
+      {/* Level + XP bar */}
+      <div className="flex items-center gap-3 mb-2">
+        <div style={{ fontFamily: "'Press Start 2P', monospace", fontSize: "13px", color: "#ffd93d" }}>
+          LVL {level}
+        </div>
+        <div className="flex-1">
+          <div className="flex gap-[2px]">
+            {Array.from({ length: 20 }).map((_, i) => {
+              const filled = i < Math.round((currentXP / nextLevelXP) * 20);
+              return <div key={i} className="h-2 flex-1" style={{ backgroundColor: filled ? "#ffd93d" : "#252547" }} />;
+            })}
+          </div>
+          <div className="flex justify-between text-xs text-[#8891a3] mt-0.5">
+            <span>{currentXP} XP</span>
+            <span>{nextLevelXP} XP</span>
+          </div>
+        </div>
+      </div>
+      {/* Streak + Coins */}
+      <div className="flex items-center gap-4 text-sm">
+        <span style={{ color: "#ff6b35" }} title={`${streak}-day streak: ${flameLabel}`}>
+          {flameIcon} {streak}d
+        </span>
+        <span style={{ color: "#f4a300" }}>🪙 {coins}</span>
+        <span className="text-[#8891a3] text-xs">{xpPct}% to Lv.{level + 1}</span>
+      </div>
+    </div>
+  );
+}
+
+// ─── SIDEBAR ──────────────────────────────────────────────────
+
+const NAV_CORE = [{ id: "dashboard" as Screen, label: "Command Center", icon: LayoutDashboard }];
+const NAV_VIEWS = [
+  { id: "kanban" as Screen,       label: "Kanban",          icon: Grid3X3    },
+  { id: "list" as Screen,         label: "List",            icon: List       },
+  { id: "table" as Screen,        label: "Table",           icon: Table2     },
+  { id: "calendar" as Screen,     label: "Calendar",        icon: Calendar   },
+  { id: "timeline" as Screen,     label: "Timeline",        icon: GitBranch  },
+  { id: "today" as Screen,        label: "Today",           icon: Sun        },
+  { id: "inbox-view" as Screen,   label: "Inbox",           icon: Inbox      },
+  { id: "waiting" as Screen,      label: "Waiting Ext.",    icon: Clock      },
+  { id: "focus" as Screen,        label: "Focus",           icon: Crosshair  },
+  { id: "project-group" as Screen,label: "By Project",      icon: FolderOpen },
+  { id: "archive" as Screen,      label: "Hall of Records", icon: BookOpen   },
+];
+const NAV_MANAGE = [
+  { id: "projects" as Screen,     label: "Projects",        icon: Folder     },
+  { id: "sprints" as Screen,      label: "Sprints",         icon: Zap        },
+  { id: "achievements" as Screen, label: "Achievements",    icon: Trophy     },
+  { id: "statistics" as Screen,   label: "Progress",        icon: BarChart2  },
+  { id: "settings" as Screen,     label: "Settings",        icon: Settings   },
+];
+
+function Sidebar({ active, onNavigate, tasks, onNewTask, onCommandPalette, totalXP, streak, coins }: {
+  active: Screen; onNavigate: (s: Screen) => void; tasks: Task[];
+  onNewTask: () => void; onCommandPalette: () => void;
+  totalXP: number; streak: number; coins: number;
+}) {
+  const counts: Partial<Record<Screen, number>> = {
+    "inbox-view": tasks.filter(t => t.status === "inbox").length,
+    waiting:      tasks.filter(t => t.status === "waiting-external").length,
+    focus:        tasks.filter(t => (t.priority === "p0" || t.priority === "p1") && t.status === "ready").length,
+    today:        tasks.filter(t => isDueToday(t.dueDate) && t.status !== "done" && t.status !== "archived").length,
+  };
+
+  const NavItem = ({ id, label, icon: Icon }: { id: Screen; label: string; icon: React.ComponentType<{ size?: number }> }) => {
+    const isActive = active === id;
+    const count = counts[id];
+    return (
+      <button onClick={() => onNavigate(id)}
+        className={clsx(
+          "w-full flex items-center gap-2 px-3 py-1 text-left text-base font-['VT323'] transition-all duration-75",
+          isActive
+            ? "bg-[#0f3460] text-[#ffd93d] border-l-2 border-[#ffd93d]"
+            : "text-[#8891a3] border-l-2 border-transparent hover:text-[#eaeaea] hover:bg-[#0f3460]/50"
+        )}>
+        <Icon size={13} />
+        <span className="flex-1">{label}</span>
+        {count !== undefined && count > 0 && (
+          <span className="text-xs px-1 bg-[#0f3460] border border-[#252547]" style={{ color: id === "waiting" ? "#a29bfe" : id === "focus" ? "#f6c90e" : "#e94560" }}>{count}</span>
+        )}
+      </button>
+    );
+  };
+
+  return (
+    <aside className="w-52 flex-shrink-0 bg-[#16213e] border-r-2 border-[#252547] flex flex-col h-full overflow-y-auto">
+      {/* Logo */}
+      <div className="px-4 py-4 border-b border-[#252547]">
+        <div className="mb-0.5" style={{ fontFamily: "'Press Start 2P', monospace", fontSize: "12px", color: "#e94560" }}>
+          ⚔ ATLAS
+        </div>
+        <div className="text-[#8891a3] text-sm">Your Second Brain</div>
+      </div>
+
+      {/* Gamification strip */}
+      <GamificationStrip totalXP={totalXP} streak={streak} coins={coins} />
+
+      {/* Search */}
+      <div className="px-3 py-2 border-b border-[#252547]">
+        <button onClick={onCommandPalette}
+          className="w-full flex items-center gap-2 px-2 py-1 bg-[#0f3460] border border-[#252547] text-[#8891a3] text-sm hover:border-[#e94560] hover:text-[#eaeaea] transition-colors font-['VT323']">
+          <Search size={11} /><span>Search... Ctrl+K</span>
+        </button>
+      </div>
+
+      {/* Nav */}
+      <nav className="flex-1 py-1">
+        <div className="px-3 py-1 text-xs text-[#252547] tracking-widest font-['VT323']">── CORE ──</div>
+        {NAV_CORE.map(i => <NavItem key={i.id} {...i} />)}
+        <div className="px-3 py-1 mt-1 text-xs text-[#252547] tracking-widest font-['VT323']">── VIEWS ──</div>
+        {NAV_VIEWS.map(i => <NavItem key={i.id} {...i} />)}
+        <div className="px-3 py-1 mt-1 text-xs text-[#252547] tracking-widest font-['VT323']">── MANAGE ──</div>
+        {NAV_MANAGE.map(i => <NavItem key={i.id} {...i} />)}
+      </nav>
+
+      {/* New Quest CTA */}
+      <div className="p-3 border-t border-[#252547]">
+        <PixelBtn onClick={onNewTask} className="w-full justify-center">
+          <Plus size={13} /> New Quest
+        </PixelBtn>
+      </div>
+    </aside>
+  );
+}
+
+// ─── DASHBOARD (Command Center) ───────────────────────────────
+// Layout from design.md §10: top strip (level+XP+streak) → 4 stats → today list → sprint bar
+
+function DashboardView({ tasks, sprints, projects, onTaskClick, onNavigate, totalXP, streak, coins }: {
+  tasks: Task[]; sprints: Sprint[]; projects: Project[];
+  onTaskClick: (t: Task) => void; onNavigate: (s: Screen) => void;
+  totalXP: number; streak: number; coins: number;
+}) {
+  const activeSprint = sprints.find(s => s.status === "active");
+  const sprintTasks = activeSprint ? tasks.filter(t => activeSprint.taskIds.includes(t.id)) : [];
+  const sprintDone = sprintTasks.filter(t => t.status === "done").length;
+
+  const dueToday = tasks.filter(t => isDueToday(t.dueDate) && t.status !== "done" && t.status !== "archived").length;
+  const overdue = tasks.filter(t => isOverdue(t.dueDate) && t.status !== "done" && t.status !== "archived").length;
+  const blocked = tasks.filter(t => t.status === "blocked").length;
+  const waitingExt = tasks.filter(t => t.status === "waiting-external").length;
+
+  const todayQuests = tasks
+    .filter(t => (isDueToday(t.dueDate) || t.status === "in-progress") && t.status !== "done" && t.status !== "archived")
+    .slice(0, 6);
+
+  const { level, currentXP, nextLevelXP } = getLevelInfo(totalXP);
+  const { icon: flameIcon, label: flameLabel } = streakEmoji(streak);
+
+  return (
+    <div className="p-6 space-y-5 overflow-y-auto h-full">
+      {/* Top strip: level, XP, streak, coins (design.md §10) */}
+      <PixelPanel className="p-4">
+        <div className="flex items-center gap-6 flex-wrap">
+          <div>
+            <div style={{ fontFamily: "'Press Start 2P', monospace", fontSize: "24px", color: "#ffd93d" }}>
+              {level}
+            </div>
+            <div className="text-xs text-[#8891a3] tracking-widest mt-1">LEVEL</div>
+          </div>
+          <div className="flex-1 min-w-[160px]">
+            <div className="flex justify-between text-sm text-[#8891a3] mb-1">
+              <span>XP Progress</span>
+              <span className="text-[#ffd93d]">{currentXP} / {nextLevelXP}</span>
+            </div>
+            <div className="flex gap-[2px] h-4">
+              {Array.from({ length: 24 }).map((_, i) => {
+                const filled = i < Math.round((currentXP / nextLevelXP) * 24);
+                return <div key={i} className="flex-1" style={{ backgroundColor: filled ? "#ffd93d" : "#252547" }} />;
+              })}
+            </div>
+          </div>
+          <div className="text-center">
+            <div className="text-2xl mb-0.5" title={`${streak}-day streak: ${flameLabel}`}>{flameIcon}</div>
+            <div className="text-xs text-[#8891a3]">{streak}d streak</div>
+          </div>
+          <div className="text-center">
+            <div className="text-xl mb-0.5">🪙 <span style={{ color: "#f4a300", fontFamily: "'Press Start 2P', monospace", fontSize: "14px" }}>{coins}</span></div>
+            <div className="text-xs text-[#8891a3]">coins</div>
+          </div>
+        </div>
+      </PixelPanel>
+
+      {/* 4 stat panels: Due Today / Overdue / Blocked / Waiting Ext. (design.md §10 + product.md §9.4) */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        {[
+          { label: "DUE TODAY",      value: dueToday,   color: "#f6c90e", shape: "◆", onClick: () => onNavigate("today") },
+          { label: "OVERDUE",        value: overdue,    color: "#e94560", shape: "▲", onClick: () => onNavigate("list") },
+          { label: "BLOCKED",        value: blocked,    color: "#e94560", shape: "✕", onClick: () => onNavigate("list") },
+          { label: "WAITING EXT.",   value: waitingExt, color: "#a29bfe", shape: "⏸", onClick: () => onNavigate("waiting") },
+        ].map(stat => (
+          <button key={stat.label} onClick={stat.onClick}
+            className="bg-[#0f3460] border-2 border-[#252547] p-4 text-left hover:border-[#e94560] transition-colors group">
+            <div style={{ fontFamily: "'Press Start 2P', monospace", fontSize: "20px", color: stat.color }}>
+              {stat.shape} {stat.value}
+            </div>
+            <div className="text-xs text-[#8891a3] tracking-widest mt-2 group-hover:text-[#eaeaea] transition-colors">{stat.label}</div>
+          </button>
+        ))}
+      </div>
+
+      <div className="grid md:grid-cols-2 gap-5">
+        {/* Today's Quest list (design.md §10) */}
+        <PixelPanel className="p-4">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-[#f6c90e] text-base tracking-widest">◆ TODAY'S QUESTS</span>
+            <PixelBtn variant="ghost" size="sm" onClick={() => onNavigate("today")}>All <ChevronRight size={11} /></PixelBtn>
+          </div>
+          {todayQuests.length === 0 ? (
+            <p className="text-[#8891a3] text-base py-6 text-center">[ ALL CLEAR ]</p>
+          ) : (
+            <div className="space-y-0">
+              {todayQuests.map(t => (
+                <div key={t.id} onClick={() => onTaskClick(t)}
+                  className="flex items-center gap-2 py-1.5 border-b border-[#252547] cursor-pointer hover:bg-[#16213e] px-1 transition-colors group">
+                  <PriorityPip priority={t.priority} />
+                  <StatusBadge status={t.status} />
+                  <span className="flex-1 text-base text-[#eaeaea] group-hover:text-[#4ecca3] truncate transition-colors">{t.title}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </PixelPanel>
+
+        {/* Waiting External */}
+        <PixelPanel className="p-4">
+          <div className="flex items-center justify-between mb-3">
+            <span style={{ color: "#a29bfe" }} className="text-base tracking-widest">⏸ WAITING EXTERNAL</span>
+            <PixelBtn variant="ghost" size="sm" onClick={() => onNavigate("waiting")}>All <ChevronRight size={11} /></PixelBtn>
+          </div>
+          {waitingExt === 0 ? (
+            <p className="text-[#8891a3] text-base py-6 text-center">[ NONE BLOCKED ]</p>
+          ) : (
+            <div className="space-y-0">
+              {tasks.filter(t => t.status === "waiting-external").slice(0, 5).map(t => (
+                <div key={t.id} onClick={() => onTaskClick(t)}
+                  className="flex items-center gap-2 py-1.5 border-b border-[#252547] cursor-pointer hover:bg-[#16213e] px-1 transition-colors group">
+                  <PriorityPip priority={t.priority} />
+                  <span className="flex-1 text-base text-[#eaeaea] group-hover:text-[#a29bfe] truncate transition-colors">{t.title}</span>
+                  <span className="text-xs text-[#a29bfe] truncate max-w-[80px]">{t.waitingOn}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </PixelPanel>
+      </div>
+
+      {/* Sprint progress bar (design.md §10) */}
+      {activeSprint && (
+        <PixelPanel variant="gold" className="p-4">
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <div className="text-xs text-[#8891a3] tracking-widest mb-1">▸ ACTIVE SPRINT</div>
+              <div className="text-xl text-[#ffd93d]">{activeSprint.name}</div>
+            </div>
+            <PixelBtn variant="secondary" size="sm" onClick={() => onNavigate("sprints")}>
+              Details <ChevronRight size={11} />
+            </PixelBtn>
+          </div>
+          <p className="text-base text-[#8891a3] mb-3 italic">"{activeSprint.goal}"</p>
+          <PixelProgress value={sprintDone} max={Math.max(sprintTasks.length, 1)} color="#4ecca3" blocks={20} />
+          <div className="flex gap-5 mt-2 text-sm text-[#8891a3]">
+            <span>{fmtDate(activeSprint.startDate)} → {fmtDate(activeSprint.endDate)}</span>
+            <span>{sprintTasks.length - sprintDone} quests remaining</span>
+          </div>
+        </PixelPanel>
+      )}
+    </div>
+  );
+}
+
+// ─── KANBAN VIEW ──────────────────────────────────────────────
+
+function KanbanView({ tasks, onTaskClick, onNewTask }: { tasks: Task[]; onTaskClick: (t: Task) => void; onNewTask: () => void }) {
+  const cols: Status[] = ["inbox", "todo", "ready", "in-progress", "blocked", "waiting-external", "testing", "done"];
+
+  return (
+    <div className="flex flex-col h-full">
+      <div className="px-6 py-3 border-b border-[#252547] flex items-center justify-between bg-[#16213e]">
+        <h1 style={{ fontFamily: "'Press Start 2P', monospace", fontSize: "11px", color: "#e94560" }}>⊞ KANBAN BOARD</h1>
+        <PixelBtn onClick={onNewTask} size="sm"><Plus size={12} /> New Quest</PixelBtn>
+      </div>
+      <div className="flex-1 overflow-x-auto">
+        <div className="flex gap-3 p-4 h-full min-w-max">
+          {cols.map(status => {
+            const col = tasks.filter(t => t.status === status);
+            const { label, color } = STATUS_CFG[status];
+            return (
+              <div key={status} className="flex flex-col w-60 flex-shrink-0">
+                <div className="flex items-center gap-2 mb-3 pb-2 border-b-2" style={{ borderColor: color }}>
+                  <span style={{ color }} className="text-base">{STATUS_CFG[status].shape}</span>
+                  <span className="text-sm font-['VT323'] tracking-widest" style={{ color }}>{label.toUpperCase()}</span>
+                  <span className="text-xs text-[#8891a3]">({col.length})</span>
+                </div>
+                <div className="flex-1 space-y-2 overflow-y-auto pr-0.5">
+                  {col.map(t => <TaskCard key={t.id} task={t} onClick={() => onTaskClick(t)} />)}
+                  {col.length === 0 && (
+                    <div className="text-[#252547] text-base text-center py-8 border-2 border-dashed border-[#252547]">[ EMPTY ]</div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── LIST VIEW ────────────────────────────────────────────────
+
+function ListView({ tasks, onTaskClick, onNewTask }: { tasks: Task[]; onTaskClick: (t: Task) => void; onNewTask: () => void }) {
+  const [filterStatus, setFilterStatus] = useState<Status | "all">("all");
+  const [sort, setSort] = useState<"priority" | "due" | "status">("priority");
+
+  const filtered = useMemo(() => {
+    let t = filterStatus === "all" ? tasks.filter(t => t.status !== "archived") : tasks.filter(t => t.status === filterStatus);
+    if (sort === "priority") {
+      const o: Priority[] = ["p0", "p1", "p2", "p3", "p4"];
+      return [...t].sort((a, b) => o.indexOf(a.priority) - o.indexOf(b.priority));
+    }
+    if (sort === "due") return [...t].sort((a, b) => (a.dueDate || "z").localeCompare(b.dueDate || "z"));
+    return [...t].sort((a, b) => a.status.localeCompare(b.status));
+  }, [tasks, filterStatus, sort]);
+
+  const statuses: Array<Status | "all"> = ["all", "inbox", "todo", "ready", "in-progress", "blocked", "waiting-external", "testing", "done"];
+
+  return (
+    <div className="flex flex-col h-full">
+      <div className="px-6 py-3 border-b border-[#252547] bg-[#16213e] flex items-center justify-between gap-3 flex-wrap">
+        <h1 style={{ fontFamily: "'Press Start 2P', monospace", fontSize: "11px", color: "#e94560" }}>≡ LIST VIEW</h1>
+        <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex gap-1 flex-wrap">
+            {statuses.map(s => (
+              <button key={s} onClick={() => setFilterStatus(s)}
+                className={clsx("px-2 py-0 text-sm font-['VT323'] border transition-colors",
+                  filterStatus === s ? "bg-[#0f3460] border-[#e94560] text-[#e94560]" : "border-[#252547] text-[#8891a3] hover:border-[#e94560]"
+                )}>
+                {s === "all" ? "ALL" : STATUS_CFG[s].shape + " " + STATUS_CFG[s].label.toUpperCase()}
+              </button>
+            ))}
+          </div>
+          <PixelSelect value={sort} onChange={e => setSort(e.target.value as typeof sort)} className="!w-auto !py-0.5">
+            <option value="priority">Priority</option>
+            <option value="due">Due Date</option>
+            <option value="status">Status</option>
+          </PixelSelect>
+          <PixelBtn onClick={onNewTask} size="sm"><Plus size={12} /> New</PixelBtn>
+        </div>
+      </div>
+      <div className="flex-1 overflow-y-auto">
+        {filtered.map(t => <TaskRow key={t.id} task={t} onClick={() => onTaskClick(t)} />)}
+        {filtered.length === 0 && <div className="text-center text-[#8891a3] text-xl py-20">[ NO QUESTS FOUND ]</div>}
+      </div>
+    </div>
+  );
+}
+
+// ─── TABLE VIEW ───────────────────────────────────────────────
+
+function TableView({ tasks, onTaskClick }: { tasks: Task[]; onTaskClick: (t: Task) => void }) {
+  const [sortCol, setSortCol] = useState("priority");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+  const priorityOrder: Priority[] = ["p0", "p1", "p2", "p3", "p4"];
+
+  const rows = useMemo(() => {
+    const ts = tasks.filter(t => t.status !== "archived");
+    return [...ts].sort((a, b) => {
+      let av: string | number = "", bv: string | number = "";
+      if (sortCol === "priority") { av = priorityOrder.indexOf(a.priority); bv = priorityOrder.indexOf(b.priority); }
+      else if (sortCol === "title") { av = a.title.toLowerCase(); bv = b.title.toLowerCase(); }
+      else if (sortCol === "status") { av = a.status; bv = b.status; }
+      else if (sortCol === "due") { av = a.dueDate || "z"; bv = b.dueDate || "z"; }
+      else if (sortCol === "sp") { av = a.storyPoints; bv = b.storyPoints; }
+      return sortDir === "asc" ? (av < bv ? -1 : av > bv ? 1 : 0) : (av > bv ? -1 : av < bv ? 1 : 0);
+    });
+  }, [tasks, sortCol, sortDir]);
+
+  const Col = ({ col, children }: { col: string; children: React.ReactNode }) => (
+    <th onClick={() => { setSortDir(sortCol === col && sortDir === "asc" ? "desc" : "asc"); setSortCol(col); }}
+      className="px-3 py-2 text-left text-xs text-[#8891a3] tracking-widest cursor-pointer hover:text-[#4ecca3] whitespace-nowrap select-none">
+      {children} {sortCol === col ? (sortDir === "asc" ? "▲" : "▼") : ""}
+    </th>
+  );
+
+  return (
+    <div className="flex flex-col h-full">
+      <div className="px-6 py-3 border-b border-[#252547] bg-[#16213e]">
+        <h1 style={{ fontFamily: "'Press Start 2P', monospace", fontSize: "11px", color: "#e94560" }}>⊟ TABLE VIEW</h1>
+      </div>
+      <div className="flex-1 overflow-auto">
+        <table className="w-full border-collapse">
+          <thead className="sticky top-0 bg-[#1a1a2e] border-b-2 border-[#252547]">
+            <tr>
+              <Col col="priority">PRIORITY</Col>
+              <Col col="status">STATUS</Col>
+              <th className="px-3 py-2 text-left text-xs text-[#8891a3]">TYPE</th>
+              <Col col="title">TITLE</Col>
+              <th className="px-3 py-2 text-left text-xs text-[#8891a3]">PROJECT</th>
+              <Col col="due">DUE</Col>
+              <Col col="sp">SP</Col>
+              <th className="px-3 py-2 text-left text-xs text-[#8891a3]">EFFORT</th>
+              <th className="px-3 py-2 text-left text-xs text-[#8891a3]">REPORTER</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((t, i) => {
+              const overdue = isOverdue(t.dueDate) && t.status !== "done";
+              return (
+                <tr key={t.id} onClick={() => onTaskClick(t)}
+                  className={clsx("border-b border-[#252547] cursor-pointer hover:bg-[#16213e] transition-colors", i % 2 === 0 ? "" : "bg-[#0f3460]/30")}>
+                  <td className="px-3 py-2"><PriorityBadge priority={t.priority} /></td>
+                  <td className="px-3 py-2"><StatusBadge status={t.status} /></td>
+                  <td className="px-3 py-2 text-base">{TASK_TYPE_CFG[t.type].emoji}</td>
+                  <td className="px-3 py-2 text-base text-[#eaeaea] max-w-xs truncate">{t.title}</td>
+                  <td className="px-3 py-2 text-sm text-[#8891a3] whitespace-nowrap">{t.project}</td>
+                  <td className="px-3 py-2 text-sm whitespace-nowrap" style={{ color: overdue ? "#e94560" : "#8891a3" }}>{fmtDate(t.dueDate)}</td>
+                  <td className="px-3 py-2 text-sm text-[#8891a3]">{t.storyPoints}</td>
+                  <td className="px-3 py-2 text-sm text-[#8891a3] uppercase">{t.effort}</td>
+                  <td className="px-3 py-2 text-sm text-[#8891a3] capitalize">{t.reporter}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+// ─── CALENDAR VIEW ────────────────────────────────────────────
+
+function CalendarView({ tasks, onTaskClick }: { tasks: Task[]; onTaskClick: (t: Task) => void }) {
+  const [viewDate, setViewDate] = useState(new Date(2026, 6, 1));
+  const year = viewDate.getFullYear(), month = viewDate.getMonth();
+  const firstDay = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const monthName = viewDate.toLocaleDateString("en-US", { month: "long", year: "numeric" });
+
+  const tasksByDate = useMemo(() => {
+    const map: Record<string, Task[]> = {};
+    tasks.forEach(t => { if (t.dueDate) { if (!map[t.dueDate]) map[t.dueDate] = []; map[t.dueDate].push(t); } });
+    return map;
+  }, [tasks]);
+
+  return (
+    <div className="flex flex-col h-full">
+      <div className="px-6 py-3 border-b border-[#252547] bg-[#16213e] flex items-center gap-4">
+        <h1 style={{ fontFamily: "'Press Start 2P', monospace", fontSize: "11px", color: "#e94560" }}>◫ CALENDAR</h1>
+        <div className="flex items-center gap-2 ml-auto">
+          <PixelBtn variant="secondary" size="sm" onClick={() => setViewDate(new Date(year, month - 1, 1))}><ChevronLeft size={12} /></PixelBtn>
+          <span className="text-base text-[#eaeaea] min-w-[180px] text-center">{monthName}</span>
+          <PixelBtn variant="secondary" size="sm" onClick={() => setViewDate(new Date(year, month + 1, 1))}><ChevronRight size={12} /></PixelBtn>
+        </div>
+      </div>
+      <div className="flex-1 overflow-y-auto p-4">
+        <div className="grid grid-cols-7 gap-1 mb-2">
+          {["SUN","MON","TUE","WED","THU","FRI","SAT"].map(d => (
+            <div key={d} className="text-center text-xs text-[#8891a3] py-1 tracking-widest">{d}</div>
+          ))}
+        </div>
+        <div className="grid grid-cols-7 gap-1">
+          {Array.from({ length: firstDay }).map((_, i) => <div key={`e${i}`} />)}
+          {Array.from({ length: daysInMonth }).map((_, i) => {
+            const day = i + 1;
+            const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+            const dayTasks = tasksByDate[dateStr] || [];
+            const isToday = dateStr === new Date().toISOString().slice(0, 10);
+            return (
+              <div key={day} className={clsx("min-h-[72px] p-1.5 border border-[#252547] bg-[#0f3460]", isToday && "border-[#ffd93d]")}>
+                <div className={clsx("text-sm mb-1", isToday ? "text-[#ffd93d]" : "text-[#8891a3]")}>{day}</div>
+                {dayTasks.slice(0, 2).map(t => (
+                  <div key={t.id} onClick={() => onTaskClick(t)}
+                    className="text-xs px-1 mb-0.5 cursor-pointer hover:bg-[#16213e] transition-colors truncate"
+                    style={{ color: PRIORITY_CFG[t.priority].color, borderLeft: `2px solid ${PRIORITY_CFG[t.priority].color}` }}>
+                    {TASK_TYPE_CFG[t.type].emoji} {t.title}
+                  </div>
+                ))}
+                {dayTasks.length > 2 && <div className="text-xs text-[#8891a3]">+{dayTasks.length - 2}</div>}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── TIMELINE VIEW ────────────────────────────────────────────
+
+function TimelineView({ tasks, projects, onTaskClick }: { tasks: Task[]; projects: Project[]; onTaskClick: (t: Task) => void }) {
+  const start = new Date(2026, 6, 21), totalDays = 28;
+  const active = tasks.filter(t => !["archived", "done"].includes(t.status) && t.dueDate);
+
+  const tasksByProject = useMemo(() => {
+    const map: Record<string, Task[]> = {};
+    active.forEach(t => { if (!map[t.projectId]) map[t.projectId] = []; map[t.projectId].push(t); });
+    return map;
+  }, [active]);
+
+  function dayOffset(d: string) {
+    return Math.max(0, Math.min(totalDays - 1, Math.floor((new Date(d).getTime() - start.getTime()) / 86400000)));
+  }
+
+  return (
+    <div className="flex flex-col h-full">
+      <div className="px-6 py-3 border-b border-[#252547] bg-[#16213e]">
+        <h1 style={{ fontFamily: "'Press Start 2P', monospace", fontSize: "11px", color: "#e94560" }}>⇥ TIMELINE</h1>
+      </div>
+      <div className="flex-1 overflow-auto p-6">
+        <div className="flex mb-3 ml-36 border-b border-[#252547] pb-2">
+          {Array.from({ length: 4 }).map((_, i) => {
+            const d = new Date(start); d.setDate(start.getDate() + i * 7);
+            return <div key={i} className="flex-1 text-xs text-[#8891a3] border-l border-[#252547] pl-1">{d.toLocaleDateString("en-US", { month: "short", day: "numeric" })}</div>;
+          })}
+        </div>
+        {projects.map(p => {
+          const ptasks = tasksByProject[p.id];
+          if (!ptasks) return null;
+          return (
+            <div key={p.id} className="flex items-center mb-2">
+              <div className="w-36 flex-shrink-0 text-sm truncate flex items-center gap-1" style={{ color: p.color }}>
+                <span>{p.emoji}</span>{p.name}
+              </div>
+              <div className="flex-1 relative h-7">
+                {ptasks.map(t => {
+                  const pct = (dayOffset(t.dueDate!) / totalDays) * 100;
+                  return (
+                    <div key={t.id} onClick={() => onTaskClick(t)} title={t.title}
+                      className="absolute top-1 h-5 min-w-[6px] cursor-pointer hover:opacity-70 transition-opacity flex items-center overflow-hidden"
+                      style={{ left: `${pct}%`, backgroundColor: PRIORITY_CFG[t.priority].color, border: `1px solid ${STATUS_CFG[t.status].color}` }}>
+                      <span className="ml-1 text-xs text-[#1a1a2e] whitespace-nowrap hidden md:inline font-bold">{t.title.slice(0, 18)}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })}
+        <div className="mt-4 text-sm text-[#8891a3] border border-[#252547] p-3 bg-[#0f3460]">
+          Dots = due dates. Border = status color. Fill = priority. Click any to open.
+          Priority: <span style={{ color: "#e94560" }}>■ P0</span> &nbsp;
+          <span style={{ color: "#f6c90e" }}>▲ P1</span> &nbsp;
+          <span style={{ color: "#4ecca3" }}>● P2</span> &nbsp;
+          <span style={{ color: "#8891a3" }}>○ P3</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── FILTERED VIEWS ───────────────────────────────────────────
+
+function FilteredView({ title, color = "#e94560", icon: Icon, description, tasks, onTaskClick, onNewTask, emptyMsg }: {
+  title: string; color?: string; icon: React.ComponentType<{ size?: number }>;
+  description: string; tasks: Task[]; onTaskClick: (t: Task) => void; onNewTask?: () => void; emptyMsg: string;
+}) {
+  return (
+    <div className="flex flex-col h-full">
+      <div className="px-6 py-3 border-b border-[#252547] bg-[#16213e] flex items-center justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-2 mb-0.5">
+            <Icon size={14} />
+            <h1 style={{ fontFamily: "'Press Start 2P', monospace", fontSize: "11px", color }}>{title}</h1>
+          </div>
+          <p className="text-[#8891a3] text-sm">{description}</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-base font-['VT323']" style={{ color }}>({tasks.length})</span>
+          {onNewTask && <PixelBtn onClick={onNewTask} size="sm"><Plus size={12} /> New</PixelBtn>}
+        </div>
+      </div>
+      <div className="flex-1 overflow-y-auto">
+        {tasks.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-full text-[#8891a3]">
+            <div className="text-3xl mb-3">{emptyMsg}</div>
+            <div className="text-base">Clear skies, adventurer.</div>
+          </div>
+        ) : tasks.map(t => <TaskRow key={t.id} task={t} onClick={() => onTaskClick(t)} />)}
+      </div>
+    </div>
+  );
+}
+
+// ─── PROJECT GROUP VIEW ───────────────────────────────────────
+
+function ProjectGroupView({ tasks, projects, onTaskClick }: { tasks: Task[]; projects: Project[]; onTaskClick: (t: Task) => void }) {
+  const active = tasks.filter(t => t.status !== "archived");
+  return (
+    <div className="flex flex-col h-full">
+      <div className="px-6 py-3 border-b border-[#252547] bg-[#16213e]">
+        <h1 style={{ fontFamily: "'Press Start 2P', monospace", fontSize: "11px", color: "#e94560" }}>◧ BY PROJECT</h1>
+      </div>
+      <div className="flex-1 overflow-y-auto p-6 space-y-6">
+        {projects.map(p => {
+          const ptasks = active.filter(t => t.projectId === p.id);
+          return (
+            <div key={p.id}>
+              <div className="flex items-center gap-3 mb-2 pb-2 border-b-2" style={{ borderColor: p.color }}>
+                <span className="text-xl">{p.emoji}</span>
+                <div>
+                  <span className="text-xl" style={{ color: p.color }}>{p.name}</span>
+                  <span className="text-[#8891a3] text-sm ml-2">{p.category}</span>
+                </div>
+                <span className="text-[#8891a3] text-sm">({ptasks.length})</span>
+                <div className="ml-auto">
+                  <PixelProgress value={p.completedTasks} max={p.totalTasks} color={p.color} blocks={10} />
+                </div>
+              </div>
+              {ptasks.length === 0 ? (
+                <div className="text-[#8891a3] text-sm py-3 text-center">No active quests</div>
+              ) : ptasks.map(t => <TaskRow key={t.id} task={t} onClick={() => onTaskClick(t)} />)}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ─── HALL OF RECORDS (Archive) ────────────────────────────────
+
+function ArchiveView({ tasks, onTaskClick }: { tasks: Task[]; onTaskClick: (t: Task) => void }) {
+  const archived = tasks.filter(t => t.status === "done" || t.status === "archived")
+    .sort((a, b) => new Date(b.completedAt || b.createdAt).getTime() - new Date(a.completedAt || a.createdAt).getTime());
+
+  return (
+    <div className="flex flex-col h-full">
+      <div className="px-6 py-3 border-b border-[#252547] bg-[#16213e]">
+        <h1 style={{ fontFamily: "'Press Start 2P', monospace", fontSize: "11px", color: "#e94560" }}>📖 HALL OF RECORDS</h1>
+        <p className="text-[#8891a3] text-sm mt-1">{archived.length} completed quests chronicled</p>
+      </div>
+      <div className="flex-1 overflow-y-auto">
+        {archived.map(t => {
+          const xp = calcTaskXP(t.priority, t.storyPoints, !isOverdue(t.completedAt));
+          return (
+            <div key={t.id} onClick={() => onTaskClick(t)}
+              className="flex items-center gap-3 px-4 py-2.5 border-b border-[#252547] hover:bg-[#16213e] cursor-pointer group transition-colors opacity-70 hover:opacity-100">
+              <span style={{ color: "#52c41a" }}>✓</span>
+              <span className="text-base">{TASK_TYPE_CFG[t.type].emoji}</span>
+              <span className="flex-1 text-base text-[#8891a3] group-hover:text-[#eaeaea] truncate transition-colors line-through">{t.title}</span>
+              <span className="text-sm text-[#8891a3]">{t.project}</span>
+              <span className="text-sm text-[#ffd93d]">+{xp} XP</span>
+              <span className="text-sm text-[#52c41a]">{fmtDate(t.completedAt)}</span>
+            </div>
+          );
+        })}
+        {archived.length === 0 && <div className="text-center text-[#8891a3] text-xl py-20">[ HALL IS EMPTY ]</div>}
+      </div>
+    </div>
+  );
+}
+
+// ─── PROJECTS MANAGEMENT ──────────────────────────────────────
+
+function ProjectsView({ projects, tasks }: { projects: Project[]; tasks: Task[] }) {
+  return (
+    <div className="flex flex-col h-full">
+      <div className="px-6 py-3 border-b border-[#252547] bg-[#16213e] flex items-center justify-between">
+        <h1 style={{ fontFamily: "'Press Start 2P', monospace", fontSize: "11px", color: "#e94560" }}>◈ PROJECTS</h1>
+        <PixelBtn size="sm"><Plus size={12} /> New Project</PixelBtn>
+      </div>
+      <div className="flex-1 overflow-y-auto p-6">
+        <div className="grid md:grid-cols-2 gap-4">
+          {projects.map(p => {
+            const ptasks = tasks.filter(t => t.projectId === p.id);
+            const inProg = ptasks.filter(t => t.status === "in-progress").length;
+            const waiting = ptasks.filter(t => t.status === "waiting-external").length;
+            const blocked = ptasks.filter(t => t.status === "blocked").length;
+            const pct = p.totalTasks > 0 ? Math.round((p.completedTasks / p.totalTasks) * 100) : 0;
+            const statColors: Record<string, string> = { active: "#4ecca3", "on-hold": "#f6c90e", completed: "#8891a3" };
+            return (
+              <PixelPanel key={p.id} className="p-5" style={{ borderLeftWidth: "4px", borderLeftColor: p.color, borderColor: p.color } as React.CSSProperties}>
+                <div className="flex items-start justify-between mb-3">
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-xl">{p.emoji}</span>
+                      <span className="text-xl text-[#eaeaea]">{p.name}</span>
+                      <span className="text-xs text-[#8891a3]">{p.category}</span>
+                    </div>
+                    <p className="text-sm text-[#8891a3]">{p.description}</p>
+                  </div>
+                  <span className="text-xs border px-1.5 py-0.5 whitespace-nowrap" style={{ color: statColors[p.status], borderColor: statColors[p.status] }}>
+                    {p.status.toUpperCase()}
+                  </span>
+                </div>
+                <PixelProgress value={p.completedTasks} max={p.totalTasks} color={p.color} blocks={16} />
+                <div className="text-sm text-[#8891a3] mt-1 mb-3">{pct}% — {p.completedTasks}/{p.totalTasks} quests</div>
+                <div className="flex gap-4 text-sm flex-wrap">
+                  {inProg > 0 && <span style={{ color: "#f6c90e" }}>▶ {inProg} in progress</span>}
+                  {waiting > 0 && <span style={{ color: "#a29bfe" }}>⏸ {waiting} waiting</span>}
+                  {blocked > 0 && <span style={{ color: "#e94560" }}>✕ {blocked} blocked</span>}
+                </div>
+              </PixelPanel>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── SPRINTS VIEW ─────────────────────────────────────────────
+
+function SprintsView({ sprints, tasks }: { sprints: Sprint[]; tasks: Task[] }) {
+  const [selected, setSelected] = useState(sprints.find(s => s.status === "active")?.id || sprints[0]?.id);
+  const sprint = sprints.find(s => s.id === selected)!;
+  const sprintTasks = sprint ? tasks.filter(t => sprint.taskIds.includes(t.id)) : [];
+  const done = sprintTasks.filter(t => t.status === "done").length;
+  const statusColors: Record<string, string> = { active: "#4ecca3", completed: "#8891a3", planning: "#a29bfe" };
+
+  return (
+    <div className="flex flex-col h-full">
+      <div className="px-6 py-3 border-b border-[#252547] bg-[#16213e]">
+        <h1 style={{ fontFamily: "'Press Start 2P', monospace", fontSize: "11px", color: "#e94560" }}>⚡ SPRINTS</h1>
+      </div>
+      <div className="flex flex-1 overflow-hidden">
+        <div className="w-60 flex-shrink-0 border-r border-[#252547] overflow-y-auto">
+          {sprints.map(s => (
+            <button key={s.id} onClick={() => setSelected(s.id)}
+              className={clsx("w-full text-left px-4 py-3 border-b border-[#252547] transition-colors",
+                selected === s.id ? "bg-[#0f3460] border-l-2 border-l-[#ffd93d]" : "hover:bg-[#16213e]"
+              )}>
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-xs border px-1" style={{ color: statusColors[s.status], borderColor: statusColors[s.status] }}>{s.status.toUpperCase()}</span>
+              </div>
+              <div className="text-base text-[#eaeaea]">{s.name}</div>
+              <div className="text-sm text-[#8891a3]">{fmtDate(s.startDate)} → {fmtDate(s.endDate)}</div>
+            </button>
+          ))}
+        </div>
+        {sprint && (
+          <div className="flex-1 overflow-y-auto p-6">
+            <div className="mb-5">
+              <div className="flex items-center gap-3 mb-2">
+                <span className="text-xs border px-2 py-0.5" style={{ color: statusColors[sprint.status], borderColor: statusColors[sprint.status] }}>
+                  {sprint.status.toUpperCase()}
+                </span>
+                <h2 className="text-xl" style={{ color: "#ffd93d" }}>{sprint.name}</h2>
+              </div>
+              <p className="text-base text-[#8891a3] italic mb-4">"{sprint.goal}"</p>
+              <div className="flex gap-6 text-sm text-[#8891a3] mb-3">
+                <span>{fmtDate(sprint.startDate)} — {fmtDate(sprint.endDate)}</span>
+                <span className="text-[#4ecca3]">{done}/{sprintTasks.length} done</span>
+              </div>
+              <PixelProgress value={done} max={Math.max(sprintTasks.length, 1)} color="#4ecca3" blocks={20} />
+            </div>
+            {sprintTasks.length === 0 ? (
+              <div className="text-center text-[#8891a3] text-xl py-12">[ NO QUESTS IN THIS SPRINT ]</div>
+            ) : (
+              <>
+                <SectionDivider title={`Sprint Quests (${sprintTasks.length})`} />
+                {sprintTasks.map(t => (
+                  <div key={t.id} className="flex items-center gap-3 px-3 py-2 border-b border-[#252547]">
+                    <StatusBadge status={t.status} />
+                    <PriorityPip priority={t.priority} />
+                    <span className="flex-1 text-base text-[#eaeaea] truncate">{t.title}</span>
+                    <span className="text-sm text-[#8891a3]">{t.storyPoints} SP</span>
+                    <span className="text-sm text-[#8891a3]">{fmtDate(t.dueDate)}</span>
+                  </div>
+                ))}
+              </>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── ACHIEVEMENTS VIEW ────────────────────────────────────────
+
+function AchievementsView({ achievements }: { achievements: Achievement[] }) {
+  const [filter, setFilter] = useState<"all" | "unlocked" | "locked">("all");
+  const catColors: Record<string, string> = { combat: "#e94560", exploration: "#4ecca3", crafting: "#f6c90e", social: "#a29bfe" };
+  const unlocked = achievements.filter(a => a.unlocked).length;
+  const totalXP = achievements.filter(a => a.unlocked).reduce((s, a) => s + a.xp, 0);
+  const filtered = achievements.filter(a => filter === "all" ? true : filter === "unlocked" ? a.unlocked : !a.unlocked);
+
+  return (
+    <div className="flex flex-col h-full">
+      <div className="px-6 py-3 border-b border-[#252547] bg-[#16213e] flex items-center justify-between">
+        <div>
+          <h1 style={{ fontFamily: "'Press Start 2P', monospace", fontSize: "11px", color: "#e94560" }}>🏆 ACHIEVEMENTS</h1>
+          <p className="text-[#8891a3] text-sm mt-0.5">{unlocked}/{achievements.length} unlocked · {totalXP} XP earned</p>
+        </div>
+        <div className="flex gap-1">
+          {(["all", "unlocked", "locked"] as const).map(f => (
+            <button key={f} onClick={() => setFilter(f)}
+              className={clsx("px-3 py-0.5 text-sm font-['VT323'] border transition-colors",
+                filter === f ? "bg-[#0f3460] border-[#e94560] text-[#e94560]" : "border-[#252547] text-[#8891a3] hover:border-[#e94560]"
+              )}>
+              {f.toUpperCase()}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="flex-1 overflow-y-auto p-6">
+        {(["combat", "exploration", "crafting", "social"] as const).map(cat => {
+          const catAch = filtered.filter(a => a.category === cat);
+          if (!catAch.length) return null;
+          return (
+            <div key={cat} className="mb-6">
+              <SectionDivider title={`${cat.toUpperCase()} DEEDS`} />
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                {catAch.map(a => (
+                  <PixelPanel key={a.id} variant={a.unlocked ? "accent" : "flat"} className={clsx("p-4", !a.unlocked && "opacity-40")}>
+                    <div className="text-3xl mb-2">{a.icon}</div>
+                    <div className="text-base text-[#eaeaea] mb-1">{a.name}</div>
+                    <p className="text-sm text-[#8891a3] mb-3 leading-tight">{a.description}</p>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-bold" style={{ color: catColors[cat] }}>+{a.xp} XP</span>
+                      {a.unlocked ? (
+                        <span className="text-xs text-[#4ecca3]">✓ {fmtDate(a.unlockedAt)}</span>
+                      ) : (
+                        <Lock size={12} className="text-[#252547]" />
+                      )}
+                    </div>
+                  </PixelPanel>
+                ))}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ─── PROGRESS (Statistics) ────────────────────────────────────
+
+const CHART_TOOLTIP_STYLE = {
+  backgroundColor: "#0f3460", border: "2px solid #e94560",
+  color: "#eaeaea", fontFamily: "VT323, monospace", fontSize: "16px",
+};
+
+function StatisticsView({ tasks, projects }: { tasks: Task[]; projects: Project[] }) {
+  const weeklyData = [
+    { day: "Mon", done: 2, created: 3 }, { day: "Tue", done: 4, created: 2 },
+    { day: "Wed", done: 1, created: 5 }, { day: "Thu", done: 6, created: 2 },
+    { day: "Fri", done: 3, created: 4 }, { day: "Sat", done: 5, created: 1 },
+    { day: "Sun", done: 2, created: 0 },
+  ];
+
+  const byProject = projects.map(p => ({ name: p.name.split(" ")[0], done: p.completedTasks, active: p.totalTasks - p.completedTasks }));
+
+  const byPriority = [
+    { name: "P0 Critical", value: tasks.filter(t => t.priority === "p0").length, fill: "#e94560" },
+    { name: "P1 High",     value: tasks.filter(t => t.priority === "p1").length, fill: "#f6c90e" },
+    { name: "P2 Normal",   value: tasks.filter(t => t.priority === "p2").length, fill: "#4ecca3" },
+    { name: "P3 Low",      value: tasks.filter(t => t.priority === "p3").length, fill: "#8891a3" },
+    { name: "P4 Someday",  value: tasks.filter(t => t.priority === "p4").length, fill: "#4a4a68" },
+  ];
+
+  const byType = Object.entries(TASK_TYPE_CFG).map(([type, { label, emoji }]) => ({
+    name: label, value: tasks.filter(t => t.type === type).length, emoji
+  })).filter(d => d.value > 0).sort((a, b) => b.value - a.value).slice(0, 6);
+
+  return (
+    <div className="flex flex-col h-full">
+      <div className="px-6 py-3 border-b border-[#252547] bg-[#16213e]">
+        <h1 style={{ fontFamily: "'Press Start 2P', monospace", fontSize: "11px", color: "#e94560" }}>📊 PROGRESS</h1>
+      </div>
+      <div className="flex-1 overflow-y-auto p-6 space-y-5">
+        {/* KPIs */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          {[
+            { label: "TOTAL QUESTS",  value: tasks.length,                                        color: "#eaeaea" },
+            { label: "COMPLETED",     value: tasks.filter(t => t.status === "done").length,        color: "#52c41a" },
+            { label: "IN PROGRESS",   value: tasks.filter(t => t.status === "in-progress").length, color: "#f6c90e" },
+            { label: "WAITING EXT.",  value: tasks.filter(t => t.status === "waiting-external").length, color: "#a29bfe" },
+          ].map(k => (
+            <PixelPanel key={k.label} className="p-4 text-center">
+              <div style={{ fontFamily: "'Press Start 2P', monospace", fontSize: "22px", color: k.color }}>{k.value}</div>
+              <div className="text-xs text-[#8891a3] tracking-widest mt-2">{k.label}</div>
+            </PixelPanel>
+          ))}
+        </div>
+
+        <div className="grid md:grid-cols-2 gap-5">
+          {/* Weekly throughput */}
+          <PixelPanel className="p-4">
+            <div className="text-base text-[#4ecca3] tracking-widest mb-4">▸ WEEKLY THROUGHPUT</div>
+            <ResponsiveContainer width="100%" height={180}>
+              <ReBarChart data={weeklyData}>
+                <CartesianGrid strokeDasharray="4 4" stroke="#252547" />
+                <XAxis dataKey="day" stroke="#8891a3" tick={{ fill: "#8891a3", fontFamily: "VT323", fontSize: 14 }} />
+                <YAxis stroke="#8891a3" tick={{ fill: "#8891a3", fontFamily: "VT323", fontSize: 14 }} />
+                <Tooltip contentStyle={CHART_TOOLTIP_STYLE} />
+                <Bar dataKey="done" name="Done" fill="#4ecca3" />
+                <Bar dataKey="created" name="Created" fill="#252547" />
+              </ReBarChart>
+            </ResponsiveContainer>
+          </PixelPanel>
+
+          {/* By project */}
+          <PixelPanel className="p-4">
+            <div className="text-base text-[#4ecca3] tracking-widest mb-4">▸ QUESTS BY PROJECT</div>
+            <ResponsiveContainer width="100%" height={180}>
+              <ReBarChart data={byProject} layout="vertical">
+                <CartesianGrid strokeDasharray="4 4" stroke="#252547" />
+                <XAxis type="number" stroke="#8891a3" tick={{ fill: "#8891a3", fontFamily: "VT323", fontSize: 12 }} />
+                <YAxis dataKey="name" type="category" width={60} stroke="#8891a3" tick={{ fill: "#8891a3", fontFamily: "VT323", fontSize: 12 }} />
+                <Tooltip contentStyle={CHART_TOOLTIP_STYLE} />
+                <Bar dataKey="done" name="Done" stackId="a" fill="#4ecca3" />
+                <Bar dataKey="active" name="Active" stackId="a" fill="#16213e" />
+              </ReBarChart>
+            </ResponsiveContainer>
+          </PixelPanel>
+
+          {/* Priority breakdown */}
+          <PixelPanel className="p-4">
+            <div className="text-base text-[#4ecca3] tracking-widest mb-4">▸ BY PRIORITY</div>
+            <div className="flex items-center gap-4">
+              <ResponsiveContainer width={140} height={140}>
+                <PieChart>
+                  <Pie data={byPriority} dataKey="value" cx="50%" cy="50%" outerRadius={65} paddingAngle={2}>
+                    {byPriority.map((e, i) => <Cell key={i} fill={e.fill} />)}
+                  </Pie>
+                  <Tooltip contentStyle={CHART_TOOLTIP_STYLE} />
+                </PieChart>
+              </ResponsiveContainer>
+              <div className="space-y-2">
+                {byPriority.map(p => (
+                  <div key={p.name} className="flex items-center gap-2 text-sm">
+                    <div className="w-3 h-3 flex-shrink-0" style={{ backgroundColor: p.fill }} />
+                    <span className="text-[#8891a3]">{p.name}</span>
+                    <span className="text-[#eaeaea] ml-auto pl-2">{p.value}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </PixelPanel>
+
+          {/* By type */}
+          <PixelPanel className="p-4">
+            <div className="text-base text-[#4ecca3] tracking-widest mb-4">▸ BY TYPE</div>
+            <div className="space-y-2">
+              {byType.map((t, i) => (
+                <div key={t.name} className="flex items-center gap-3">
+                  <span className="text-base w-6 flex-shrink-0">{t.emoji}</span>
+                  <span className="text-sm text-[#8891a3] w-28 truncate">{t.name}</span>
+                  <div className="flex-1 bg-[#16213e] h-4 relative">
+                    <div className="h-full" style={{ width: `${(t.value / tasks.length) * 100}%`, backgroundColor: ["#e94560","#f6c90e","#4ecca3","#a29bfe","#00b8d9","#8891a3"][i] }} />
+                  </div>
+                  <span className="text-sm text-[#eaeaea] w-5 text-right">{t.value}</span>
+                </div>
+              ))}
+            </div>
+          </PixelPanel>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── SETTINGS VIEW ────────────────────────────────────────────
+
+function SettingsView() {
+  const [notifs, setNotifs]     = useState(true);
+  const [sound, setSound]       = useState(true);
+  const [motion, setMotion]     = useState(false);
+  const [compact, setCompact]   = useState(false);
+  const [autoArch, setAutoArch] = useState(true);
+  const [defaultView, setDefault] = useState("dashboard");
+
+  const Toggle = ({ value, onChange, label, desc }: { value: boolean; onChange: (v: boolean) => void; label: string; desc: string }) => (
+    <div className="flex items-start justify-between py-3 border-b border-[#252547]">
+      <div>
+        <div className="text-base text-[#eaeaea]">{label}</div>
+        <div className="text-sm text-[#8891a3]">{desc}</div>
+      </div>
+      <button onClick={() => onChange(!value)}
+        className={clsx("w-12 h-6 border-2 relative transition-colors flex-shrink-0 ml-4 mt-0.5",
+          value ? "bg-[#e94560] border-[#e94560]" : "bg-[#16213e] border-[#252547]"
+        )}>
+        <span className={clsx("absolute top-0.5 left-0.5 w-4 h-4 bg-[#eaeaea] transition-transform", value ? "translate-x-6" : "translate-x-0")} />
+      </button>
+    </div>
+  );
+
+  return (
+    <div className="flex flex-col h-full">
+      <div className="px-6 py-3 border-b border-[#252547] bg-[#16213e]">
+        <h1 style={{ fontFamily: "'Press Start 2P', monospace", fontSize: "11px", color: "#e94560" }}>⚙ SETTINGS</h1>
+      </div>
+      <div className="flex-1 overflow-y-auto p-6 max-w-2xl">
+        <SectionDivider title="EXPERIENCE" />
+        <Toggle value={notifs}     onChange={setNotifs}     label="Notifications"    desc="Overdue and sprint deadline alerts" />
+        <Toggle value={sound}      onChange={setSound}      label="Sound Effects"    desc="Subtle chimes on task complete and level-up (design.md §7)" />
+        <Toggle value={motion}     onChange={setMotion}     label="Reduce Motion"    desc="Shortens all animation durations to minimum bound" />
+        <Toggle value={compact}    onChange={setCompact}    label="Compact View"     desc="Tighter spacing in list and table views" />
+        <Toggle value={autoArch}   onChange={setAutoArch}   label="Auto-Archive"     desc="Archive completed tasks after 7 days" />
+
+        <div className="py-3 border-b border-[#252547]">
+          <div className="text-base text-[#eaeaea] mb-1">Default View</div>
+          <div className="text-sm text-[#8891a3] mb-2">Screen shown on app open</div>
+          <PixelSelect value={defaultView} onChange={e => setDefault(e.target.value)} className="!w-auto">
+            <option value="dashboard">Command Center</option>
+            <option value="today">Today</option>
+            <option value="focus">Focus</option>
+            <option value="kanban">Kanban Board</option>
+          </PixelSelect>
+        </div>
+
+        <SectionDivider title="ACCOUNT" />
+        {[
+          { label: "Adventurer Name", value: "Aric Stormcloak" },
+          { label: "Guild",           value: "Squad Lead · Uni · Freelancer" },
+          { label: "Timezone",        value: "UTC-5 (Eastern)" },
+          { label: "Total XP",        value: `${MOCK_TOTAL_XP.toLocaleString()} XP` },
+          { label: "Streak",          value: `${MOCK_STREAK} days` },
+          { label: "Coins",           value: `🪙 ${MOCK_COINS}` },
+        ].map(f => (
+          <div key={f.label} className="flex items-center justify-between py-2.5 border-b border-[#252547]">
+            <span className="text-base text-[#8891a3]">{f.label}</span>
+            <span className="text-base text-[#eaeaea]">{f.value}</span>
+          </div>
+        ))}
+
+        <SectionDivider title="KEYBOARD SHORTCUTS" />
+        {[
+          ["Ctrl + K", "Open command palette"],
+          ["Ctrl + N", "New quest"],
+          ["Esc",      "Close panel / palette"],
+          ["J / K",    "Navigate list up/down"],
+          ["Enter",    "Open selected quest"],
+        ].map(([key, desc]) => (
+          <div key={key} className="flex items-center justify-between py-2 border-b border-[#252547]">
+            <span className="text-base text-[#8891a3]">{desc}</span>
+            <span className="px-2 py-0 bg-[#0f3460] border border-[#252547] text-[#ffd93d] text-sm font-['VT323']">{key}</span>
+          </div>
+        ))}
+
+        <SectionDivider title="DATA" />
+        <div className="flex gap-3 pt-2">
+          <PixelBtn variant="secondary">Export JSON</PixelBtn>
+          <PixelBtn variant="secondary">Import Data</PixelBtn>
+          <PixelBtn variant="danger">Reset All</PixelBtn>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── TASK PANEL (Slide-over, Accordion sections) ──────────────
+// Sections: Core / Relations / Attachments & Deliverables / Chronicle (design.md §10)
+
+function TaskPanel({ task, isCreating, onClose, onSave }: {
+  task: Task | null; isCreating: boolean; onClose: () => void; onSave: (t: Task) => void;
+}) {
+  const blankTask: Task = {
+    id: `t${Date.now()}`, title: "", description: "", status: "inbox", priority: "p2",
+    type: "coding", effort: "m", storyPoints: 0, project: "ATS Platform", projectId: "p1",
+    sprint: null, tags: [], dueDate: null, createdAt: new Date().toISOString().slice(0, 10),
+    completedAt: null, waitingOn: null, reporter: "self", parentId: null, attachments: [], deliverables: [],
+  };
+
+  const [form, setForm] = useState<Task>(task || blankTask);
+  const [tagInput, setTagInput] = useState("");
+
+  useEffect(() => { setForm(task || blankTask); setTagInput(""); }, [task, isCreating]);
+
+  const set = (key: keyof Task, val: unknown) => setForm(f => ({ ...f, [key]: val }));
+
+  const addTag = () => {
+    const t = tagInput.trim().toLowerCase().replace(/[^a-z0-9-]/g, "");
+    if (t && !form.tags.includes(t)) setForm(f => ({ ...f, tags: [...f.tags, t] }));
+    setTagInput("");
+  };
+
+  const labelCls = "block text-xs text-[#8891a3] mb-1 tracking-widest uppercase";
+
+  const AccordionSection = ({ value, title, shape, children }: { value: string; title: string; shape: string; children: React.ReactNode }) => (
+    <Accordion.Item value={value} className="border border-[#252547]">
+      <Accordion.Header>
+        <Accordion.Trigger className="group w-full flex items-center justify-between px-4 py-2.5 text-left hover:bg-[#16213e] transition-colors">
+          <span className="text-sm text-[#8891a3] tracking-widest flex items-center gap-2">
+            <span style={{ color: "#e94560" }}>{shape}</span>
+            {title}
+          </span>
+          <ChevronDown size={13} className="text-[#8891a3] transition-transform duration-200 group-data-[state=open]:rotate-180" />
+        </Accordion.Trigger>
+      </Accordion.Header>
+      <Accordion.Content className="px-4 pb-4 pt-1 space-y-3">
+        {children}
+      </Accordion.Content>
+    </Accordion.Item>
+  );
+
+  const xpPreview = calcTaskXP(form.priority, form.storyPoints, true);
+  const coinPreview = calcCoins(form.priority, form.storyPoints);
+
+  return (
+    <div className="flex flex-col h-full bg-[#0f3460]">
+      {/* Header */}
+      <div className="px-4 py-3 border-b border-[#252547] flex items-center justify-between bg-[#16213e]">
+        <span style={{ fontFamily: "'Press Start 2P', monospace", fontSize: "9px", color: "#e94560" }}>
+          {isCreating ? "+ NEW QUEST" : "◈ QUEST DETAIL"}
+        </span>
+        <div className="flex items-center gap-2">
+          {!isCreating && <PixelBtn variant="ghost" size="sm"><Pencil size={11} /></PixelBtn>}
+          {!isCreating && <PixelBtn variant="danger" size="sm"><Trash2 size={11} /></PixelBtn>}
+          <button onClick={onClose} className="text-[#8891a3] hover:text-[#eaeaea] transition-colors p-1"><X size={16} /></button>
+        </div>
+      </div>
+
+      {/* XP preview */}
+      <div className="px-4 py-2 bg-[#16213e] border-b border-[#252547] flex items-center gap-4 text-sm">
+        <span className="text-[#ffd93d]">⚡ +{xpPreview} XP on complete</span>
+        <span style={{ color: "#f4a300" }}>🪙 +{coinPreview} coins</span>
+      </div>
+
+      {/* Accordion body (design.md §10) */}
+      <div className="flex-1 overflow-y-auto">
+        {/* Title always visible above accordion */}
+        <div className="px-4 pt-4 pb-3 border-b border-[#252547]">
+          <label className={labelCls}>Quest Title *</label>
+          <PixelInput value={form.title} onChange={e => set("title", e.target.value)}
+            placeholder="What needs to be done?" />
+        </div>
+
+        {/* Inline status/priority badges preview */}
+        <div className="px-4 py-2 border-b border-[#252547] flex gap-4">
+          <StatusBadge status={form.status} />
+          <PriorityBadge priority={form.priority} />
+          <span className="text-base">{TASK_TYPE_CFG[form.type].emoji}</span>
+        </div>
+
+        <Accordion.Root type="multiple" defaultValue={["core"]} className="divide-y divide-[#252547]">
+
+          {/* ── CORE ── */}
+          <AccordionSection value="core" title="CORE" shape="■">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className={labelCls}>Status</label>
+                <PixelSelect value={form.status} onChange={e => set("status", e.target.value)}>
+                  {(Object.keys(STATUS_CFG) as Status[]).map(s => (
+                    <option key={s} value={s}>{STATUS_CFG[s].shape} {STATUS_CFG[s].label}</option>
+                  ))}
+                </PixelSelect>
+              </div>
+              <div>
+                <label className={labelCls}>Priority</label>
+                <PixelSelect value={form.priority} onChange={e => set("priority", e.target.value)}>
+                  {(Object.keys(PRIORITY_CFG) as Priority[]).map(p => (
+                    <option key={p} value={p}>{PRIORITY_CFG[p].shape} {PRIORITY_CFG[p].label}</option>
+                  ))}
+                </PixelSelect>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className={labelCls}>Type</label>
+                <PixelSelect value={form.type} onChange={e => set("type", e.target.value)}>
+                  {(Object.keys(TASK_TYPE_CFG) as TaskType[]).map(t => (
+                    <option key={t} value={t}>{TASK_TYPE_CFG[t].emoji} {TASK_TYPE_CFG[t].label}</option>
+                  ))}
+                </PixelSelect>
+              </div>
+              <div>
+                <label className={labelCls}>Reporter</label>
+                <PixelSelect value={form.reporter} onChange={e => set("reporter", e.target.value)}>
+                  {REPORTER_OPTS.map(r => <option key={r} value={r}>{r.charAt(0).toUpperCase() + r.slice(1)}</option>)}
+                </PixelSelect>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className={labelCls}>Effort</label>
+                <PixelSelect value={form.effort} onChange={e => set("effort", e.target.value)}>
+                  {EFFORT_ORDER.map(e => <option key={e} value={e}>{e.toUpperCase()}</option>)}
+                </PixelSelect>
+              </div>
+              <div>
+                <label className={labelCls}>Story Points</label>
+                <PixelSelect value={form.storyPoints} onChange={e => set("storyPoints", Number(e.target.value))}>
+                  {STORY_POINTS.map(sp => <option key={sp} value={sp}>{sp} SP</option>)}
+                </PixelSelect>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className={labelCls}>Due Date</label>
+                <PixelInput type="date" value={form.dueDate || ""} onChange={e => set("dueDate", e.target.value || null)} />
+              </div>
+              <div>
+                <label className={labelCls}>Sprint</label>
+                <PixelInput value={form.sprint || ""} onChange={e => set("sprint", e.target.value || null)} placeholder="Sprint name..." />
+              </div>
+            </div>
+            {form.status === "waiting-external" && (
+              <div>
+                <label className={labelCls}>Waiting On</label>
+                <PixelInput value={form.waitingOn || ""} onChange={e => set("waitingOn", e.target.value || null)}
+                  placeholder="Who / what / where..." />
+              </div>
+            )}
+            {form.status === "blocked" && (
+              <div>
+                <label className={labelCls}>Blocked By</label>
+                <PixelInput value={form.waitingOn || ""} onChange={e => set("waitingOn", e.target.value || null)}
+                  placeholder="Missing dependency..." />
+              </div>
+            )}
+            <div>
+              <label className={labelCls}>Description</label>
+              <PixelTextarea value={form.description} onChange={e => set("description", e.target.value)}
+                rows={4} placeholder="Context, acceptance criteria, findings..." />
+            </div>
+            <div>
+              <label className={labelCls}>Tags</label>
+              <div className="flex gap-1 flex-wrap mb-2">
+                {form.tags.map(t => (
+                  <span key={t} className="inline-flex items-center gap-1 px-1.5 bg-[#16213e] border border-[#252547] text-sm text-[#8891a3]">
+                    #{t}
+                    <button onClick={() => setForm(f => ({ ...f, tags: f.tags.filter(x => x !== t) }))} className="text-[#e94560] ml-0.5"><X size={9} /></button>
+                  </span>
+                ))}
+              </div>
+              <div className="flex gap-2">
+                <PixelInput value={tagInput} onChange={e => setTagInput(e.target.value)}
+                  onKeyDown={e => e.key === "Enter" && addTag()} placeholder="tag-name (Enter)" className="flex-1" />
+                <PixelBtn variant="secondary" size="sm" onClick={addTag}><Plus size={11} /></PixelBtn>
+              </div>
+            </div>
+          </AccordionSection>
+
+          {/* ── RELATIONS ── */}
+          <AccordionSection value="relations" title="RELATIONS" shape="◈">
+            <p className="text-sm text-[#8891a3] mb-2">Link this quest to others (Parent · Blocks · Related · Duplicate).</p>
+            {["Parent quest", "Blocks", "Blocked by", "Related", "Duplicate", "Caused by"].map(rel => (
+              <div key={rel}>
+                <label className={labelCls}>{rel}</label>
+                <PixelInput placeholder={`Search quests...`} />
+              </div>
+            ))}
+          </AccordionSection>
+
+          {/* ── ATTACHMENTS & DELIVERABLES ── */}
+          <AccordionSection value="attachments" title="ATTACHMENTS & DELIVERABLES" shape="▶">
+            <div>
+              <label className={labelCls}>Attachments</label>
+              <PixelSelect className="mb-2">
+                <option value="">Add attachment type...</option>
+                {["GitHub PR", "GitHub Issue", "Confluence", "Figma", "Slack", "Discord", "Google Docs", "Google Drive", "Meeting Recording", "Website", "Other"].map(a => (
+                  <option key={a} value={a}>{a}</option>
+                ))}
+              </PixelSelect>
+              {form.attachments.length === 0 && <p className="text-sm text-[#4a4a68]">No attachments yet.</p>}
+            </div>
+            <div>
+              <label className={labelCls}>Deliverables</label>
+              <PixelSelect>
+                <option value="">Add deliverable type...</option>
+                {["PR", "Confluence Page", "Presentation", "Meeting Notes", "Design", "Video", "PDF", "Research Doc"].map(d => (
+                  <option key={d} value={d}>{d}</option>
+                ))}
+              </PixelSelect>
+              {form.deliverables.length > 0 && (
+                <div className="flex gap-1 flex-wrap mt-2">
+                  {form.deliverables.map(d => <TagPill key={d} tag={d} />)}
+                </div>
+              )}
+            </div>
+          </AccordionSection>
+
+          {/* ── CHRONICLE (History) ── */}
+          <AccordionSection value="chronicle" title="CHRONICLE" shape="◫">
+            {!task ? (
+              <p className="text-sm text-[#4a4a68]">History will appear after the quest is created.</p>
+            ) : (
+              <div className="space-y-3">
+                {[
+                  { date: task.createdAt, text: "Quest created",                            color: "#8891a3" },
+                  { date: task.createdAt, text: `Priority set: ${PRIORITY_CFG[task.priority].label}`, color: PRIORITY_CFG[task.priority].color },
+                  { date: task.createdAt, text: `Status: ${STATUS_CFG[task.status].label}`, color: STATUS_CFG[task.status].color },
+                  ...(task.completedAt ? [{ date: task.completedAt, text: "Quest completed! XP awarded.", color: "#52c41a" }] : []),
+                ].reverse().map((e, i) => (
+                  <div key={i} className="flex gap-3 pb-3 border-b border-[#252547]">
+                    <div className="w-2 h-2 rounded-full mt-1.5 flex-shrink-0" style={{ backgroundColor: e.color }} />
+                    <div>
+                      <div className="text-base" style={{ color: e.color }}>{e.text}</div>
+                      <div className="text-xs text-[#4a4a68]">{fmtDate(e.date)}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </AccordionSection>
+        </Accordion.Root>
+      </div>
+
+      {/* Footer */}
+      <div className="p-4 border-t border-[#252547] flex items-center justify-between bg-[#16213e]">
+        <PixelBtn variant="ghost" size="sm" onClick={onClose}>Cancel</PixelBtn>
+        <PixelBtn variant="primary" size="md" onClick={() => onSave(form)} disabled={!form.title.trim()}>
+          <Check size={13} /> {isCreating ? "Create Quest" : "Save Changes"}
+        </PixelBtn>
+      </div>
+    </div>
+  );
+}
+
+// ─── COMMAND PALETTE ──────────────────────────────────────────
+
+type CmdItem = { type: "nav" | "task" | "action"; label: string; sub?: string; shape: string; action: () => void };
+
+function CommandPalette({ tasks, onClose, onNavigate, onTaskClick, onNewTask }: {
+  tasks: Task[]; onClose: () => void;
+  onNavigate: (s: Screen) => void; onTaskClick: (t: Task) => void; onNewTask: () => void;
+}) {
+  const [query, setQuery] = useState("");
+  const [sel, setSel] = useState(0);
+  const inputRef = useRef<HTMLInputElement>(null);
+  useEffect(() => { inputRef.current?.focus(); }, []);
+
+  const navItems: CmdItem[] = [...NAV_CORE, ...NAV_VIEWS, ...NAV_MANAGE].map(n => ({
+    type: "nav", label: n.label, sub: "Navigate", shape: "→",
+    action: () => { onNavigate(n.id); onClose(); }
+  }));
+
+  const taskItems: CmdItem[] = tasks
+    .filter(t => t.status !== "archived")
+    .filter(t => !query || t.title.toLowerCase().includes(query.toLowerCase()) || t.tags.some(g => g.includes(query.toLowerCase())))
+    .slice(0, 8)
+    .map(t => ({
+      type: "task", label: t.title,
+      sub: `${STATUS_CFG[t.status].shape} ${STATUS_CFG[t.status].label} · ${t.project}`,
+      shape: PRIORITY_CFG[t.priority].shape,
+      action: () => { onTaskClick(t); onClose(); }
+    }));
+
+  const actionItems: CmdItem[] = [
+    { type: "action", label: "New Quest", sub: "Create a task", shape: "+", action: () => { onNewTask(); onClose(); } },
+  ];
+
+  const all = query
+    ? [...taskItems, ...navItems.filter(n => n.label.toLowerCase().includes(query.toLowerCase())), ...actionItems]
+    : [...actionItems, ...navItems, ...taskItems.slice(0, 5)];
+
+  useEffect(() => { setSel(0); }, [query]);
+
+  const handleKey = (e: React.KeyboardEvent) => {
+    if (e.key === "ArrowDown") { e.preventDefault(); setSel(s => Math.min(s + 1, all.length - 1)); }
+    else if (e.key === "ArrowUp") { e.preventDefault(); setSel(s => Math.max(s - 1, 0)); }
+    else if (e.key === "Enter") { e.preventDefault(); all[sel]?.action(); }
+    else if (e.key === "Escape") { onClose(); }
+  };
+
+  return (
+    <div className="bg-[#0f3460] border-2 border-[#e94560] overflow-hidden" style={{ boxShadow: "8px 8px 0 #1a1a2e" }}>
+      {/* Search input */}
+      <div className="flex items-center gap-3 px-4 py-3 border-b border-[#252547] bg-[#16213e]">
+        <Search size={15} className="text-[#8891a3] flex-shrink-0" />
+        <input ref={inputRef} value={query} onChange={e => setQuery(e.target.value)} onKeyDown={handleKey}
+          placeholder="Search quests, navigate, or take action..."
+          className="flex-1 bg-transparent text-[#eaeaea] text-base font-['VT323'] outline-none placeholder:text-[#4a4a68]" />
+        <kbd className="text-xs text-[#8891a3] border border-[#252547] px-1.5 font-['VT323']">ESC</kbd>
+      </div>
+      {/* Results */}
+      <div className="max-h-[400px] overflow-y-auto">
+        {all.length === 0 ? (
+          <div className="text-center text-[#8891a3] py-10 text-base">[ NO RESULTS FOR "{query}" ]</div>
+        ) : all.map((item, i) => {
+          const shapeColor = item.type === "action" ? "#e94560" : item.type === "nav" ? "#8891a3" : "#4ecca3";
+          return (
+            <div key={i} onClick={item.action}
+              className={clsx("flex items-center gap-3 px-4 py-2.5 cursor-pointer transition-colors",
+                i === sel ? "bg-[#16213e] border-l-2 border-[#e94560]" : "hover:bg-[#16213e] border-l-2 border-transparent"
+              )}>
+              <span className="text-base flex-shrink-0 w-4" style={{ color: shapeColor }}>{item.shape}</span>
+              <div className="flex-1 min-w-0">
+                <div className="text-base text-[#eaeaea] truncate">{item.label}</div>
+                {item.sub && <div className="text-xs text-[#8891a3]">{item.sub}</div>}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      {/* Footer */}
+      <div className="px-4 py-2 border-t border-[#252547] bg-[#16213e] flex gap-4 text-xs text-[#4a4a68] font-['VT323']">
+        <span>↑↓ Navigate</span><span>↵ Select</span><span>Esc Close</span>
+      </div>
+    </div>
+  );
+}
+
+// ─── MAIN APP ─────────────────────────────────────────────────
+
+export default function App() {
+  const [screen, setScreen]           = useState<Screen>("dashboard");
+  const [tasks, setTasks]             = useState<Task[]>(INITIAL_TASKS);
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  const [isPanelOpen, setIsPanelOpen] = useState(false);
+  const [isCreating, setIsCreating]   = useState(false);
+  const [isCmdOpen, setIsCmdOpen]     = useState(false);
+  const [totalXP]                     = useState(MOCK_TOTAL_XP);
+  const [streak]                      = useState(MOCK_STREAK);
+  const [coins]                       = useState(MOCK_COINS);
+
+  useEffect(() => {
+    const h = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === "k") { e.preventDefault(); setIsCmdOpen(o => !o); }
+      if ((e.ctrlKey || e.metaKey) && e.key === "n") { e.preventDefault(); openCreate(); }
+      if (e.key === "Escape") { setIsCmdOpen(false); setIsPanelOpen(false); }
+    };
+    window.addEventListener("keydown", h);
+    return () => window.removeEventListener("keydown", h);
+  }, []);
+
+  function openTask(t: Task)  { setSelectedTask(t); setIsCreating(false); setIsPanelOpen(true); }
+  function openCreate()       { setSelectedTask(null); setIsCreating(true); setIsPanelOpen(true); }
+
+  function saveTask(t: Task) {
+    setTasks(prev => {
+      const exists = prev.find(x => x.id === t.id);
+      return exists ? prev.map(x => x.id === t.id ? t : x) : [t, ...prev];
+    });
+    setIsPanelOpen(false);
+  }
+
+  const todayTasks   = tasks.filter(t => isDueToday(t.dueDate) && t.status !== "done" && t.status !== "archived");
+  const waitingTasks = tasks.filter(t => t.status === "waiting-external");
+  const focusTasks   = tasks.filter(t => (t.priority === "p0" || t.priority === "p1") && t.status === "ready");
+  const inboxTasks   = tasks.filter(t => t.status === "inbox");
+
+  function renderScreen() {
+    switch (screen) {
+      case "dashboard":
+        return <DashboardView tasks={tasks} sprints={SPRINTS} projects={PROJECTS}
+          onTaskClick={openTask} onNavigate={setScreen} totalXP={totalXP} streak={streak} coins={coins} />;
+      case "kanban":       return <KanbanView tasks={tasks} onTaskClick={openTask} onNewTask={openCreate} />;
+      case "list":         return <ListView tasks={tasks} onTaskClick={openTask} onNewTask={openCreate} />;
+      case "table":        return <TableView tasks={tasks} onTaskClick={openTask} />;
+      case "calendar":     return <CalendarView tasks={tasks} onTaskClick={openTask} />;
+      case "timeline":     return <TimelineView tasks={tasks} projects={PROJECTS} onTaskClick={openTask} />;
+      case "today":        return <FilteredView title="TODAY" color="#f6c90e" icon={Sun}
+        description="Quests due today and currently in progress"
+        tasks={todayTasks} onTaskClick={openTask} onNewTask={openCreate} emptyMsg="[ ALL CLEAR TODAY ]" />;
+      case "inbox-view":   return <FilteredView title="INBOX" color="#8891a3" icon={Inbox}
+        description="Captured but not yet triaged — sort these into proper quests"
+        tasks={inboxTasks} onTaskClick={openTask} onNewTask={openCreate} emptyMsg="[ INBOX EMPTY ]" />;
+      case "waiting":      return <FilteredView title="WAITING EXTERNAL" color="#a29bfe" icon={Clock}
+        description="Quests waiting on another person, team, or system"
+        tasks={waitingTasks} onTaskClick={openTask} emptyMsg="[ NOTHING WAITING ]" />;
+      case "focus":        return <FilteredView title="FOCUS MODE" color="#4ecca3" icon={Crosshair}
+        description="P0+P1 priority and Ready status only — the work that matters most right now"
+        tasks={focusTasks} onTaskClick={openTask} onNewTask={openCreate} emptyMsg="[ ALL DONE — REST ]" />;
+      case "project-group": return <ProjectGroupView tasks={tasks} projects={PROJECTS} onTaskClick={openTask} />;
+      case "archive":      return <ArchiveView tasks={tasks} onTaskClick={openTask} />;
+      case "projects":     return <ProjectsView projects={PROJECTS} tasks={tasks} />;
+      case "sprints":      return <SprintsView sprints={SPRINTS} tasks={tasks} />;
+      case "achievements": return <AchievementsView achievements={ACHIEVEMENTS} />;
+      case "statistics":   return <StatisticsView tasks={tasks} projects={PROJECTS} />;
+      case "settings":     return <SettingsView />;
+      default:             return null;
+    }
+  }
+
+  return (
+    <div className="h-screen flex overflow-hidden bg-[#1a1a2e] text-[#eaeaea]" style={{ fontFamily: "'VT323', monospace" }}>
+      <Sidebar
+        active={screen} onNavigate={setScreen} tasks={tasks}
+        onNewTask={openCreate} onCommandPalette={() => setIsCmdOpen(true)}
+        totalXP={totalXP} streak={streak} coins={coins}
+      />
+
+      <main className="flex-1 overflow-hidden flex flex-col min-w-0">
+        {renderScreen()}
+      </main>
+
+      {/* Slide-over backdrop */}
+      {isPanelOpen && <div className="fixed inset-0 z-30 bg-black/50" onClick={() => setIsPanelOpen(false)} />}
+
+      {/* Task panel slide-over (right side, not a modal) */}
+      <div className="fixed top-0 right-0 bottom-0 z-40 w-[440px] flex flex-col transition-transform duration-200"
+        style={{ transform: isPanelOpen ? "translateX(0)" : "translateX(100%)", boxShadow: "-8px 0 32px rgba(0,0,0,0.6)" }}
+        onClick={e => e.stopPropagation()}>
+        <TaskPanel task={selectedTask} isCreating={isCreating} onClose={() => setIsPanelOpen(false)} onSave={saveTask} />
+      </div>
+
+      {/* Command palette (Ctrl+K) — the one true overlay (design.md §5) */}
+      {isCmdOpen && (
+        <div className="fixed inset-0 z-50 flex items-start justify-center pt-20 px-4">
+          <div className="absolute inset-0 bg-black/70" onClick={() => setIsCmdOpen(false)} />
+          <div className="relative z-10 w-full max-w-xl">
+            <CommandPalette tasks={tasks} onClose={() => setIsCmdOpen(false)}
+              onNavigate={setScreen} onTaskClick={t => { openTask(t); setIsCmdOpen(false); }} onNewTask={openCreate} />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

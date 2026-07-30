@@ -15,31 +15,34 @@ Inspired by Stardew Valley, Pokémon GBA, Terraria, Celeste UI, and old JRPG men
 
 ## 2. Color Palette
 
-A limited, GBA/SNES-inspired palette — a handful of base colors plus semantic mappings, not a full design-tool palette of 50 shades.
+A limited, GBA/SNES-inspired "dark dungeon / gold" palette — a handful of base colors plus semantic mappings, not a full design-tool palette of 50 shades.
 
 **Base**
 
 | Token | Hex | Use |
 |---|---|---|
-| `--bg-deep` | `#1a1a2e` | app background |
-| `--bg-panel` | `#0f3460` | cards, panels |
-| `--bg-panel-alt` | `#16213e` | nested panels, sidebar |
-| `--border` | `#e94560` | panel borders (accent, used sparingly) |
-| `--text-primary` | `#eaeaea` | main text |
-| `--text-muted` | `#8891a3` | secondary text, metadata |
+| `--bg-deep` | `#0d0f14` | app background |
+| `--bg-panel` | `#13161d` | cards, panels |
+| `--bg-panel-alt` | `#10131a` | nested panels, sidebar |
+| `--border` | `#1e2330` | neutral panel/input borders |
+| `--primary-gold` | `#f0b429` | primary accent — buttons, active nav, focus ring, emphasis borders |
+| `--primary-gold-dim` | `#c48a0f` | pressed-button drop-shadow |
+| `--text-primary` | `#e2e0d8` | main text |
+| `--text-muted` | `#6b7483` | secondary text, metadata |
+| `--dim` | `#3a3f50` | disabled/empty states, dimmed decorations |
 
 **Status colors** (task status)
 
 | Status | Color |
 |---|---|
-| Inbox / Todo | `#8891a3` (muted gray) |
+| Inbox / Todo | `#6b7483` (muted gray) |
 | Ready | `#4ecca3` (teal-green) |
 | In Progress | `#f6c90e` (yellow) |
 | Blocked | `#e94560` (red) |
 | Waiting External | `#a29bfe` (violet) |
 | Testing | `#00b8d9` (cyan) |
 | Done | `#52c41a` (green) |
-| Archived | `#4a4a68` (dark gray) |
+| Archived | `#3a3f50` (dark gray) |
 
 **Priority colors**
 
@@ -48,8 +51,8 @@ A limited, GBA/SNES-inspired palette — a handful of base colors plus semantic 
 | P0 Critical | `#e94560` (red) |
 | P1 High | `#f6c90e` (amber) |
 | P2 Normal | `#4ecca3` (teal) |
-| P3 Low | `#8891a3` (gray) |
-| P4 Someday | `#4a4a68` (dark gray) |
+| P3 Low | `#6b7483` (gray) |
+| P4 Someday | `#3a3f50` (dark gray) |
 
 > **Accessibility note:** priority and status are never conveyed by color alone — each also gets a distinct icon/shape (see §7), so the app stays usable for colorblind viewing. All text/background pairs above are checked to meet WCAG AA contrast (4.5:1) at body text size.
 
@@ -70,7 +73,7 @@ Pure pixel fonts (like "Press Start 2P") are iconic but unreadable at body-text 
 | Role | Font | Use |
 |---|---|---|
 | Display | **Press Start 2P** | level numbers, XP counters, achievement banners, dashboard headline — short strings only |
-| Body / UI | **Pixel Operator** (or system monospace with `image-rendering: pixelated` fallback) | task titles, descriptions, all long-form text, forms |
+| Body / UI | **VT323** | task titles, descriptions, all long-form text, forms, buttons, nav |
 | Data | Same as body, tabular-nums | tables, timestamps, story points |
 
 **Sizing:** an 8px-based scale — `12 / 16 / 24 / 32 / 48px` — no in-between sizes, to stay consistent with the pixel-grid aesthetic.
@@ -247,22 +250,84 @@ A streak counts as "kept" if at least one task is completed that calendar day.
 
 ### 11.7 Achievements — Unlock Criteria
 
-| Achievement | Criteria |
-|---|---|
-| First Blood | Complete your first task |
-| 100 / 500 / 1000 Tasks | Cumulative tasks completed reaches threshold |
-| Night Owl | Complete a task between 10pm–4am |
-| Morning Hero | Complete a task before 7am |
-| Sprint Hero | Complete every task in an active sprint |
-| Bug Hunter | Complete 50 tasks of type `bug` |
-| Scholar | Complete 50 tasks in a `university` category project |
-| Code Warrior | Complete 100 tasks of type `coding` |
-| Perfect Week | 7 consecutive Perfect Days |
+Grouped into four categories, shown as separate sections in the Achievements screen.
+
+| Achievement | Category | Criteria |
+|---|---|---|
+| First Blood | Combat | Complete your first quest |
+| Task Slayer | Combat | Complete 10 quests total |
+| Speed Runner | Combat | Complete 5 quests in a single day |
+| Bug Hunter | Combat | Complete 50 quests of type `bug` |
+| Sprint Hero | Combat | Complete every quest in an active sprint |
+| 100 Quests | Combat | Complete 100 quests total |
+| Night Owl | Exploration | Complete a quest between 10pm–4am |
+| Morning Hero | Exploration | Complete a quest before 7am |
+| Code Warrior | Crafting | Complete 100 quests of type `coding` |
+| Scholar | Crafting | Complete 50 quests in a University-category project |
+| Guild Master | Social | Complete an entire project |
+| Perfect Week | Social | 7 consecutive Perfect Days |
 
 All achievement checks run as a lightweight post-completion check on task update — no scheduled jobs needed for v1.
+
+### 11.8 Character Sheet — Skill & Stat Formulas
+
+Companion to the Achievements/XP system (`01-product.md` §9.6): an aggregate progression view, not a separate leveling economy — it's derived entirely from existing task/XP data, no new state to persist beyond what's already logged.
+
+**Skill XP** (per Task Type): sum of the per-task XP (§11.1 formula) earned from all completed tasks of that type.
+
+**Skill Level**: same level curve as global level (§11.4), applied to that type's skill XP independently.
+
+**Stat scores** (D&D-style, 1–20 scale, all six start at a base of 8): each Task Type maps to exactly one stat; every point of that type's skill level adds `floor(level × 0.6)` to the mapped stat, capped at 20.
+
+| Task Type | Stat | Class Title |
+|---|---|---|
+| Coding | INT | Coder |
+| Investigation | WIS | Investigator |
+| Study | INT | Scholar |
+| Analysis | WIS | Analyst |
+| Documentation | CHA | Chronicler |
+| Bug | STR | Bug Slayer |
+| Deployment | DEX | Deployer |
+| Testing | WIS | Tester |
+| Meeting/Discussion | CHA | Diplomat |
+| Research | WIS | Explorer |
+| Design | CHA | Artisan |
+| Maintenance | CON | Keeper |
+| Refactor | INT | Refiner |
+| Incident | STR | Firefighter |
+| Communication | CHA | Herald |
+
+**Class Title**: the title of your highest-skill-XP Task Type, shown only once that skill is above level 1 — otherwise defaults to "Apprentice."
+
+### 11.9 Companion Moods
+
+A persistent ambient companion (sidebar), not a screen of its own. Mood is derived from current streak, with a temporary "excited" override right after a completion:
+
+| Mood | Trigger |
+|---|---|
+| Excited | Just triggered by a task completion (temporary override) |
+| Happy | Streak ≥ 7 days |
+| Idle | Streak ≥ 3 days |
+| Sad | Streak < 3 days |
+
+### 11.10 Weekly/Monthly Recap Grade
+
+An on-demand cutscene (Statistics screen) summarizing the prior period: quests done vs. the period before, XP earned, top project by completions, and current streak — capped off with a letter grade based on completion velocity:
+
+```
+velocity = quests_done_this_period / max(quests_created_this_period, 1)
+```
+
+| Velocity | Grade |
+|---|---|
+| ≥ 1.0 | S |
+| ≥ 0.7 | A |
+| ≥ 0.45 | B |
+| ≥ 0.25 | C |
+| < 0.25 | D |
 
 ---
 
 ## 12. Decisions Log
 
-No open questions remain in this document — the XP formula, level curve, and coin economy deferred from `01-product.md` are all resolved above (§11). Achievement thresholds (§11.7) are a reasonable starting set; adjusting numbers later is a config change, not a redesign.
+No open questions remain in this document — the XP formula, level curve, coin economy, and character/companion/recap systems deferred from `01-product.md` are all resolved above (§11). Achievement thresholds (§11.7) are a reasonable starting set; adjusting numbers later is a config change, not a redesign.

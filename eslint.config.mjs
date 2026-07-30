@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Standalone Vite/pnpm reference bundle — not part of this app's build.
+    "reference-design/**",
   ]),
 ]);
 

@@ -265,14 +265,17 @@ On opening the app, surface:
 
 ### 9.6 Gamification
 - **XP**: earned per completed task, formula based on Priority + Story Point + bonuses.
-- **Achievements**: e.g. First Task, 100/500/1000 Tasks, Night Owl, Sprint Hero, Bug Hunter.
+- **Achievements**: grouped into four categories — Combat, Exploration, Crafting, Social (e.g. First Blood, 100/500/1000 Quests, Night Owl, Sprint Hero, Bug Hunter, Scholar, Guild Master).
 - **Streaks**: represented as a campfire that grows with consecutive productive days.
 - **Coins & Room Decoration**: earn coins from completed tasks, spend on cosmetic items for a personal pixel "room/office" (chair, monitor, plants, etc.) rather than only a character avatar.
-- **Daily Quest**: auto-generated small daily goal (e.g. complete 3 tasks) with a reward on completion.
+- **Daily Quest**: one goal auto-selected each day from a rotating pool of quest templates (e.g. "complete 3 quests," "finish a P0," "clear a Blocked quest"), each with its own XP/coin reward, manually claimed once complete.
+- **Character Sheet**: an aggregate progression view — global level, a per-Task-Type "skill" level (XP earned from completed tasks of that type), six derived RPG stats (STR/DEX/CON/INT/WIS/CHA) mapped from skill levels, and a "class title" (e.g. Coder, Bug Slayer, Investigator) derived from your highest-leveled skill.
+- **Companion**: a small persistent companion whose mood (excited/happy/idle/sad) reflects recent completions and current streak — ambient encouragement, not a separate screen.
+- **Weekly/Monthly Recap**: an on-demand cutscene-style summary — quests done vs. the prior period, XP earned, top project, streak, and a letter grade (S–D) based on completion velocity.
 - Satisfying, lightweight completion feedback (animation/particles/sound) on marking a task done, and a bigger celebration when all planned tasks for the day are complete.
 
 ### 9.7 Statistics
-Heatmap of activity, most productive weekday/time, average task duration, completion rate, longest streak, focus hours, estimated vs. actual story points.
+Heatmap of activity, most productive weekday/time, average task duration, completion rate, longest streak, focus hours, estimated vs. actual story points, week-over-week deltas (throughput / created / completed vs. last week).
 
 ---
 
@@ -290,6 +293,7 @@ Workspace
 │   └── Archive
 ├── Projects
 ├── Sprints
+├── Character Sheet
 ├── Achievements
 ├── Statistics
 └── Settings
@@ -305,6 +309,7 @@ Workspace
 | History | Chronicle |
 | Achievements | Achievements |
 | Statistics | Progress |
+| Progression / skill breakdown | Character Sheet |
 
 ---
 

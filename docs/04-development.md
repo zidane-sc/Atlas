@@ -108,6 +108,8 @@ Scaled for a one-person project — the goal is confidence in the decisions that
 - A task cannot be given a second parent (the §8.10 decision)
 - Deliverables remain optional — completing a task with zero deliverables must succeed
 - Reporter silently defaults to `self` when not set
+- Character Sheet skill-level/stat-cap derivation and class-title selection (`03-design.md` §11.8) — pure function over `xp_logs`, cheap to unit test, easy to get the `min(20, ...)` cap or the "highest-skill-XP" tie-break wrong
+- Recap grade thresholds (`03-design.md` §11.10) — boundary values (exactly 1.0, 0.7, 0.45, 0.25) are the likely off-by-one spot
 
 **Explicitly skipped:** shadcn/ui primitive rendering, trivial CRUD getters, full visual regression testing, framework internals. Not a good use of solo-dev time for a one-user app.
 

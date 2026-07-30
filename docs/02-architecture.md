@@ -239,11 +239,14 @@ Single-user, so no join table is needed — unlock state lives directly on the r
 | Column | Type | Notes |
 |---|---|---|
 | id | uuid, PK | |
-| key | text, unique | e.g. `first_task`, `100_tasks` |
+| key | text, unique | e.g. `first_blood`, `100_quests` |
 | name | text | |
 | description | text | |
 | icon | text | pixel icon key |
+| category | enum: `combat, exploration, crafting, social` | groups the Achievements screen per `03-design.md` §11.7 |
 | unlocked_at | timestamp, nullable | null = not yet unlocked |
+
+**No separate tables for Character Sheet / Companion / Recap** (`03-design.md` §11.8–11.10) — all three are read-only views computed on the fly from `tasks` + `xp_logs`, nothing new to persist.
 
 ### 4.15 `settings`
 
@@ -275,6 +278,7 @@ src/
 │   │   │   └── archive/page.tsx
 │   │   ├── projects/page.tsx
 │   │   ├── sprints/page.tsx
+│   │   ├── character/page.tsx
 │   │   ├── achievements/page.tsx
 │   │   ├── statistics/page.tsx
 │   │   └── settings/page.tsx
@@ -284,7 +288,7 @@ src/
 ├── components/
 │   ├── ui/                        # shadcn primitives, pixel-reskinned
 │   ├── tasks/                     # task card, task form, relation picker, etc.
-│   ├── gamification/              # XP bar, achievement toast, streak campfire
+│   ├── gamification/              # XP bar, achievement toast, streak campfire, companion widget, character sheet, recap cutscene
 │   └── layout/                    # nav, command palette
 │
 ├── lib/

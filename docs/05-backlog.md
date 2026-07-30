@@ -27,7 +27,7 @@ Rather than the original "notes/journal first" brainstorm, this reflects what yo
 |---|---|---|
 | **v0.1 — Core Loop** | Smallest usable, already-satisfying version | EPIC-01 to 06 |
 | **v0.2 — Organize & Find** | Full task field set, relations, search | EPIC-07 to 13 |
-| **v0.3 — Full Gamification** | XP, levels, achievements, streaks, coins | EPIC-14 to 18 |
+| **v0.3 — Full Gamification** | XP, levels, achievements, streaks, coins, character sheet, companion, recap | EPIC-14 to 18, 25 to 27 |
 | **v0.4 — Power Views & Time** | Remaining views, focus timer, stats, export | EPIC-19 to 23 |
 | **v1.0 — Polish** | Full test coverage, consistent theming, keyboard coverage | EPIC-24 |
 
@@ -59,6 +59,9 @@ Rather than the original "notes/journal first" brainstorm, this reflects what yo
 | EPIC-22 | Saved Filters | v0.4 |
 | EPIC-23 | Data Export | v0.4 |
 | EPIC-24 | Polish & Full Test Coverage | v1.0 |
+| EPIC-25 | Character Sheet (skill levels, stats, class title) | v0.3 |
+| EPIC-26 | Companion (ambient mood widget) | v0.3 |
+| EPIC-27 | Weekly/Monthly Recap Cutscene | v0.3 |
 
 ---
 
@@ -114,7 +117,7 @@ Two stories below are written out in full as a template; the rest follow the sam
 Detailed story breakdowns for these get written when v0.1 is actually done — writing them now would go stale before you get there. Scope per phase, traceable back to where each was specified:
 
 - **v0.2:** Effort/Attachments/Deliverables/Reporter/Owner fields (`01-product.md` §8.6–8.9), Tags & Sprints (§8.11), Task Relations (§8.10), Search & Filters (§9.3), Table & Calendar views (§9.2), Comments/Activity Log (§9.1), Dashboard v1 (§9.4).
-- **v0.3:** XP & Leveling, Achievements, Streaks, Coins & Room Decoration, Sound/Motion settings — all formulas already defined in `03-design.md` §11, just need implementing.
+- **v0.3:** XP & Leveling, Achievements (now grouped into 4 categories — `01-product.md` §9.6), Streaks, Coins & Room Decoration, Sound/Motion settings, Character Sheet (skill/stat/class-title derivation), Companion (mood widget), Weekly/Monthly Recap cutscene (grade formula) — all formulas already defined in `03-design.md` §11, just need implementing.
 - **v0.4:** Remaining views (Timeline, Today, Waiting, Focus, Project, Archive — `01-product.md` §9.2), Work Sessions (§9.5), Statistics (§9.7), Saved Filters, Data Export (`02-architecture.md` §8).
 - **v1.0:** Full test suite per `04-development.md` §5, consistent theming pass, full keyboard-shortcut coverage.
 

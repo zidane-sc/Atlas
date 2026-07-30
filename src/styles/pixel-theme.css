@@ -1,0 +1,90 @@
+/* Pixel-specific utility classes — see docs/03-design.md */
+
+/* Pixel-perfect scrollbars — reference-design/src/styles/theme.css */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--color-bg-deep);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-primary-gold);
+}
+
+.pixelated {
+  image-rendering: pixelated;
+}
+
+/* Settings → Reduce Motion — shortens every animation/transition to effectively instant. */
+.reduce-motion,
+.reduce-motion * {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+}
+
+/* Hard 2px border, no radius, "pressed" state on click — docs/03-design.md §5 */
+.pixel-panel {
+  border-width: 2px;
+  border-radius: 0;
+}
+
+.pixel-button {
+  border-width: 2px;
+  border-radius: 0;
+  box-shadow: 2px 2px 0 0 var(--color-bg-deep);
+  transition: transform 100ms, box-shadow 100ms;
+}
+
+.pixel-button:active {
+  transform: translate(2px, 2px);
+  box-shadow: none;
+}
+
+/* Companion (Pip) mood animations — reference-design/src/app/App.tsx CompanionWidget */
+@keyframes cmpBounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+@keyframes cmpBounceFast {
+  0%, 100% { transform: translateY(0) scaleX(1); }
+  40% { transform: translateY(-9px) scaleX(0.9); }
+  90% { transform: translateY(1px) scaleX(1.08); }
+}
+@keyframes cmpBreathe {
+  0%, 100% { transform: scaleY(1) scaleX(1); }
+  50% { transform: scaleY(0.93) scaleX(1.04); }
+}
+@keyframes cmpSad {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(2px); }
+}
+
+/* Login screen — reference-design/src/app/App.tsx LoginScreen */
+@keyframes torchFlicker {
+  0%, 100% { opacity: 1; }
+  33% { opacity: 0.75; }
+  66% { opacity: 0.9; }
+}
+@keyframes loginSlideUp {
+  from { opacity: 0; transform: translateY(24px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Recap cutscene — reference-design/src/app/App.tsx RecapCutscene */
+@keyframes pixelPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.45; }
+}
+@keyframes recapTitle {
+  0% { letter-spacing: 0.5em; opacity: 0; }
+  100% { letter-spacing: 0.15em; opacity: 1; }
+}
+@keyframes gradeFlash {
+  0%, 100% { opacity: 1; }
+  40% { opacity: 0.35; }
+}
