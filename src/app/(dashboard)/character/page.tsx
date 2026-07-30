@@ -2,12 +2,13 @@
 
 import { useMemo } from "react";
 import { useTasks } from "@/components/providers/TasksProvider";
-import { computeCharacterSheet, SKILL_META, STATS } from "@/lib/gamification";
-import { TYPE_ICON, dashboardMock } from "@/lib/mock-data";
+import { computeCharacterSheet, SKILL_META, STATS, calculateStreak } from "@/lib/gamification";
+import { TYPE_ICON } from "@/lib/mock-data";
 
 export default function Page() {
   const { tasks, bonusXp, bonusCoins } = useTasks();
   const sheet = useMemo(() => computeCharacterSheet(tasks, bonusXp, bonusCoins), [tasks, bonusXp, bonusCoins]);
+  const streakDays = useMemo(() => calculateStreak(tasks), [tasks]);
 
   return (
     <div className="flex h-full flex-col">
@@ -55,7 +56,7 @@ export default function Page() {
                 </div>
                 <div className="flex items-center gap-1 px-2 py-1.5 text-[13px]" style={{ backgroundColor: "var(--color-bg-panel-alt)", border: "1px solid var(--color-border)", color: "var(--color-streak-flame)" }}>
                   <span>🔥</span>
-                  <span className="font-display">{dashboardMock.streakDays}d</span>
+                  <span className="font-display">{streakDays}d</span>
                 </div>
                 <div className="flex items-center gap-1 px-2 py-1.5 text-[13px]" style={{ backgroundColor: "var(--color-bg-panel-alt)", border: "1px solid var(--color-border)", color: "var(--color-status-ready)" }}>
                   <span>✓</span>
