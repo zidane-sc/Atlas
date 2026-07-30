@@ -42,11 +42,23 @@ export default function Page() {
               <div className="mb-2 font-display text-[9px]" style={{ color: "var(--color-primary-gold)" }}>
                 {sheet.classTitle.toUpperCase()}
               </div>
-              <div className="mb-2 flex flex-wrap gap-3 text-[12px]">
-                <span style={{ color: "var(--color-xp-gold)" }}>⚡ {sheet.globalXP.toLocaleString()}</span>
-                <span style={{ color: "var(--color-coin)" }}>🪙 {sheet.totalCoins}</span>
-                <span style={{ color: "var(--color-streak-flame)" }}>🔥 {dashboardMock.streakDays}d</span>
-                <span style={{ color: "var(--color-status-ready)" }}>✓ {sheet.completedCount}</span>
+              <div className="mb-2 flex gap-2">
+                <div className="flex items-center gap-1 px-2 py-1 text-[11px]" style={{ backgroundColor: "var(--color-bg-panel-alt)", border: "1px solid var(--color-border)", color: "var(--color-xp-gold)" }}>
+                  <span>⚡</span>
+                  <span className="font-display">{sheet.globalXP.toLocaleString()}</span>
+                </div>
+                <div className="flex items-center gap-1 px-2 py-1 text-[11px]" style={{ backgroundColor: "var(--color-bg-panel-alt)", border: "1px solid var(--color-border)", color: "var(--color-coin)" }}>
+                  <span>🪙</span>
+                  <span className="font-display">{sheet.totalCoins}</span>
+                </div>
+                <div className="flex items-center gap-1 px-2 py-1 text-[11px]" style={{ backgroundColor: "var(--color-bg-panel-alt)", border: "1px solid var(--color-border)", color: "var(--color-streak-flame)" }}>
+                  <span>🔥</span>
+                  <span className="font-display">{dashboardMock.streakDays}d</span>
+                </div>
+                <div className="flex items-center gap-1 px-2 py-1 text-[11px]" style={{ backgroundColor: "var(--color-bg-panel-alt)", border: "1px solid var(--color-border)", color: "var(--color-status-ready)" }}>
+                  <span>✓</span>
+                  <span className="font-display">{sheet.completedCount}</span>
+                </div>
               </div>
               <div className="grid grid-cols-6 gap-1.5">
                 {STATS.map((stat) => (
