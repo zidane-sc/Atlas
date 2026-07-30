@@ -3,6 +3,13 @@
 import { createContext, useContext, useMemo, useRef, useState } from "react";
 import type { ProjectFormValues } from "@/lib/schemas/project";
 import type { Project } from "@/types/gamification";
+import { useToast } from "@/components/providers/ToastProvider";
+import {
+  createProject as apiCreateProject,
+  updateProject as apiUpdateProject,
+  deleteProject as apiDeleteProject,
+} from "@/lib/actions/projects";
+import { mapDbProjectToClient } from "@/lib/tasks-reducer";
 
 interface SheetState {
   open: boolean;
@@ -37,24 +44,64 @@ export function ProjectsProvider({
   const initialProjectsRef = useRef(initialProjects);
   const [projects, setProjects] = useState<Project[]>(initialProjects);
   const [sheet, setSheet] = useState<SheetState>({ open: false, mode: "create", project: null });
+  const { toast } = useToast();
 
   const value = useMemo<ProjectsContextValue>(
     () => ({
       projects,
-      createProject: (values) => {
-        setProjects((prev) => [...prev, { id: crypto.randomUUID(), ...values, description: values.description ?? "" }]);
+      createProject: async (values) => {
+        const tempId = crypto.randomUUID();
+        const newProject: Project = {
+          id: tempId,
+          ...values,
+          description: values.description ?? "",
+        };
+        setProjects((prev) => [...prev, newProject]);
         setSheet((s) => ({ ...s, open: false }));
+
+        const result = await apiCreateProject(values);
+        if (!result.success) {
+          toast(result.error.message, "error");
+          setProjects((prev) => prev.filter((p) => p.id !== tempId));
+        } else {
+          setProjects((prev) =>
+            prev.map((p) => (p.id === tempId ? mapDbProjectToClient(result.data) : p))
+          );
+        }
       },
-      updateProject: (id, values) => {
-        setProjects((prev) => prev.map((p) => (p.id === id ? { ...p, ...values, description: values.description ?? "" } : p)));
+      updateProject: async (id, values) => {
+        const prevProject = projects.find((p) => p.id === id);
+        if (!prevProject) return;
+
+        const oldProject = { ...prevProject };
+
+        setProjects((prev) =>
+          prev.map((p) => (p.id === id ? { ...p, ...values, description: values.description ?? "" } : p))
+        );
         setSheet((s) => ({ ...s, open: false }));
+
+        const result = await apiUpdateProject(id, values);
+        if (!result.success) {
+          toast(result.error.message, "error");
+          setProjects((prev) => prev.map((p) => (p.id === id ? oldProject : p)));
+        } else {
+          setProjects((prev) =>
+            prev.map((p) => (p.id === id ? mapDbProjectToClient(result.data) : p))
+          );
+        }
       },
-      deleteProject: (id) => {
-        // Tasks keep referencing the deleted project by name — client-side mock data has no FK
-        // constraints, tasks already render arbitrary project strings safely, and reaching into
-        // TasksProvider from here for a cascade isn't worth the cross-provider complexity.
+      deleteProject: async (id) => {
+        const prevProject = projects.find((p) => p.id === id);
+        if (!prevProject) return;
+
         setProjects((prev) => prev.filter((p) => p.id !== id));
         setSheet((s) => (s.project?.id === id ? { ...s, open: false } : s));
+
+        const result = await apiDeleteProject(id);
+        if (!result.success) {
+          toast(result.error.message, "error");
+          setProjects((prev) => [...prev, prevProject]);
+        }
       },
       sheet,
       openCreateForm: () => setSheet({ open: true, mode: "create", project: null }),
@@ -69,7 +116,7 @@ export function ProjectsProvider({
         setSheet({ open: false, mode: "create", project: null });
       },
     }),
-    [projects, sheet]
+    [projects, sheet, toast]
   );
 
   return <ProjectsContext.Provider value={value}>{children}</ProjectsContext.Provider>;

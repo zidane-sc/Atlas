@@ -106,4 +106,23 @@ export interface Task {
   attachments: TaskAttachment[];
   deliverables: TaskDeliverable[];
   statusHistory: TaskStatusLogEntry[];
+  comments?: TaskComment[];
+}
+
+export interface TaskComment {
+  id: string;
+  authorName: string;
+  content: string;
+  createdAt: string;
+}
+
+export interface ActivityLogClient {
+  id: string;
+  action: string;
+  createdAt: string;
+  actorName: string;
+  taskTitle?: string;
+  projectEmoji?: string;
+  projectName?: string;
+  sprintName?: string;
 }

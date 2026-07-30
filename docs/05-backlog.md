@@ -33,35 +33,36 @@ Rather than the original "notes/journal first" brainstorm, this reflects what yo
 
 ### Epic Index
 
-| Epic | Name | Phase |
-|---|---|---|
-| EPIC-01 | Auth & Foundation | v0.1 |
-| EPIC-02 | Task Core (CRUD, core fields) | v0.1 |
-| EPIC-03 | Projects (basic) | v0.1 |
-| EPIC-04 | Views I — Kanban, List | v0.1 |
-| EPIC-05 | Status History & Basic Completion Feedback | v0.1 |
-| EPIC-06 | Command Palette & Quick Capture | v0.1 |
-| EPIC-07 | Extended Task Fields (Effort, Attachments, Deliverables, Reporter, Owner) | v0.2 |
-| EPIC-08 | Tags | v0.2 |
-| EPIC-09 | Sprints | v0.2 |
-| EPIC-10 | Task Relations | v0.2 |
-| EPIC-11 | Search & Filters | v0.2 |
-| EPIC-12 | Views II — Table, Calendar | v0.2 |
-| EPIC-13 | Comments, Activity Log & Dashboard v1 | v0.2 |
-| EPIC-14 | XP & Leveling | v0.3 |
-| EPIC-15 | Achievements | v0.3 |
-| EPIC-16 | Streaks | v0.3 |
-| EPIC-17 | Coins & Room Decoration | v0.3 |
-| EPIC-18 | Sound & Motion Settings | v0.3 |
-| EPIC-19 | Views III — Timeline, Today, Waiting, Focus, Project, Archive | v0.4 |
-| EPIC-20 | Work Sessions (Focus Timer) | v0.4 |
-| EPIC-21 | Statistics | v0.4 |
-| EPIC-22 | Saved Filters | v0.4 |
-| EPIC-23 | Data Export | v0.4 |
-| EPIC-24 | Polish & Full Test Coverage | v1.0 |
-| EPIC-25 | Character Sheet (skill levels, stats, class title) | v0.3 |
-| EPIC-26 | Companion (ambient mood widget) | v0.3 |
-| EPIC-27 | Weekly/Monthly Recap Cutscene | v0.3 |
+| Epic | Name | Phase | Status |
+|---|---|---|---|
+| EPIC-01 | Auth & Foundation | v0.1 | Done |
+| EPIC-02 | Task Core (CRUD, core fields) | v0.1 | Done |
+| EPIC-03 | Projects (basic) | v0.1 | Done |
+| EPIC-04 | Views I — Kanban, List | v0.1 | Done |
+| EPIC-05 | Status History & Basic Completion Feedback | v0.1 | Done |
+| EPIC-06 | Command Palette & Quick Capture | v0.1 | Done |
+| EPIC-07 | Extended Task Fields (Effort, Attachments, Deliverables, Reporter, Owner) | v0.2 | Done |
+| EPIC-08 | Tags | v0.2 | Done |
+| EPIC-09 | Sprints | v0.2 | Done (database-wired, Server Actions CRUD) |
+| EPIC-10 | Task Relations | v0.2 | Done |
+| EPIC-11 | Search & Filters | v0.2 | Done |
+| EPIC-12 | Views II — Table, Calendar | v0.2 | Done |
+| EPIC-13 | Comments, Activity Log & Dashboard v1 | v0.2 | Done |
+| EPIC-14 | XP & Leveling | v0.3 | Done (derived calculations, sidebar XP bar) |
+| EPIC-15 | Achievements | v0.3 | Done (achievements page is fully functional & dynamic) |
+| EPIC-16 | Streaks | v0.3 | Done (dynamically calculated from task completion dates) |
+| EPIC-17 | Coins & Room Decoration | v0.3 | Done (Coins persisted in DB, Room Decoration pending) |
+| EPIC-18 | Sound & Motion Settings | v0.3 | Pending |
+| EPIC-19 | Views III — Timeline, Today, Waiting, Focus, Project, Archive | v0.4 | Done (smart views fully built & routed in UI) |
+| EPIC-20 | Work Sessions (Focus Timer) | v0.4 | Mocked (Client-side timer built, DB sessions pending) |
+| EPIC-21 | Statistics | v0.4 | Done (Recharts charts fully built and dynamic) |
+| EPIC-22 | Saved Filters | v0.4 | Pending |
+| EPIC-23 | Data Export | v0.4 | Mocked (Settings page JSON export client-side only, DB sync pending) |
+| EPIC-24 | Polish & Full Test Coverage | v1.0 | Pending |
+| EPIC-25 | Character Sheet (skill levels, stats, class title) | v0.3 | Done (character page fully functional & dynamic) |
+| EPIC-26 | Companion (ambient mood widget) | v0.3 | Done (ambient sidebar widget built & mood-reactive) |
+| EPIC-27 | Weekly/Monthly Recap Cutscene | v0.3 | Mocked (recap grade formula & trigger built, DB persistence pending) |
+
 
 ---
 
@@ -93,20 +94,20 @@ Two stories below are written out in full as a template; the rest follow the sam
 
 | ID | Title | Epic | SP | Priority | Dependencies | Status |
 |---|---|---|---|---|---|---|
-| ATLAS-001 | Next.js + Tailwind + shadcn/ui project setup, pixel theme tokens | EPIC-01 | 3 | P0 | — | Backlog |
-| ATLAS-002 | Auth.js config, single allow-listed email | EPIC-01 | 3 | P0 | ATLAS-001 | Backlog |
-| ATLAS-003 | Prisma + Neon setup, `users` migration | EPIC-01 | 2 | P0 | ATLAS-001 | Backlog |
-| ATLAS-004 | `tasks` table + Prisma schema (core fields) | EPIC-02 | 3 | P0 | ATLAS-003 | Backlog |
-| ATLAS-005 | `createTask` Server Action + Zod schema | EPIC-02 | 3 | P0 | ATLAS-004 | Backlog |
-| ATLAS-006 | `updateTask` / soft-delete `deleteTask` actions | EPIC-02 | 3 | P0 | ATLAS-005 | Backlog |
-| ATLAS-007 | Task creation form (slide-over panel) | EPIC-02 | 5 | P0 | ATLAS-005 | Backlog |
-| ATLAS-008 | `projects` table + CRUD actions | EPIC-03 | 3 | P0 | ATLAS-003 | Backlog |
-| ATLAS-009 | Project picker in task form | EPIC-03 | 2 | P0 | ATLAS-007, ATLAS-008 | Backlog |
-| ATLAS-010 | Kanban view (drag-and-drop status change) | EPIC-04 | 8 | P0 | ATLAS-006 | Backlog |
-| ATLAS-011 | List view | EPIC-04 | 3 | P1 | ATLAS-006 | Backlog |
-| ATLAS-012 | `task_status_logs` write-on-status-change | EPIC-05 | 2 | P0 | ATLAS-006 | Backlog |
-| ATLAS-013 | Task-complete animation + basic XP number | EPIC-05 | 3 | P1 | ATLAS-010 | Backlog |
-| ATLAS-014 | Command palette shell + "create task" quick action | EPIC-06 | 5 | P1 | ATLAS-007 | Backlog |
+| ATLAS-001 | Next.js + Tailwind + shadcn/ui project setup, pixel theme tokens | EPIC-01 | 3 | P0 | — | Done |
+| ATLAS-002 | Auth.js config, single allow-listed email | EPIC-01 | 3 | P0 | ATLAS-001 | Done |
+| ATLAS-003 | Prisma + Neon setup, `users` migration | EPIC-01 | 2 | P0 | ATLAS-001 | Done |
+| ATLAS-004 | `tasks` table + Prisma schema (core fields) | EPIC-02 | 3 | P0 | ATLAS-003 | Done |
+| ATLAS-005 | `createTask` Server Action + Zod schema | EPIC-02 | 3 | P0 | ATLAS-004 | Done |
+| ATLAS-006 | `updateTask` / soft-delete `deleteTask` actions | EPIC-02 | 3 | P0 | ATLAS-005 | Done |
+| ATLAS-007 | Task creation form (slide-over panel) | EPIC-02 | 5 | P0 | ATLAS-005 | Done |
+| ATLAS-008 | `projects` table + CRUD actions | EPIC-03 | 3 | P0 | ATLAS-003 | Done |
+| ATLAS-009 | Project picker in task form | EPIC-03 | 2 | P0 | ATLAS-007, ATLAS-008 | Done |
+| ATLAS-010 | Kanban view (drag-and-drop status change) | EPIC-04 | 8 | P0 | ATLAS-006 | Done |
+| ATLAS-011 | List view | EPIC-04 | 3 | P1 | ATLAS-006 | Done |
+| ATLAS-012 | `task_status_logs` write-on-status-change | EPIC-05 | 2 | P0 | ATLAS-006 | Done |
+| ATLAS-013 | Task-complete animation + basic XP number | EPIC-05 | 3 | P1 | ATLAS-010 | Done |
+| ATLAS-014 | Command palette shell + "create task" quick action | EPIC-06 | 5 | P1 | ATLAS-007 | Done |
 
 **v0.1 total: ~46 story points** (≈ 46 hours at the 1 SP ≈ 1 hour convention from `04-development.md` §6 — a realistic first slice for evenings/weekends, not a "2–3 week sprint" fantasy).
 

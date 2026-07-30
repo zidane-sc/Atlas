@@ -7,6 +7,7 @@ import {
   getCompanionMood,
   getLevelInfo,
   xpForLevel,
+  calculateStreak,
 } from "./gamification";
 import type { Task } from "@/types/task";
 
@@ -131,5 +132,35 @@ describe("getCompanionMood — docs/03-design.md §11.9", () => {
     expect(getCompanionMood(6, false)).toBe("idle");
     expect(getCompanionMood(3, false)).toBe("idle");
     expect(getCompanionMood(2, false)).toBe("sad");
+  });
+});
+
+describe("calculateStreak", () => {
+  it("returns 0 if no tasks are done", () => {
+    expect(calculateStreak([])).toBe(0);
+  });
+
+  it("calculates correct streak with contiguous completions", () => {
+    const list = [
+      task({ id: "1", priority: "p2", type: "coding", status: "done", statusHistory: [{ fromStatus: "todo", toStatus: "done", changedAt: "2026-07-30T10:00:00Z" }] }),
+      task({ id: "2", priority: "p2", type: "coding", status: "done", statusHistory: [{ fromStatus: "todo", toStatus: "done", changedAt: "2026-07-29T12:00:00Z" }] }),
+      task({ id: "3", priority: "p2", type: "coding", status: "done", statusHistory: [{ fromStatus: "todo", toStatus: "done", changedAt: "2026-07-28T09:00:00Z" }] }),
+    ];
+    expect(calculateStreak(list, "2026-07-30T15:00:00Z")).toBe(3);
+  });
+
+  it("retains active streak if today has no completion yet but yesterday did", () => {
+    const list = [
+      task({ id: "2", priority: "p2", type: "coding", status: "done", statusHistory: [{ fromStatus: "todo", toStatus: "done", changedAt: "2026-07-29T12:00:00Z" }] }),
+      task({ id: "3", priority: "p2", type: "coding", status: "done", statusHistory: [{ fromStatus: "todo", toStatus: "done", changedAt: "2026-07-28T09:00:00Z" }] }),
+    ];
+    expect(calculateStreak(list, "2026-07-30T15:00:00Z")).toBe(2);
+  });
+
+  it("returns 0 if both today and yesterday have no completions", () => {
+    const list = [
+      task({ id: "3", priority: "p2", type: "coding", status: "done", statusHistory: [{ fromStatus: "todo", toStatus: "done", changedAt: "2026-07-28T09:00:00Z" }] }),
+    ];
+    expect(calculateStreak(list, "2026-07-30T15:00:00Z")).toBe(0);
   });
 });

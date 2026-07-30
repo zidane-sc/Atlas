@@ -346,3 +346,43 @@ function findUnlockDate(id: string, done: Task[], projects: Project[]): string |
       return null;
   }
 }
+
+export function calculateStreak(tasks: Task[], nowStr?: string): number {
+  const doneTasks = tasks.filter((t) => t.status === "done");
+  const completionDates = new Set<string>();
+  for (const t of doneTasks) {
+    const at = completedAt(t);
+    if (at) {
+      completionDates.add(at.slice(0, 10));
+    }
+  }
+
+  if (completionDates.size === 0) return 0;
+
+  const today = nowStr ? new Date(nowStr) : new Date();
+  const formatDate = (d: Date) => d.toISOString().slice(0, 10);
+
+  const todayStr = formatDate(today);
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+  const yesterdayStr = formatDate(yesterday);
+
+  if (!completionDates.has(todayStr) && !completionDates.has(yesterdayStr)) {
+    return 0;
+  }
+
+  const current = new Date(completionDates.has(todayStr) ? todayStr : yesterdayStr);
+  let streak = 0;
+
+  while (true) {
+    const dateStr = formatDate(current);
+    if (completionDates.has(dateStr)) {
+      streak++;
+      current.setDate(current.getDate() - 1);
+    } else {
+      break;
+    }
+  }
+
+  return streak;
+}

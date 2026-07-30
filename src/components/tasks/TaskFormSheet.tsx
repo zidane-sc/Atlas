@@ -526,18 +526,41 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
         </Section>
 
         {mode === "edit" && task && (
-          <Section title="History" shape="◫">
-            <ul className="flex flex-col gap-1">
-              {task.statusHistory.map((h, i) => (
-                <li key={i} className="flex justify-between">
-                  <span className="text-muted-foreground">
-                    {h.fromStatus ? STATUS_LABEL[h.fromStatus] : "Created"} → {STATUS_LABEL[h.toStatus]}
-                  </span>
-                  <span className="text-muted-foreground">{new Date(h.changedAt).toLocaleDateString()}</span>
-                </li>
-              ))}
-            </ul>
-          </Section>
+          <>
+            <Section title="Comments" shape="💬">
+              <div className="flex flex-col gap-2">
+                <ul className="flex flex-col gap-2 max-h-48 overflow-y-auto border-b border-border pb-2">
+                  {(!task.comments || task.comments.length === 0) ? (
+                    <li className="text-xs text-muted-foreground italic">No comments yet</li>
+                  ) : (
+                    task.comments.map((c) => (
+                      <li key={c.id} className="flex flex-col gap-0.5 text-xs bg-muted/30 p-1.5 border border-border">
+                        <div className="flex justify-between font-bold text-muted-foreground">
+                          <span>{c.authorName}</span>
+                          <span>{new Date(c.createdAt).toLocaleDateString()}</span>
+                        </div>
+                        <p className="text-foreground">{c.content}</p>
+                      </li>
+                    ))
+                  )}
+                </ul>
+                <CommentInput taskId={task.id} />
+              </div>
+            </Section>
+
+            <Section title="History" shape="◫">
+              <ul className="flex flex-col gap-1">
+                {task.statusHistory.map((h, i) => (
+                  <li key={i} className="flex justify-between text-xs">
+                    <span className="text-muted-foreground">
+                      {h.fromStatus ? STATUS_LABEL[h.fromStatus] : "Created"} → {STATUS_LABEL[h.toStatus]}
+                    </span>
+                    <span className="text-muted-foreground">{new Date(h.changedAt).toLocaleDateString()}</span>
+                  </li>
+                ))}
+              </ul>
+            </Section>
+          </>
         )}
       </div>
 
@@ -545,6 +568,40 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
         <Button type="button" variant="ghost" onClick={closeForm}>Cancel</Button>
         <Button type="submit"><Check size={12} />{mode === "edit" ? "Save Changes" : "Create Quest"}</Button>
       </div>
+    </form>
+  );
+}
+
+function CommentInput({ taskId }: { taskId: string }) {
+  const { addComment } = useTasks();
+  const [content, setContent] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!content.trim() || loading) return;
+    setLoading(true);
+    try {
+      await addComment(taskId, content.trim());
+      setContent("");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="flex gap-1.5 mt-1">
+      <input
+        aria-label="Add a comment"
+        className="flex-1 text-xs bg-background border border-border px-2 py-1 text-foreground focus:outline-none focus:border-primary-gold"
+        placeholder="Type a comment..."
+        value={content}
+        onChange={(e) => setContent(e.target.value)}
+        disabled={loading}
+      />
+      <Button type="submit" size="sm" disabled={!content.trim() || loading}>
+        Post
+      </Button>
     </form>
   );
 }

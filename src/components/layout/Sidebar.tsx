@@ -8,8 +8,8 @@ import { Companion } from "@/components/gamification/Companion";
 import { XpBar } from "@/components/gamification/XpBar";
 import { useTasks } from "@/components/providers/TasksProvider";
 import { useCommandPalette } from "@/components/providers/CommandPaletteProvider";
-import { computeCharacterSheet, getNextStreakMilestone } from "@/lib/gamification";
-import { MOCK_NOW, dashboardMock } from "@/lib/mock-data";
+import { computeCharacterSheet, getNextStreakMilestone, calculateStreak } from "@/lib/gamification";
+import { MOCK_NOW } from "@/lib/mock-data";
 import { NAV_CORE, NAV_MANAGE, NAV_SMART_VIEWS, NAV_TASKS, type NavItemBase } from "@/lib/nav-items";
 import type { Task } from "@/types/task";
 
@@ -75,7 +75,8 @@ export function Sidebar() {
   const { tasks, openCreateForm, justCompleted, bonusXp, bonusCoins } = useTasks();
   const { setOpen: setCommandPaletteOpen } = useCommandPalette();
   const sheet = useMemo(() => computeCharacterSheet(tasks, bonusXp, bonusCoins), [tasks, bonusXp, bonusCoins]);
-  const milestone = getNextStreakMilestone(dashboardMock.streakDays);
+  const streakDays = useMemo(() => calculateStreak(tasks), [tasks]);
+  const milestone = getNextStreakMilestone(streakDays);
   const pathname = usePathname();
 
   const smartViews: NavItem[] = NAV_SMART_VIEWS.map((item) => ({
@@ -104,7 +105,7 @@ export function Sidebar() {
       <div className="flex flex-col gap-1.5 px-4 py-3" style={{ borderBottom: "1px solid var(--color-border)" }}>
         <XpBar level={sheet.globalLevel} xpIntoLevel={sheet.xpIntoLevel} xpForNextLevel={sheet.xpForNextLevel} compact />
         <div className="flex items-center gap-3 text-sm">
-          <span style={{ color: "var(--color-streak-flame)" }}>🔥 {dashboardMock.streakDays}d</span>
+          <span style={{ color: "var(--color-streak-flame)" }}>🔥 {streakDays}d</span>
           <span style={{ color: "var(--color-coin)" }}>🪙 {sheet.totalCoins}</span>
         </div>
         {milestone && (
@@ -118,7 +119,7 @@ export function Sidebar() {
                 <div
                   key={i}
                   className="h-1 flex-1"
-                  style={{ backgroundColor: i < dashboardMock.streakDays ? "var(--color-streak-flame)" : "var(--color-border)" }}
+                  style={{ backgroundColor: i < streakDays ? "var(--color-streak-flame)" : "var(--color-border)" }}
                 />
               ))}
             </div>
@@ -183,7 +184,7 @@ export function Sidebar() {
         ))}
       </nav>
 
-      <Companion level={sheet.globalLevel} streakDays={dashboardMock.streakDays} justCompleted={justCompleted} />
+      <Companion level={sheet.globalLevel} streakDays={streakDays} justCompleted={justCompleted} />
       <div className="p-3">
         <button
           type="button"

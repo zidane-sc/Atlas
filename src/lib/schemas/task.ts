@@ -65,6 +65,70 @@ const deliverableSchema = z.object({
   label: z.string().trim().min(1, "Label is required"),
 });
 
+/**
+ * DB-level status range (docs/02-architecture.md §4.4) — includes `archived`, which
+ * `STATUS_VALUES` above omits since the UI doesn't expose it yet.
+ */
+const TASK_STATUS_VALUES = [...STATUS_VALUES, "archived"] as const;
+
+/** `createTask` Server Action input — validates against the `tasks` table, not the mock UI shape. */
+export const createTaskSchema = z.object({
+  title: z.string().trim().min(1, "Title is required"),
+  description: z.string().trim().optional(),
+  projectId: z.uuid().optional(),
+  sprintId: z.uuid().optional(),
+  parentId: z.uuid().optional(),
+  status: z.enum(TASK_STATUS_VALUES).default("inbox"),
+  type: z.enum(TYPE_VALUES).default("coding"),
+  priority: z.enum(PRIORITY_VALUES).default("p2"),
+  effort: z.enum(EFFORT_OPTIONS).optional(),
+  storyPoint: z
+    .number()
+    .refine((v) => (SP_OPTIONS as readonly number[]).includes(v), "Invalid story point")
+    .optional(),
+  reporter: z.enum(REPORTER_OPTIONS).default("self"),
+  startDate: z.string().regex(DATE_RE, "Use YYYY-MM-DD").optional(),
+  dueDate: z.string().regex(DATE_RE, "Use YYYY-MM-DD").optional(),
+  tags: z.array(z.string().trim().min(1)).default([]),
+  relations: z.array(relationSchema).default([]),
+  attachments: z.array(attachmentSchema).default([]),
+  deliverables: z.array(deliverableSchema).default([]),
+});
+
+export type CreateTaskInput = z.input<typeof createTaskSchema>;
+
+/**
+ * `updateTask` Server Action input — every field optional (PATCH semantics: omitted = leave
+ * unchanged). Nullable columns additionally accept `null` to clear them; `.default()` is
+ * deliberately not reused from `createTaskSchema` since that would reset omitted fields
+ * instead of leaving them alone.
+ */
+export const updateTaskSchema = z.object({
+  title: z.string().trim().min(1, "Title is required").optional(),
+  description: z.string().trim().nullable().optional(),
+  projectId: z.uuid().nullable().optional(),
+  sprintId: z.uuid().nullable().optional(),
+  parentId: z.uuid().nullable().optional(),
+  status: z.enum(TASK_STATUS_VALUES).optional(),
+  type: z.enum(TYPE_VALUES).optional(),
+  priority: z.enum(PRIORITY_VALUES).optional(),
+  effort: z.enum(EFFORT_OPTIONS).nullable().optional(),
+  storyPoint: z
+    .number()
+    .refine((v) => (SP_OPTIONS as readonly number[]).includes(v), "Invalid story point")
+    .nullable()
+    .optional(),
+  reporter: z.enum(REPORTER_OPTIONS).optional(),
+  startDate: z.string().regex(DATE_RE, "Use YYYY-MM-DD").nullable().optional(),
+  dueDate: z.string().regex(DATE_RE, "Use YYYY-MM-DD").nullable().optional(),
+  tags: z.array(z.string().trim().min(1)).optional(),
+  relations: z.array(relationSchema).optional(),
+  attachments: z.array(attachmentSchema).optional(),
+  deliverables: z.array(deliverableSchema).optional(),
+});
+
+export type UpdateTaskInput = z.input<typeof updateTaskSchema>;
+
 export const taskFormSchema = z.object({
   title: z.string().trim().min(1, "Title is required"),
   description: z.string().trim().optional(),

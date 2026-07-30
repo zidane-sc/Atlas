@@ -15,6 +15,7 @@ export default async function AuthPage({
 }) {
   const { error } = await searchParams;
   const errorMessage = error ? (ERROR_MESSAGES[error] ?? ERROR_MESSAGES.Default) : null;
+  const isDev = process.env.NODE_ENV !== "production";
 
   return (
     <div
@@ -88,6 +89,31 @@ export default async function AuthPage({
             <span className="text-lg tracking-wide">Sign in with GitHub</span>
           </button>
         </form>
+
+        {isDev && (
+          <form
+            className="mt-3"
+            action={async () => {
+              "use server";
+              try {
+                await signIn("dev", { redirectTo: "/dashboard" });
+              } catch (err) {
+                if (err instanceof AuthError) {
+                  redirect(`/auth?error=${err.type}`);
+                }
+                throw err;
+              }
+            }}
+          >
+            <button
+              type="submit"
+              className="pixel-button flex w-full cursor-pointer items-center justify-center gap-2 border-2 px-6 py-2.5 transition-colors"
+              style={{ backgroundColor: "transparent", borderColor: "var(--color-status-testing)", color: "var(--color-status-testing)" }}
+            >
+              <span className="text-base tracking-wide">◆ DEV LOGIN (LOCAL ONLY)</span>
+            </button>
+          </form>
+        )}
 
         <p className="mt-7 text-sm" style={{ color: "var(--color-dim)" }}>
           Restricted to one account — no public sign-up.

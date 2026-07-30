@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE "users" ADD COLUMN     "bonus_coins" INTEGER NOT NULL DEFAULT 0,
+ADD COLUMN     "bonus_xp" INTEGER NOT NULL DEFAULT 0;

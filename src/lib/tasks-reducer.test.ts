@@ -127,3 +127,27 @@ describe("tasksReducer delete", () => {
     expect(result.map((t) => t.id)).toEqual(["t2"]);
   });
 });
+
+describe("tasksReducer replaceId and restore", () => {
+  const baseTask: Task = {
+    id: "t1", title: "A", project: "Atlas", status: "todo", type: "coding", priority: "p2",
+    tags: [], relations: [], attachments: [], deliverables: [], statusHistory: [],
+  };
+
+  it("replaces a temporary task ID with the real ID", () => {
+    const result = tasksReducer([baseTask], { type: "replaceId", tempId: "t1", realId: "db-id-123" });
+    expect(result[0].id).toBe("db-id-123");
+  });
+
+  it("restores a deleted task if it is not already present", () => {
+    const result = tasksReducer([], { type: "restore", task: baseTask });
+    expect(result).toHaveLength(1);
+    expect(result[0]).toEqual(baseTask);
+  });
+
+  it("does not duplicate a restored task if it is already present", () => {
+    const result = tasksReducer([baseTask], { type: "restore", task: baseTask });
+    expect(result).toHaveLength(1);
+  });
+});
+

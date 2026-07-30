@@ -3,6 +3,13 @@
 import { createContext, useContext, useMemo, useRef, useState } from "react";
 import type { SprintFormValues } from "@/lib/schemas/sprint";
 import type { Sprint } from "@/types/gamification";
+import { useToast } from "@/components/providers/ToastProvider";
+import {
+  createSprint as apiCreateSprint,
+  updateSprint as apiUpdateSprint,
+  deleteSprint as apiDeleteSprint,
+} from "@/lib/actions/sprints";
+import { mapDbSprintToClient } from "@/lib/tasks-reducer";
 
 interface SheetState {
   open: boolean;
@@ -37,23 +44,64 @@ export function SprintsProvider({
   const initialSprintsRef = useRef(initialSprints);
   const [sprints, setSprints] = useState<Sprint[]>(initialSprints);
   const [sheet, setSheet] = useState<SheetState>({ open: false, mode: "create", sprint: null });
+  const { toast } = useToast();
 
   const value = useMemo<SprintsContextValue>(
     () => ({
       sprints,
-      createSprint: (values) => {
-        setSprints((prev) => [{ id: crypto.randomUUID(), ...values, goal: values.goal ?? "" }, ...prev]);
+      createSprint: async (values) => {
+        const tempId = crypto.randomUUID();
+        const newSprint: Sprint = {
+          id: tempId,
+          ...values,
+          goal: values.goal ?? "",
+        };
+        setSprints((prev) => [newSprint, ...prev]);
         setSheet((s) => ({ ...s, open: false }));
+
+        const result = await apiCreateSprint(values);
+        if (!result.success) {
+          toast(result.error.message, "error");
+          setSprints((prev) => prev.filter((s) => s.id !== tempId));
+        } else {
+          setSprints((prev) =>
+            prev.map((s) => (s.id === tempId ? mapDbSprintToClient(result.data) : s))
+          );
+        }
       },
-      updateSprint: (id, values) => {
-        setSprints((prev) => prev.map((s) => (s.id === id ? { ...s, ...values, goal: values.goal ?? "" } : s)));
+      updateSprint: async (id, values) => {
+        const prevSprint = sprints.find((s) => s.id === id);
+        if (!prevSprint) return;
+
+        const oldSprint = { ...prevSprint };
+
+        setSprints((prev) =>
+          prev.map((s) => (s.id === id ? { ...s, ...values, goal: values.goal ?? "" } : s))
+        );
         setSheet((s) => ({ ...s, open: false }));
+
+        const result = await apiUpdateSprint(id, values);
+        if (!result.success) {
+          toast(result.error.message, "error");
+          setSprints((prev) => prev.map((s) => (s.id === id ? oldSprint : s)));
+        } else {
+          setSprints((prev) =>
+            prev.map((s) => (s.id === id ? mapDbSprintToClient(result.data) : s))
+          );
+        }
       },
-      deleteSprint: (id) => {
-        // Tasks keep referencing the deleted sprint by name — same "no FK, not worth a cross-provider
-        // cascade" reasoning as ProjectsProvider.deleteProject.
+      deleteSprint: async (id) => {
+        const prevSprint = sprints.find((s) => s.id === id);
+        if (!prevSprint) return;
+
         setSprints((prev) => prev.filter((s) => s.id !== id));
         setSheet((s) => (s.sprint?.id === id ? { ...s, open: false } : s));
+
+        const result = await apiDeleteSprint(id);
+        if (!result.success) {
+          toast(result.error.message, "error");
+          setSprints((prev) => [...prev, prevSprint]);
+        }
       },
       sheet,
       openCreateForm: () => setSheet({ open: true, mode: "create", sprint: null }),
@@ -68,7 +116,7 @@ export function SprintsProvider({
         setSheet({ open: false, mode: "create", sprint: null });
       },
     }),
-    [sprints, sheet]
+    [sprints, sheet, toast]
   );
 
   return <SprintsContext.Provider value={value}>{children}</SprintsContext.Provider>;

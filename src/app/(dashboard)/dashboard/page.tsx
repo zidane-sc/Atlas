@@ -10,14 +10,15 @@ import { DailyQuestCard } from "@/components/gamification/DailyQuestCard";
 import { TaskListView } from "@/components/tasks/TaskListView";
 import { useTasks } from "@/components/providers/TasksProvider";
 import { useSprints } from "@/components/providers/SprintsProvider";
-import { calcTaskCoins, calcTaskXP, completedAt, computeCharacterSheet, isTaskOnTime } from "@/lib/gamification";
+import { calcTaskCoins, calcTaskXP, completedAt, computeCharacterSheet, isTaskOnTime, calculateStreak } from "@/lib/gamification";
 import { formatDueDate, isDueToday, isOverdue } from "@/lib/task-utils";
-import { MOCK_NOW, TYPE_ICON, dashboardMock, todaysDailyQuest } from "@/lib/mock-data";
+import { MOCK_NOW, TYPE_ICON, todaysDailyQuest } from "@/lib/mock-data";
 
 export default function Page() {
-  const { tasks, bonusXp, bonusCoins, claimDailyQuest } = useTasks();
+  const { tasks, activityLogs, bonusXp, bonusCoins, claimDailyQuest } = useTasks();
   const { sprints } = useSprints();
   const sheet = useMemo(() => computeCharacterSheet(tasks, bonusXp, bonusCoins), [tasks, bonusXp, bonusCoins]);
+  const streakDays = useMemo(() => calculateStreak(tasks), [tasks]);
   const { classTitle } = sheet;
   const [dailyQuestClaimed, setDailyQuestClaimed] = useState(false);
 
@@ -68,7 +69,7 @@ export default function Page() {
           </div>
 
           <div className="flex flex-col items-center justify-center border-l-2 border-border px-4">
-            <StreakCampfire days={dashboardMock.streakDays} />
+            <StreakCampfire days={streakDays} />
           </div>
 
           <div className="flex flex-col items-center justify-center border-l-2 border-border px-4">
@@ -132,6 +133,35 @@ export default function Page() {
           <div className="mt-2 flex gap-5 text-sm text-muted-foreground">
             <span>{formatDueDate(activeSprint.startDate)} → {formatDueDate(activeSprint.endDate)}</span>
             <span style={{ color: "var(--color-status-ready)" }}>{sprintTasks.length - sprintDone} remaining</span>
+          </div>
+        </div>
+      )}
+
+      {activityLogs && activityLogs.length > 0 && (
+        <div className="border-2 border-border bg-card p-4">
+          <div className="mb-3 text-sm tracking-widest" style={{ color: "var(--color-primary-gold)" }}>◫ RECENT ACTIVITIES</div>
+          <div className="flex flex-col gap-2">
+            {activityLogs.map((log) => (
+              <div key={log.id} className="flex justify-between items-center text-xs border-b border-border/40 pb-1.5 last:border-b-0 last:pb-0">
+                <div className="flex items-center gap-1.5">
+                  <span className="font-bold text-muted-foreground">{log.actorName}</span>
+                  <span className="text-muted-foreground">{log.action}</span>
+                  {log.taskTitle && (
+                    <span className="text-foreground font-semibold">&quot;{log.taskTitle}&quot;</span>
+                  )}
+                  {log.projectName && (
+                    <span className="inline-flex items-center gap-1 text-foreground font-semibold">
+                      <span>{log.projectEmoji}</span>
+                      <span>{log.projectName}</span>
+                    </span>
+                  )}
+                  {log.sprintName && (
+                    <span className="text-foreground font-semibold">{log.sprintName}</span>
+                  )}
+                </div>
+                <span className="text-muted-foreground">{new Date(log.createdAt).toLocaleDateString()}</span>
+              </div>
+            ))}
           </div>
         </div>
       )}

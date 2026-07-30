@@ -1,0 +1,269 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// docs/02-architecture.md §4.1 — needed because the app is deployed publicly,
+// even though there's exactly one real account.
+model User {
+  id        String   @id @default(uuid()) @db.Uuid
+  email     String   @unique
+  name      String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  bonusXp    Int @default(0) @map("bonus_xp")
+  bonusCoins Int @default(0) @map("bonus_coins")
+
+  tasks        Task[]
+  comments     Comment[]
+  activityLogs ActivityLog[]
+
+  @@map("users")
+}
+
+enum TaskStatus {
+  inbox
+  todo
+  ready
+  in_progress
+  blocked
+  waiting_external
+  testing
+  done
+  archived
+
+  @@map("task_status")
+}
+
+enum TaskType {
+  coding
+  investigation
+  study
+  analysis
+  documentation
+  bug
+  deployment
+  testing
+  meeting
+  research
+  design
+  maintenance
+  refactor
+  incident
+  communication
+
+  @@map("task_type")
+}
+
+enum TaskPriority {
+  p0
+  p1
+  p2
+  p3
+  p4
+
+  @@map("task_priority")
+}
+
+enum TaskEffort {
+  xs
+  s
+  m
+  l
+  xl
+  xxl
+
+  @@map("task_effort")
+}
+
+enum TaskReporter {
+  self
+  qa
+  manager
+  pm
+  client
+  lecturer
+  friend
+  other
+
+  @@map("task_reporter")
+}
+
+// docs/02-architecture.md §4.4 — the core table.
+model Task {
+  id          String  @id @default(uuid()) @db.Uuid
+  title       String
+  description String?
+
+  projectId String?  @map("project_id") @db.Uuid
+  project   Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  sprintId  String?  @map("sprint_id") @db.Uuid
+  sprint    Sprint?  @relation(fields: [sprintId], references: [id], onDelete: SetNull)
+
+  parentId String? @map("parent_id") @db.Uuid
+  // Single parent only — decision from docs/01-product.md §8.10.
+  parent   Task?   @relation("TaskParent", fields: [parentId], references: [id])
+  children Task[]  @relation("TaskParent")
+
+  status   TaskStatus
+  type     TaskType
+  priority TaskPriority
+  effort   TaskEffort?
+
+  storyPoint Int? @map("story_point")
+
+  // Defaults to `self` — docs/01-product.md §8.8.
+  reporter TaskReporter @default(self)
+
+  ownerId String? @map("owner_id") @db.Uuid
+  owner   User?   @relation(fields: [ownerId], references: [id])
+
+  startDate DateTime? @map("start_date") @db.Date
+  dueDate   DateTime? @map("due_date") @db.Date
+
+  tags         String[]
+  relations    Json     @default("[]")
+  attachments  Json     @default("[]")
+  deliverables Json     @default("[]")
+
+  timeSpentSeconds Int @default(0) @map("time_spent_seconds")
+
+  completedAt DateTime? @map("completed_at")
+  archivedAt  DateTime? @map("archived_at")
+  deletedAt   DateTime? @map("deleted_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  statusHistory TaskStatusLog[]
+  comments      Comment[]
+  activityLogs  ActivityLog[]
+  workSessions  WorkSession[]
+
+  @@index([status])
+  @@index([projectId])
+  @@index([dueDate])
+  @@index([parentId])
+  @@map("tasks")
+}
+
+enum ProjectCategory {
+  FullTime    @map("Full-time")
+  University
+  SideProject @map("Side Project")
+  Freelance
+  Personal
+  Other
+
+  @@map("project_category")
+}
+
+enum ProjectStatus {
+  active
+  on_hold
+  completed
+
+  @@map("project_status")
+}
+
+model Project {
+  id          String          @id @default(uuid()) @db.Uuid
+  name        String
+  category    ProjectCategory
+  colorVar    String          @map("color_var")
+  emoji       String
+  description String?
+  status      ProjectStatus   @default(active)
+
+  archivedAt DateTime? @map("archived_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime  @updatedAt @map("updated_at")
+
+  tasks        Task[]
+  activityLogs ActivityLog[]
+
+  @@map("projects")
+}
+
+enum SprintStatus {
+  planning
+  active
+  completed
+
+  @@map("sprint_status")
+}
+
+model Sprint {
+  id        String       @id @default(uuid()) @db.Uuid
+  name      String
+  startDate DateTime     @map("start_date") @db.Date
+  endDate   DateTime     @map("end_date") @db.Date
+  status    SprintStatus @default(planning)
+  goal      String?
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  tasks        Task[]
+  activityLogs ActivityLog[]
+
+  @@map("sprints")
+}
+
+model TaskStatusLog {
+  id         String     @id @default(uuid()) @db.Uuid
+  taskId     String     @map("task_id") @db.Uuid
+  task       Task       @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  fromStatus TaskStatus? @map("from_status")
+  toStatus   TaskStatus  @map("to_status")
+  changedAt  DateTime   @default(now()) @map("changed_at")
+
+  @@map("task_status_logs")
+}
+
+model Comment {
+  id        String   @id @default(uuid()) @db.Uuid
+  taskId    String   @map("task_id") @db.Uuid
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  authorId  String   @map("author_id") @db.Uuid
+  author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  content   String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("comments")
+}
+
+model ActivityLog {
+  id        String   @id @default(uuid()) @db.Uuid
+  taskId    String?  @map("task_id") @db.Uuid
+  task      Task?    @relation(fields: [taskId], references: [id], onDelete: SetNull)
+  projectId String?  @map("project_id") @db.Uuid
+  project   Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  sprintId  String?  @map("sprint_id") @db.Uuid
+  sprint    Sprint?  @relation(fields: [sprintId], references: [id], onDelete: SetNull)
+  actorId   String   @map("actor_id") @db.Uuid
+  actor     User     @relation(fields: [actorId], references: [id], onDelete: Cascade)
+  action    String
+  details   Json?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("activity_logs")
+}
+
+model WorkSession {
+  id              String   @id @default(uuid()) @db.Uuid
+  taskId          String   @map("task_id") @db.Uuid
+  task            Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  startedAt       DateTime @map("started_at")
+  endedAt         DateTime @map("ended_at")
+  durationSeconds Int      @map("duration_seconds")
+
+  @@map("work_sessions")
+}
+
+
+

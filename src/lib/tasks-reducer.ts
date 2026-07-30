@@ -1,12 +1,98 @@
-import type { Task } from "@/types/task";
+import type { Task, TaskStatus, TaskType, Priority, Effort, Reporter, TaskAttachment, TaskDeliverable, TaskRelation, TaskComment } from "@/types/task";
 import type { TaskFormValues } from "@/lib/schemas/task";
+import type { Task as DbTask, Project as DbProject, Sprint as DbSprint, TaskStatusLog, Comment as DbComment, User as DbUser } from "@/generated/prisma/client";
+import type { Project, Sprint } from "@/types/gamification";
+
+export const PROJECT_MAP: Record<string, string> = {
+  "ATS": "a0665f80-7a0e-4364-8848-d39f60d3d5f1",
+  "Thesis": "b04e6c9a-d762-4217-a066-6b22b2ee709a",
+  "Client A": "c0559f23-64be-4581-807e-1284eb3b7280",
+  "Atlas": "d09ef1b3-4f24-4f40-8bde-d51025a17688",
+  "Group Project": "e03bf3ab-d886-455f-8647-5d2bc50e3025",
+  "Full-time": "f0f9c2d1-2ee3-4927-99df-1c7c10b429a3",
+};
+
+export const PROJECT_REV_MAP: Record<string, string> = {
+  "a0665f80-7a0e-4364-8848-d39f60d3d5f1": "ATS",
+  "b04e6c9a-d762-4217-a066-6b22b2ee709a": "Thesis",
+  "c0559f23-64be-4581-807e-1284eb3b7280": "Client A",
+  "d09ef1b3-4f24-4f40-8bde-d51025a17688": "Atlas",
+  "e03bf3ab-d886-455f-8647-5d2bc50e3025": "Group Project",
+  "f0f9c2d1-2ee3-4927-99df-1c7c10b429a3": "Full-time",
+};
+
+export const SPRINT_MAP: Record<string, string> = {
+  "Sprint 7 — The Awakening": "77777777-7777-7777-7777-777777777777",
+  "Sprint 6 — Dark Passage": "66666666-6666-6666-6666-666666666666",
+  "Sprint 8 — The Reckoning": "88888888-8888-8888-8888-888888888888",
+};
+
+export const SPRINT_REV_MAP: Record<string, string> = {
+  "77777777-7777-7777-7777-777777777777": "Sprint 7 — The Awakening",
+  "66666666-6666-6666-6666-666666666666": "Sprint 6 — Dark Passage",
+  "88888888-8888-8888-8888-888888888888": "Sprint 8 — The Reckoning",
+};
+
+export type DbTaskWithLogs = DbTask & {
+  statusHistory?: TaskStatusLog[];
+  comments?: (DbComment & { author: DbUser })[];
+};
+
+export function mapDbTaskToClient(dbTask: DbTaskWithLogs, dbProjects?: DbProject[], dbSprints?: DbSprint[]): Task {
+  const project = dbProjects?.find((p) => p.id === dbTask.projectId);
+  const sprint = dbSprints?.find((s) => s.id === dbTask.sprintId);
+  return {
+    id: dbTask.id,
+    title: dbTask.title,
+    description: dbTask.description ?? undefined,
+    project: project ? project.name : (dbTask.projectId ? (PROJECT_REV_MAP[dbTask.projectId] ?? "Atlas") : "Atlas"),
+    status: dbTask.status as TaskStatus,
+    type: dbTask.type as TaskType,
+    priority: dbTask.priority as Priority,
+    effort: (dbTask.effort ?? undefined) as Effort | undefined,
+    storyPoint: dbTask.storyPoint ?? undefined,
+    timeSpentSeconds: dbTask.timeSpentSeconds,
+    dueDate: dbTask.dueDate ? dbTask.dueDate.toISOString().split("T")[0] : undefined,
+    sprint: sprint ? sprint.name : (dbTask.sprintId ? (SPRINT_REV_MAP[dbTask.sprintId] ?? undefined) : undefined),
+    reporter: dbTask.reporter as Reporter,
+    tags: dbTask.tags,
+    relations: (dbTask.relations as unknown as TaskRelation[]) || [],
+    attachments: (dbTask.attachments as unknown as TaskAttachment[]) || [],
+    deliverables: (dbTask.deliverables as unknown as TaskDeliverable[]) || [],
+    statusHistory: dbTask.statusHistory
+      ? dbTask.statusHistory.map((h) => ({
+          fromStatus: h.fromStatus as TaskStatus | null,
+          toStatus: h.toStatus as TaskStatus,
+          changedAt: h.changedAt.toISOString(),
+        }))
+      : [
+          {
+            fromStatus: null,
+            toStatus: dbTask.status as TaskStatus,
+            changedAt: dbTask.createdAt.toISOString(),
+          },
+        ],
+    comments: dbTask.comments
+      ? dbTask.comments.map((c) => ({
+          id: c.id,
+          content: c.content,
+          authorName: c.author.name || c.author.email,
+          createdAt: c.createdAt.toISOString(),
+        }))
+      : [],
+  };
+}
+
 
 export type TasksAction =
   | { type: "create"; id: string; changedAt: string; values: TaskFormValues }
   | { type: "update"; id: string; changedAt: string; values: TaskFormValues }
   | { type: "delete"; id: string }
+  | { type: "replaceId"; tempId: string; realId: string }
+  | { type: "restore"; task: Task }
   | { type: "addTime"; id: string; seconds: number }
-  | { type: "reset"; tasks: Task[] };
+  | { type: "reset"; tasks: Task[] }
+  | { type: "addComment"; taskId: string; comment: TaskComment };
 
 /** Builds a fresh Task from form values — shared by `create` and by duplicateTask in TasksProvider. */
 export function buildTaskFromValues(id: string, changedAt: string, values: TaskFormValues): Task {
@@ -74,13 +160,50 @@ export function tasksReducer(tasks: Task[], action: TasksAction): Task[] {
     case "delete": {
       return tasks.filter((t) => t.id !== action.id);
     }
+    case "replaceId": {
+      return tasks.map((t) => (t.id === action.tempId ? { ...t, id: action.realId } : t));
+    }
+    case "restore": {
+      if (tasks.some((t) => t.id === action.task.id)) return tasks;
+      return [...tasks, action.task];
+    }
     case "addTime": {
       return tasks.map((t) => (t.id === action.id ? { ...t, timeSpentSeconds: (t.timeSpentSeconds ?? 0) + action.seconds } : t));
     }
     case "reset": {
       return action.tasks;
     }
+    case "addComment": {
+      return tasks.map((t) =>
+        t.id === action.taskId
+          ? { ...t, comments: [...(t.comments || []), action.comment] }
+          : t
+      );
+    }
     default:
       return tasks;
   }
+}
+
+export function mapDbProjectToClient(dbProject: DbProject): Project {
+  return {
+    id: dbProject.id,
+    name: dbProject.name,
+    colorVar: dbProject.colorVar,
+    emoji: dbProject.emoji,
+    category: dbProject.category as string,
+    description: dbProject.description ?? "",
+    status: dbProject.status as Project["status"],
+  };
+}
+
+export function mapDbSprintToClient(dbSprint: DbSprint): Sprint {
+  return {
+    id: dbSprint.id,
+    name: dbSprint.name,
+    startDate: dbSprint.startDate.toISOString().split("T")[0],
+    endDate: dbSprint.endDate.toISOString().split("T")[0],
+    status: dbSprint.status as Sprint["status"],
+    goal: dbSprint.goal ?? "",
+  };
 }
