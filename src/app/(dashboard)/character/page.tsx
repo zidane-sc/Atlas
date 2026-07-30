@@ -9,6 +9,7 @@ export default function Page() {
   const { tasks, bonusXp, bonusCoins } = useTasks();
   const sheet = useMemo(() => computeCharacterSheet(tasks, bonusXp, bonusCoins), [tasks, bonusXp, bonusCoins]);
   const streakDays = useMemo(() => calculateStreak(tasks), [tasks]);
+  const taskXp = useMemo(() => tasks.reduce((sum, task) => sum + (task.xp || 0), 0), [tasks]);
 
   return (
     <div className="flex h-full flex-col">
@@ -48,7 +49,7 @@ export default function Page() {
               <div className="flex gap-2">
                 <div className="flex items-center gap-1 px-2 py-1.5 text-[13px]" style={{ backgroundColor: "var(--color-bg-panel-alt)", border: "1px solid var(--color-border)", color: "var(--color-xp-gold)" }}>
                   <span>⚡</span>
-                  <span className="font-display">{sheet.globalXP.toLocaleString()}</span>
+                  <span className="font-display">{taskXp.toLocaleString()}</span>
                 </div>
                 <div className="flex items-center gap-1 px-2 py-1.5 text-[13px]" style={{ backgroundColor: "var(--color-bg-panel-alt)", border: "1px solid var(--color-border)", color: "var(--color-coin)" }}>
                   <span>🪙</span>
