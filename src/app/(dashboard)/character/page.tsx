@@ -77,7 +77,7 @@ export default function Page() {
           <div className="mb-2 font-display text-[9px] tracking-widest" style={{ color: "var(--color-status-ready)" }}>
             ▸ SKILL PROFICIENCIES
           </div>
-          <div className="grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-3">
+          <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
             {sheet.skills.map((skill) => {
               const meta = SKILL_META[skill.type];
               const isEmpty = skill.count === 0;
@@ -92,30 +92,45 @@ export default function Page() {
                     opacity: isEmpty ? 0.45 : 1,
                   }}
                 >
-                  <div
-                    className="absolute top-2.5 right-2.5 border font-display text-[9px]"
-                    style={{
-                      color: isEmpty ? "var(--color-dim)" : `var(${meta.colorVar})`,
-                      borderColor: isEmpty ? "var(--color-border)" : `var(${meta.colorVar})`,
-                      padding: "2px 6px",
-                    }}
-                  >
-                    LV.{skill.level}
-                  </div>
-                  <div className="mb-1.5 flex items-center gap-2" style={{ marginRight: 52 }}>
-                    <span style={{ fontSize: "20px" }}>{TYPE_ICON[skill.type]}</span>
-                    <div>
-                      <div className="text-sm font-bold capitalize" style={{ color: isEmpty ? "var(--color-dim)" : "var(--color-text-primary)" }}>{skill.type}</div>
-                      <div className="font-display text-[7px]" style={{ color: `var(${meta.colorVar})` }}>{meta.title.toUpperCase()}</div>
+                  {/* Header: Icon + Name + Level */}
+                  <div className="mb-2 flex items-start justify-between">
+                    <div className="flex items-center gap-2 flex-1">
+                      <span style={{ fontSize: "22px" }}>{TYPE_ICON[skill.type]}</span>
+                      <div className="min-w-0">
+                        <div className="text-sm font-bold capitalize" style={{ color: isEmpty ? "var(--color-dim)" : "var(--color-text-primary)" }}>{skill.type}</div>
+                        <div className="font-display text-[7px]" style={{ color: `var(${meta.colorVar})` }}>{meta.title.toUpperCase()}</div>
+                      </div>
+                    </div>
+                    <div
+                      className="border font-display text-[8px] shrink-0 ml-2"
+                      style={{
+                        color: isEmpty ? "var(--color-dim)" : `var(${meta.colorVar})`,
+                        borderColor: isEmpty ? "var(--color-border)" : `var(${meta.colorVar})`,
+                        padding: "2px 5px",
+                      }}
+                    >
+                      LV.{skill.level}
                     </div>
                   </div>
-                  <div className="mb-2 text-sm" style={{ color: "var(--color-dim)", lineHeight: 1.4 }}>{meta.desc}</div>
-                  <div className="mb-1" style={{ height: 6, backgroundColor: "var(--color-bg-panel-alt)", border: "1px solid var(--color-border)" }}>
-                    <div style={{ width: `${pct * 100}%`, height: "100%", backgroundColor: isEmpty ? "var(--color-dim)" : `var(${meta.colorVar})` }} />
+
+                  {/* Description */}
+                  <div className="mb-2 text-xs" style={{ color: "var(--color-dim)", lineHeight: 1.3 }}>{meta.desc}</div>
+
+                  {/* Progress section */}
+                  <div className="mb-2">
+                    <div className="mb-1 flex justify-between text-[10px]">
+                      <span style={{ color: "var(--color-dim)" }}>PROGRESS</span>
+                      {!isEmpty && <span style={{ color: "var(--color-dim)" }}>{Math.round(pct * 100)}%</span>}
+                    </div>
+                    <div style={{ height: 8, backgroundColor: "var(--color-bg-panel-alt)", border: "1px solid var(--color-border)" }}>
+                      <div style={{ width: `${pct * 100}%`, height: "100%", backgroundColor: isEmpty ? "var(--color-dim)" : `var(${meta.colorVar})`, transition: "width 0.2s ease" }} />
+                    </div>
                   </div>
-                  <div className="flex justify-between text-sm" style={{ color: "var(--color-dim)" }}>
-                    <span>{isEmpty ? "No quests yet" : `${skill.count} quest${skill.count !== 1 ? "s" : ""} completed`}</span>
-                    {!isEmpty && <span>{skill.currentXP}/{skill.nextLevelXP} XP</span>}
+
+                  {/* Stats footer */}
+                  <div className="flex justify-between text-[10px]" style={{ color: "var(--color-dim)" }}>
+                    <span>{isEmpty ? "—" : `${skill.count}q`}</span>
+                    {!isEmpty && <span>{skill.currentXP}/{skill.nextLevelXP}xp</span>}
                   </div>
                 </div>
               );
