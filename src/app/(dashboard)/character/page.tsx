@@ -84,9 +84,9 @@ export default function Page() {
                   };
                   return (
                     <div key={stat} className="px-3 py-4 text-center" style={{ backgroundColor: "var(--color-bg-panel-alt)", border: "1.5px solid var(--color-border)" }}>
-                      <div className="font-display text-[20px] font-bold text-foreground">{sheet.statScore[stat]}</div>
-                      <div className="text-[10px] text-muted-foreground mt-1.5 font-semibold">{fullNames[stat]}</div>
-                      <div className="text-[8px] text-muted-foreground mt-1">{descriptions[stat]}</div>
+                      <div className="font-display text-[24px] font-bold text-foreground">{sheet.statScore[stat]}</div>
+                      <div className="text-[11px] text-muted-foreground mt-1.5 font-semibold">{fullNames[stat]}</div>
+                      <div className="text-[9px] text-muted-foreground mt-1">{descriptions[stat]}</div>
                     </div>
                   );
                 })}
