@@ -21,7 +21,7 @@ export default function Page() {
           className="p-4"
           style={{ background: "linear-gradient(135deg, var(--color-bg-panel-alt) 0%, var(--color-bg-deep) 100%)", borderBottom: "1px solid var(--color-border)" }}
         >
-          <div className="flex flex-wrap items-start gap-4">
+          <div className="flex gap-4">
             <div className="relative shrink-0">
               <div
                 className="flex items-center justify-center bg-card"
@@ -37,29 +37,25 @@ export default function Page() {
               </div>
             </div>
 
-            <div className="min-w-0 flex-1">
+            <div className="flex-1 min-w-0">
               <div className="mb-1 font-display text-sm text-foreground">Aric Stormcloak</div>
-              <div className="mb-3 font-display text-[9px]" style={{ color: "var(--color-primary-gold)" }}>
+              <div className="mb-2 font-display text-[9px]" style={{ color: "var(--color-primary-gold)" }}>
                 {sheet.classTitle.toUpperCase()}
               </div>
-              <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
-                <span style={{ color: "var(--color-xp-gold)" }}>⚡ {sheet.globalXP.toLocaleString()} XP</span>
+              <div className="mb-2 flex flex-wrap gap-3 text-[12px]">
+                <span style={{ color: "var(--color-xp-gold)" }}>⚡ {sheet.globalXP.toLocaleString()}</span>
                 <span style={{ color: "var(--color-coin)" }}>🪙 {sheet.totalCoins}</span>
-                <span style={{ color: "var(--color-streak-flame)" }}>🔥 {dashboardMock.streakDays} day streak</span>
-                <span style={{ color: "var(--color-status-ready)" }}>✓ {sheet.completedCount} quests</span>
+                <span style={{ color: "var(--color-streak-flame)" }}>🔥 {dashboardMock.streakDays}d</span>
+                <span style={{ color: "var(--color-status-ready)" }}>✓ {sheet.completedCount}</span>
               </div>
-            </div>
-
-            <div className="grid shrink-0 grid-cols-3 gap-2">
-              {STATS.map((stat) => (
-                <div key={stat} className="min-w-[52px] px-2.5 py-1.5 text-center" style={{ backgroundColor: "var(--color-bg-panel-alt)", border: "1px solid var(--color-border)" }}>
-                  <div className="font-display text-[13px] text-foreground">{sheet.statScore[stat]}</div>
-                  <div className="mt-1 text-sm text-muted-foreground" style={{ letterSpacing: "1px" }}>{stat}</div>
-                  <div className="text-sm" style={{ color: "var(--color-dim)" }}>
-                    +{Math.floor((sheet.statScore[stat] - 10) / 2)}
+              <div className="grid grid-cols-6 gap-1.5">
+                {STATS.map((stat) => (
+                  <div key={stat} className="px-1.5 py-1 text-center text-[10px]" style={{ backgroundColor: "var(--color-bg-panel-alt)", border: "1px solid var(--color-border)" }}>
+                    <div className="font-display text-[11px] text-foreground">{sheet.statScore[stat]}</div>
+                    <div className="text-[7px] text-muted-foreground">{stat}</div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
           </div>
         </div>
