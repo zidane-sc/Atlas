@@ -66,13 +66,17 @@ export default function Page() {
 
             {/* Right: Attributes */}
             <div className="shrink-0">
-              <div className="grid grid-cols-6 gap-2">
-                {STATS.map((stat) => (
-                  <div key={stat} className="px-3 py-3 text-center" style={{ backgroundColor: "var(--color-bg-panel-alt)", border: "1.5px solid var(--color-border)" }}>
-                    <div className="font-display text-[18px] font-bold text-foreground">{sheet.statScore[stat]}</div>
-                    <div className="text-[9px] text-muted-foreground mt-1">{stat}</div>
-                  </div>
-                ))}
+              <div className="grid grid-cols-6 gap-3">
+                {STATS.map((stat) => {
+                  const fullNames = { STR: "Strength", DEX: "Dexterity", CON: "Constitution", INT: "Intelligence", WIS: "Wisdom", CHA: "Charisma" };
+                  return (
+                    <div key={stat} className="px-3 py-4 text-center" style={{ backgroundColor: "var(--color-bg-panel-alt)", border: "1.5px solid var(--color-border)" }}>
+                      <div className="font-display text-[20px] font-bold text-foreground">{sheet.statScore[stat]}</div>
+                      <div className="text-[10px] text-muted-foreground mt-1.5 font-semibold">{fullNames[stat]}</div>
+                      <div className="text-[9px] text-muted-foreground">{stat}</div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           </div>
