@@ -23,6 +23,9 @@ export default function Page() {
           className="p-4"
           style={{ background: "linear-gradient(135deg, var(--color-bg-panel-alt) 0%, var(--color-bg-deep) 100%)", borderBottom: "1px solid var(--color-border)" }}
         >
+          <div className="mb-3 text-[9px]" style={{ color: "var(--color-dim)" }}>
+            📊 Calculated from your tasks
+          </div>
           <div className="flex gap-4 items-start">
             {/* Left: Avatar */}
             <div className="relative shrink-0">
@@ -71,11 +74,19 @@ export default function Page() {
               <div className="grid grid-cols-6 gap-3">
                 {STATS.map((stat) => {
                   const fullNames = { STR: "Strength", DEX: "Dexterity", CON: "Constitution", INT: "Intelligence", WIS: "Wisdom", CHA: "Charisma" };
+                  const descriptions = {
+                    STR: "Physical power & combat",
+                    DEX: "Speed & agility",
+                    CON: "Health & endurance",
+                    INT: "Learning & magic",
+                    WIS: "Awareness & insight",
+                    CHA: "Influence & leadership"
+                  };
                   return (
                     <div key={stat} className="px-3 py-4 text-center" style={{ backgroundColor: "var(--color-bg-panel-alt)", border: "1.5px solid var(--color-border)" }}>
                       <div className="font-display text-[20px] font-bold text-foreground">{sheet.statScore[stat]}</div>
                       <div className="text-[10px] text-muted-foreground mt-1.5 font-semibold">{fullNames[stat]}</div>
-                      <div className="text-[9px] text-muted-foreground">{stat}</div>
+                      <div className="text-[8px] text-muted-foreground mt-1">{descriptions[stat]}</div>
                     </div>
                   );
                 })}
