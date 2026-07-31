@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { Sidebar } from "@/components/layout/Sidebar";
+import { HudNavbar } from "@/components/layout/HudNavbar";
 import { CommandPalette } from "@/components/layout/CommandPalette";
 import { TaskFormSheet } from "@/components/tasks/TaskFormSheet";
 import { ProjectFormSheet } from "@/components/projects/ProjectFormSheet";
@@ -170,7 +171,10 @@ export default async function DashboardLayout({
               <CommandPaletteProvider>
                 <div className="flex h-full flex-1 overflow-hidden">
                   <Sidebar />
-                  <div className="flex-1 overflow-y-auto">{children}</div>
+                  <div className="flex flex-1 flex-col overflow-hidden">
+                    <HudNavbar user={session.user} />
+                    <div className="flex-1 overflow-y-auto">{children}</div>
+                  </div>
                 </div>
                 <TaskFormSheet />
                 <ProjectFormSheet />
