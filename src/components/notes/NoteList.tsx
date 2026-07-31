@@ -38,20 +38,33 @@ export function NoteList({ notes, onSelectNote, onDeleteNote, onPinNote }: NoteL
                   {note.title}
                 </h3>
                 <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-all">
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onPinNote(note.id, !note.pinned);
-                    }}
-                    className="px-2 py-1 rounded text-xs transition-all flex-shrink-0"
-                    style={{
-                      color: note.pinned ? "var(--color-primary-gold)" : "var(--color-text-muted)",
-                    }}
-                    title={note.pinned ? "Unpin" : "Pin"}
-                  >
-                    📌
-                  </button>
+                  {note.pinned ? (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onPinNote(note.id, false);
+                      }}
+                      className="px-2 py-1 rounded text-xs transition-all flex-shrink-0"
+                      style={{ color: "var(--color-primary-gold)" }}
+                      title="Unpin"
+                    >
+                      📌
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onPinNote(note.id, true);
+                      }}
+                      className="px-2 py-1 rounded text-xs transition-all flex-shrink-0"
+                      style={{ color: "var(--color-text-muted)" }}
+                      title="Pin"
+                    >
+                      📍
+                    </button>
+                  )}
                   <button
                     type="button"
                     onClick={(e) => {
