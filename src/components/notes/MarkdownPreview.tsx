@@ -57,12 +57,12 @@ export function MarkdownPreview({ content }: MarkdownPreviewProps) {
             </pre>
           ),
           ul: ({ children }) => (
-            <ul style={{ marginLeft: "1.5em", marginBottom: "1em", marginTop: "0.5em" }}>
+            <ul style={{ marginLeft: "2em", marginBottom: "1em", marginTop: "0.5em", listStyleType: "disc" }}>
               {children}
             </ul>
           ),
           ol: ({ children }) => (
-            <ol style={{ marginLeft: "1.5em", marginBottom: "1em", marginTop: "0.5em" }}>
+            <ol style={{ marginLeft: "2em", marginBottom: "1em", marginTop: "0.5em", listStyleType: "decimal" }}>
               {children}
             </ol>
           ),

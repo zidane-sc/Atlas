@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+
 interface MarkdownToolbarProps {
   onInsert: (syntax: { before: string; after: string } | string, isBlock?: boolean) => void;
 }
@@ -10,7 +12,17 @@ const handleButtonClick = (e: React.MouseEvent, callback: () => void) => {
   callback();
 };
 
+const generateTable = (cols: number, rows: number) => {
+  const header = Array.from({ length: cols }, (_, i) => `Col${i + 1}`).join(" | ");
+  const separator = Array.from({ length: cols }, () => "---").join("|");
+  const dataRows = Array.from({ length: rows }, () =>
+    Array.from({ length: cols }, () => " ").join(" | ")
+  ).join("\n");
+  return `| ${header} |\n|${separator}|\n| ${dataRows} |`;
+};
+
 export function MarkdownToolbar({ onInsert }: MarkdownToolbarProps) {
+  const [showTablePicker, setShowTablePicker] = useState(false);
   const buttonClass =
     "px-2 py-1 border-2 border-gray-400 bg-panel text-foreground hover:bg-panel-alt active:border-primary-gold active:text-primary-gold text-xs font-display transition-colors";
 
@@ -128,21 +140,48 @@ export function MarkdownToolbar({ onInsert }: MarkdownToolbarProps) {
       >
         🔗
       </button>
-      <button
-        type="button"
-        onClick={(e) =>
-          handleButtonClick(e, () =>
-            onInsert({
-              before: "| Col1 | Col2 |\n|------|------|\n| A    | B    |",
-              after: "",
-            })
-          )
-        }
-        className={buttonClass}
-        title="Table"
-      >
-        ▦
-      </button>
+      <div className="relative">
+        <button
+          type="button"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            setShowTablePicker(!showTablePicker);
+          }}
+          className={buttonClass}
+          title="Table (click to choose size)"
+        >
+          ▦
+        </button>
+        {showTablePicker && (
+          <div className="absolute top-full left-0 mt-1 p-2 bg-panel border border-gray-600 z-10">
+            <div className="text-xs mb-2 text-foreground">Columns × Rows:</div>
+            <div className="grid grid-cols-5 gap-1">
+              {Array.from({ length: 5 }, (_, c) =>
+                Array.from({ length: 5 }, (_, r) => (
+                  <button
+                    key={`${c + 1}x${r + 1}`}
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      onInsert({
+                        before: generateTable(c + 1, r + 1),
+                        after: "",
+                      });
+                      setShowTablePicker(false);
+                    }}
+                    className="w-6 h-6 border border-gray-400 bg-panel text-xs text-foreground hover:bg-panel-alt"
+                    title={`${c + 1}×${r + 1}`}
+                  >
+                    {c + 1}
+                  </button>
+                ))
+              )}
+            </div>
+          </div>
+        )}
+      </div>
       <button
         type="button"
         onClick={(e) => handleButtonClick(e, () => onInsert("---"))}
