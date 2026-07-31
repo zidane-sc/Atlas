@@ -20,11 +20,11 @@ export function insertMarkdown(
       newCursorPos: cursorStart + syntax.before.length + selected.length + syntax.after.length,
     };
   } else {
-    const placeholder = "text";
+    const placeholder = syntax.after ? "text" : "";
     const newText = before + syntax.before + placeholder + syntax.after + after;
     return {
       newText,
-      newCursorPos: cursorStart + syntax.before.length,
+      newCursorPos: cursorStart + syntax.before.length + placeholder.length,
     };
   }
 }
