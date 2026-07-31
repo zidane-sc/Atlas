@@ -168,6 +168,25 @@ export function getCompanionMood(todayCompleted: number, justCompleted: boolean)
   return "sad";
 }
 
+/** Save & Quit farewell — docs/superpowers/specs/2026-07-31-save-and-quit-logout-design.md */
+export interface Farewell {
+  line: string;
+  mood: CompanionMood;
+}
+
+export function getFarewell(doneCount: number, streakDays: number): Farewell {
+  if (doneCount === 0) {
+    return { line: "The realm will keep. See you tomorrow.", mood: "sad" };
+  }
+  if (streakDays >= 7) {
+    return { line: "Legendary work, hero. The flame endures.", mood: "happy" };
+  }
+  if (streakDays >= 3) {
+    return { line: "Nice quests today. The fire grows.", mood: "idle" };
+  }
+  return { line: "Every quest counts. Good session.", mood: "idle" };
+}
+
 /** Streak milestone bonuses — docs/03-design.md §11.3/§11.6 */
 const STREAK_MILESTONES = [
   { days: 7, label: "Steady Fire" },

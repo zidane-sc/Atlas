@@ -6,6 +6,7 @@ import {
   computeCharacterSheet,
   computeRecapGrade,
   getCompanionMood,
+  getFarewell,
   getLevelInfo,
   xpForLevel,
   calculateStreak,
@@ -211,5 +212,35 @@ describe("completedAt — prioritizes task.completedAt over status logs", () => 
       }),
     ];
     expect(calculateStreak(list, "2026-07-30T12:00:00Z")).toBe(2);
+  });
+});
+
+describe("getFarewell — save & quit", () => {
+  it("stays neutral when nothing was completed today", () => {
+    expect(getFarewell(0, 0)).toEqual({
+      line: "The realm will keep. See you tomorrow.",
+      mood: "sad",
+    });
+  });
+
+  it("celebrates a strong streak when quests were done today", () => {
+    expect(getFarewell(3, 7)).toEqual({
+      line: "Legendary work, hero. The flame endures.",
+      mood: "happy",
+    });
+  });
+
+  it("acknowledges a growing streak", () => {
+    expect(getFarewell(2, 3)).toEqual({
+      line: "Nice quests today. The fire grows.",
+      mood: "idle",
+    });
+  });
+
+  it("cheers any completed quest even with no streak", () => {
+    expect(getFarewell(1, 0)).toEqual({
+      line: "Every quest counts. Good session.",
+      mood: "idle",
+    });
   });
 });
