@@ -34,6 +34,7 @@ model User {
   tasks        Task[]
   comments     Comment[]
   activityLogs ActivityLog[]
+  notes        Note[]
 
   @@map("users")
 }
@@ -157,6 +158,7 @@ model Task {
   comments      Comment[]
   activityLogs  ActivityLog[]
   workSessions  WorkSession[]
+  noteLinks     NoteTaskLink[]
 
   @@index([status])
   @@index([projectId])
@@ -280,5 +282,52 @@ model WorkSession {
   @@map("work_sessions")
 }
 
+model Note {
+  id        String   @id @default(cuid())
+  userId    String   @db.Uuid
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  title     String
+  content   String   @db.Text
+  tags      String[] @default([])
+
+  attachments NoteAttachment[]
+  taskLinks   NoteTaskLink[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([userId])
+  @@index([createdAt])
+  @@map("notes")
+}
+
+model NoteAttachment {
+  id        String   @id @default(cuid())
+  noteId    String
+  note      Note     @relation(fields: [noteId], references: [id], onDelete: Cascade)
+
+  url       String
+  fileName  String   @map("file_name")
+  fileType  String?  @map("file_type")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([noteId])
+  @@map("note_attachments")
+}
+
+model NoteTaskLink {
+  noteId    String
+  note      Note     @relation(fields: [noteId], references: [id], onDelete: Cascade)
+
+  taskId    String   @db.Uuid
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@id([noteId, taskId])
+  @@index([taskId])
+  @@map("note_task_links")
+}
 
