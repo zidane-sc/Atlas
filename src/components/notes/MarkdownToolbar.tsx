@@ -14,11 +14,11 @@ const handleButtonClick = (e: React.MouseEvent, callback: () => void) => {
 
 const generateTable = (cols: number, rows: number) => {
   const header = Array.from({ length: cols }, (_, i) => `Col${i + 1}`).join(" | ");
-  const separator = Array.from({ length: cols }, () => "---").join("|");
+  const separator = Array.from({ length: cols }, () => "------").join("|");
   const dataRows = Array.from({ length: rows }, () =>
     Array.from({ length: cols }, () => " ").join(" | ")
-  ).join("\n");
-  return `| ${header} |\n|${separator}|\n| ${dataRows} |`;
+  ).map(row => `| ${row} |`).join("\n");
+  return `| ${header} |\n|${separator}|\n${dataRows}`;
 };
 
 export function MarkdownToolbar({ onInsert }: MarkdownToolbarProps) {
