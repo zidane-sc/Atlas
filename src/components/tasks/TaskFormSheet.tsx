@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/collapsible";
 import { useTasks } from "@/components/providers/TasksProvider";
 import { useSettings } from "@/components/providers/SettingsProvider";
+import { useToast } from "@/components/providers/ToastProvider";
 import { calcTaskCoins, calcTaskXP } from "@/lib/gamification";
 import { PriorityMark } from "./PriorityMark";
 import { StatusBadge } from "./StatusBadge";
@@ -113,6 +114,7 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
   const { tasks, closeForm, createTask, updateTask, deleteTask, duplicateTask, togglePin, activeTimer, startTimer, stopTimer, switchPhase } = useTasks();
   const { projects } = useProjects();
   const { sprints } = useSprints();
+  const { toast } = useToast();
   const [form, setForm] = useState<TaskFormValues>(() =>
     mode === "edit" && task
       ? {
@@ -246,8 +248,10 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
     try {
       if (mode === "edit" && task) {
         updateTask(task.id, result.data);
+        toast(`✓ Updated: "${result.data.title}"`, "success");
       } else {
         createTask(result.data);
+        toast(`✓ Created: "${result.data.title}"`, "success");
       }
     } finally {
       setSubmitting(false);

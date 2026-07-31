@@ -40,7 +40,13 @@ export function TaskCard({
           onSelect(task);
         }
       }}
-      style={{ borderColor: `var(${STATUS_COLOR_VAR[task.status]})`, backgroundColor: "var(--color-bg-panel-alt)", opacity: dragging ? 0.4 : 1 }}
+      style={{
+        borderColor: dragging ? "var(--color-primary-gold)" : `var(${STATUS_COLOR_VAR[task.status]})`,
+        backgroundColor: dragging ? "var(--color-bg-panel)" : "var(--color-bg-panel-alt)",
+        opacity: dragging ? 0.6 : 1,
+        borderStyle: dragging ? "dashed" : "solid",
+        boxShadow: dragging ? "0 4px 12px rgba(0,0,0,0.2) inset" : "none",
+      }}
       className="pixel-panel flex w-full cursor-pointer flex-col gap-2 border-2 p-3 text-left transition-all hover:brightness-110 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
     >
       <div className="flex items-center justify-between gap-2">
