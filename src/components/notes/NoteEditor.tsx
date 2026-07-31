@@ -299,51 +299,37 @@ export function NoteEditor({ noteId, initialData, onSave, onClose }: NoteEditorP
 
       {/* Footer with Tags & Gamification */}
       <div className="border-t-2" style={{ borderColor: "var(--color-primary-gold)" }}>
-        <div className="px-3 py-2 border-b-2 border-gray-600 flex gap-2" style={{ backgroundColor: "var(--color-bg-panel-alt)", borderBottomColor: "var(--color-primary-gold)" }}>
+        <div className="px-3 py-2 border-b border-gray-600" style={{ backgroundColor: "var(--color-bg-panel-alt)" }}>
           <span className="text-xs font-display" style={{ color: "var(--color-primary-gold)" }}>
-            🏷️ ATTRIBUTES
+            🏷️ TAGS & LINKS
           </span>
         </div>
-        <div className="p-3 text-xs grid grid-cols-2 gap-4">
+        <div className="p-3 text-xs grid grid-cols-2 gap-3">
           {/* Tags Column */}
-          <div className="border-r border-gray-600 pr-3">
-            <div className="mb-2 text-xs font-display tracking-widest" style={{ color: "var(--color-primary-gold)" }}>
-              TAGS
-            </div>
-            <div className="flex gap-1.5 flex-wrap mb-2 min-h-6">
-              {tags.slice(0, 3).map((tag) => (
-                <div
+          <div>
+            <div className="flex gap-1 flex-wrap mb-2 min-h-5">
+              {tags.slice(0, 2).map((tag) => (
+                <span
                   key={tag}
-                  className="px-2 py-1 border-2 rounded flex items-center gap-1 text-xs font-display transition-all hover:scale-110 active:scale-95 group"
-                  style={{
-                    borderColor: "var(--color-primary-gold)",
-                    backgroundColor: "var(--color-primary-gold)/10",
-                    color: "var(--color-primary-gold)",
-                  }}
+                  className="px-2 py-0.5 rounded border border-gray-500 text-xs flex items-center gap-1 group hover:border-primary-gold transition-colors"
+                  style={{ color: "var(--color-foreground)" }}
                 >
-                  <span>{tag}</span>
+                  {tag}
                   <button
                     type="button"
                     onClick={() => {
                       setTags(tags.filter((t) => t !== tag));
                       debouncedSave();
                     }}
-                    className="opacity-60 group-hover:opacity-100 transition-all"
+                    className="opacity-50 group-hover:opacity-100"
                   >
                     ✕
                   </button>
-                </div>
+                </span>
               ))}
-              {tags.length > 3 && (
-                <div
-                  className="px-2 py-1 text-xs font-display"
-                  style={{ color: "var(--color-primary-gold)" }}
-                >
-                  +{tags.length - 3}
-                </div>
-              )}
+              {tags.length > 2 && <span className="text-xs text-muted-foreground">+{tags.length - 2}</span>}
             </div>
-            <div className="flex gap-1 mt-2">
+            <div className="flex gap-1">
               <input
                 type="text"
                 value={tagInput}
@@ -354,28 +340,21 @@ export function NoteEditor({ noteId, initialData, onSave, onClose }: NoteEditorP
                     handleAddTag();
                   }
                 }}
-                placeholder="#tag"
-                className="px-2 py-1 border-2 rounded bg-panel text-xs flex-1 transition-all focus:border-primary-gold"
-                style={{
-                  borderColor: "var(--color-border)",
-                  color: "var(--color-foreground)",
-                }}
+                placeholder="tag"
+                className="px-2 py-0.5 border border-gray-500 rounded bg-panel text-xs flex-1"
+                style={{ color: "var(--color-foreground)" }}
               />
               <button
                 type="button"
                 onClick={handleAddTag}
-                className="px-2 py-1 border-2 rounded font-display text-xs transition-all active:scale-95 hover:shadow-lg"
-                style={{
-                  borderColor: "var(--color-primary-gold)",
-                  backgroundColor: "var(--color-primary-gold)/10",
-                  color: "var(--color-primary-gold)",
-                }}
+                className="px-2 py-0.5 border border-primary-gold rounded text-xs font-display"
+                style={{ color: "var(--color-primary-gold)" }}
               >
-                ADD
+                +
               </button>
             </div>
             {tagError && (
-              <div className="text-xs mt-2 px-2 py-1 rounded border-2" style={{ backgroundColor: "rgba(239, 68, 68, 0.1)", color: "#ef4444", borderColor: "#ef4444" }}>
+              <div className="text-xs mt-1 px-1 py-0.5 rounded" style={{ backgroundColor: "rgba(239, 68, 68, 0.1)", color: "#ef4444", border: "1px solid #ef4444" }}>
                 ⚠️ {tagError}
               </div>
             )}
@@ -383,10 +362,7 @@ export function NoteEditor({ noteId, initialData, onSave, onClose }: NoteEditorP
 
           {/* Linked Tasks Column */}
           <div>
-            <div className="mb-2 text-xs font-display tracking-widest" style={{ color: "var(--color-primary-gold)" }}>
-              QUESTS ({linkedTasks.length})
-            </div>
-            <div className="space-y-1.5 mb-2 min-h-6">
+            <div className="space-y-1 mb-2 min-h-5">
               {linkedTasks.slice(0, 2).map((task) => {
                 const linkedTask = tasks.find((t) => t.id === task.id);
                 const priorityColor =
@@ -407,23 +383,14 @@ export function NoteEditor({ noteId, initialData, onSave, onClose }: NoteEditorP
                 return (
                   <div
                     key={task.id}
-                    className="px-2 py-1 border-2 rounded flex items-center gap-2 text-xs transition-all hover:shadow-md hover:scale-105 group"
+                    className="px-2 py-0.5 border rounded flex items-center gap-1 text-xs group hover:border-primary-gold transition-colors"
                     style={{
-                      borderColor: `var(${priorityColor})`,
-                      backgroundColor: `var(${priorityColor})/5`,
+                      borderColor: "var(--color-border)",
                       color: "var(--color-foreground)",
                     }}
                   >
-                    <span
-                      className="font-bold text-sm flex-shrink-0 w-5 h-5 flex items-center justify-center rounded"
-                      style={{
-                        color: `var(${priorityColor})`,
-                        backgroundColor: `var(${priorityColor})/20`,
-                      }}
-                    >
-                      {statusEmoji}
-                    </span>
-                    <span className="truncate text-xs flex-1 font-semibold">{task.title}</span>
+                    <span style={{ color: `var(${priorityColor})` }}>{statusEmoji}</span>
+                    <span className="truncate text-xs flex-1">{task.title}</span>
                     <button
                       type="button"
                       onClick={() => {
@@ -432,19 +399,14 @@ export function NoteEditor({ noteId, initialData, onSave, onClose }: NoteEditorP
                         setLinkedTasks(linkedTasks.filter((t) => t.id !== task.id));
                         debouncedSave();
                       }}
-                      className="opacity-60 group-hover:opacity-100 transition-all text-xs"
-                      style={{ color: `var(${priorityColor})` }}
+                      className="opacity-50 group-hover:opacity-100"
                     >
                       ✕
                     </button>
                   </div>
                 );
               })}
-              {linkedTasks.length > 2 && (
-                <div className="text-xs px-2 py-1 font-display" style={{ color: "var(--color-primary-gold)" }}>
-                  +{linkedTasks.length - 2} more
-                </div>
-              )}
+              {linkedTasks.length > 2 && <span className="text-xs text-muted-foreground px-1">+{linkedTasks.length - 2}</span>}
             </div>
 
             {/* Task Search Input */}
