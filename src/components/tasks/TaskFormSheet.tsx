@@ -38,6 +38,7 @@ import { useSprints } from "@/components/providers/SprintsProvider";
 import { sortProjectsForPicker } from "@/lib/picker-sort";
 import { sortSprintsForPicker } from "@/lib/picker-sort";
 import { sortTasksForPicker } from "@/lib/picker-sort";
+import { updateDrawerLastSelectedAction } from "@/lib/actions/user";
 import { STATUS_LABEL, TYPE_ICON } from "@/lib/mock-data";
 import type {
   AttachmentType,
@@ -429,7 +430,7 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
                         ? projects.filter(p => p.name.toLowerCase().includes(projectSearch.toLowerCase()))
                         : sortProjectsForPicker(projects).slice(0, 5)
                       ).map((p) => (
-                        <li key={p.id} className="px-2 py-1 cursor-pointer hover:bg-primary/10 border-b border-border last:border-b-0" onMouseDown={(e) => e.preventDefault()} onClick={() => { set("project", p.name); setProjectSearch(""); projectInputRef.current?.blur(); }}>
+                        <li key={p.id} className="px-2 py-1 cursor-pointer hover:bg-primary/10 border-b border-border last:border-b-0" onMouseDown={(e) => e.preventDefault()} onClick={() => { void updateDrawerLastSelectedAction("project", p.id); set("project", p.name); setProjectSearch(""); projectInputRef.current?.blur(); }}>
                           {p.emoji} {p.name}
                         </li>
                       ))}
@@ -476,7 +477,7 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
                       ? sprints.filter(s => s.name.toLowerCase().includes(sprintSearch.toLowerCase()))
                       : sortSprintsForPicker(sprints).slice(0, 5)
                     ).map((s) => (
-                      <li key={s.id} className="px-2 py-1 cursor-pointer hover:bg-primary/10 border-b border-border last:border-b-0" onMouseDown={(e) => e.preventDefault()} onClick={() => { set("sprint", s.name); setSprintSearch(""); sprintInputRef.current?.blur(); }}>
+                      <li key={s.id} className="px-2 py-1 cursor-pointer hover:bg-primary/10 border-b border-border last:border-b-0" onMouseDown={(e) => e.preventDefault()} onClick={() => { void updateDrawerLastSelectedAction("sprint", s.id); set("sprint", s.name); setSprintSearch(""); sprintInputRef.current?.blur(); }}>
                         {s.name}
                       </li>
                     ))}
@@ -584,7 +585,7 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
                     ? otherTasks.filter(t => t.title.toLowerCase().includes(relationSearch.toLowerCase()))
                     : sortTasksForPicker(otherTasks)
                   ).slice(0, 5).map((t) => (
-                    <li key={t.id} className="px-2 py-1 cursor-pointer hover:bg-primary/10 border-b border-border last:border-b-0" onMouseDown={(e) => e.preventDefault()} onClick={() => { setRelationTargetId(t.id); setRelationSearch(""); relationInputRef.current?.blur(); }}>
+                    <li key={t.id} className="px-2 py-1 cursor-pointer hover:bg-primary/10 border-b border-border last:border-b-0" onMouseDown={(e) => e.preventDefault()} onClick={() => { void updateDrawerLastSelectedAction("task", t.id); setRelationTargetId(t.id); setRelationSearch(""); relationInputRef.current?.blur(); }}>
                       {t.title}
                     </li>
                   ))}
