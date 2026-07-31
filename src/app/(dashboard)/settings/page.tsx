@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState, useCallback } from "react";
+import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { ConfirmButton } from "@/components/ui/ConfirmButton";
 import { useTasks } from "@/components/providers/TasksProvider";
@@ -78,18 +79,24 @@ function Toggle({
 }
 
 export default function Page() {
+  const { data: session } = useSession();
   const { tasks, bonusXp, bonusCoins, reset: resetTasks, loadTasks } = useTasks();
   const { projects, reset: resetProjects, loadProjects } = useProjects();
   const { sprints, reset: resetSprints, loadSprints } = useSprints();
-  const { reduceMotion, setReduceMotion } = useSettings();
+  const { settings, updateSetting, reduceMotion, setReduceMotion } = useSettings();
   const { toast } = useToast();
   const sheet = useMemo(() => computeCharacterSheet(tasks, bonusXp, bonusCoins), [tasks, bonusXp, bonusCoins]);
-  const [notifications, setNotifications] = useState(true);
-  const [sound, setSound] = useState(true);
-  const [compact, setCompact] = useState(false);
-  const [autoArchive, setAutoArchive] = useState(true);
-  const [defaultView, setDefaultView] = useState("dashboard");
   const importInputRef = useRef<HTMLInputElement>(null);
+
+  const getSetting = useCallback((key: string): any => {
+    const setting = settings.find((s) => s.key === key);
+    return setting?.value ?? false;
+  }, [settings]);
+
+  const handleToggle = useCallback((key: string) => {
+    const current = getSetting(key);
+    void updateSetting(key, !current);
+  }, [getSetting, updateSetting]);
 
   const onExport = () => {
     const payload: AtlasExport = {
@@ -152,18 +159,54 @@ export default function Page() {
 
       <div className="max-w-2xl flex-1 overflow-y-auto p-6">
         <SectionDivider>Experience</SectionDivider>
-        <Toggle checked={notifications} onChange={setNotifications} label="Notifications" description="Overdue and sprint deadline alerts" />
-        <Toggle checked={sound} onChange={setSound} label="Sound Effects" description="Subtle chimes on task complete and level-up" />
-        <Toggle checked={reduceMotion} onChange={setReduceMotion} label="Reduce Motion" description="Shortens all animation durations" />
-        <Toggle checked={compact} onChange={setCompact} label="Compact View" description="Tighter spacing in list and table views" />
-        <Toggle checked={autoArchive} onChange={setAutoArchive} label="Auto-Archive" description="Archive completed tasks after 7 days" />
+        <Toggle checked={!!getSetting("notifications")} onChange={() => handleToggle("notifications")} label="Notifications" description="Overdue and sprint deadline alerts" />
+        <Toggle checked={!!getSetting("soundEnabled")} onChange={() => handleToggle("soundEnabled")} label="Sound Effects" description="Subtle chimes on task complete and level-up" />
+        <Toggle checked={!!reduceMotion} onChange={setReduceMotion} label="Reduce Motion" description="Shortens all animation durations" />
+        <Toggle checked={!!getSetting("compactView")} onChange={() => handleToggle("compactView")} label="Compact View" description="Tighter spacing in list and table views" />
 
+        <SectionDivider>Pomodoro Timer</SectionDivider>
+        <div className="flex items-center justify-between border-b border-border py-3">
+          <div>
+            <div className="text-sm text-foreground">Focus Duration</div>
+            <div className="text-sm text-muted-foreground">Minutes per focus interval</div>
+          </div>
+          <div className="flex items-center gap-2">
+            <input
+              type="number"
+              min={1}
+              max={120}
+              value={getSetting("focusMinutes") as number}
+              onChange={(e) => void updateSetting("focusMinutes", Math.max(1, Math.min(120, Number(e.target.value))))}
+              className="w-16 border border-border bg-card px-2 py-1 text-center text-sm"
+            />
+            <span className="text-sm text-muted-foreground">min</span>
+          </div>
+        </div>
+        <div className="flex items-center justify-between border-b border-border py-3">
+          <div>
+            <div className="text-sm text-foreground">Break Duration</div>
+            <div className="text-sm text-muted-foreground">Minutes per break interval</div>
+          </div>
+          <div className="flex items-center gap-2">
+            <input
+              type="number"
+              min={1}
+              max={120}
+              value={getSetting("breakMinutes") as number}
+              onChange={(e) => void updateSetting("breakMinutes", Math.max(1, Math.min(120, Number(e.target.value))))}
+              className="w-16 border border-border bg-card px-2 py-1 text-center text-sm"
+            />
+            <span className="text-sm text-muted-foreground">min</span>
+          </div>
+        </div>
+
+        <SectionDivider>App Preferences</SectionDivider>
         <div className="border-b border-border py-3">
           <div className="mb-1 text-sm text-foreground">Default View</div>
           <div className="mb-2 text-sm text-muted-foreground">Screen shown on app open</div>
           <select
-            value={defaultView}
-            onChange={(e) => setDefaultView(e.target.value)}
+            value={getSetting("defaultView") as string}
+            onChange={(e) => void updateSetting("defaultView", e.target.value)}
             className="border-2 border-border bg-secondary px-2 py-1 text-sm text-foreground"
           >
             <option value="dashboard">Command Center</option>
@@ -174,12 +217,14 @@ export default function Page() {
         </div>
 
         <SectionDivider>Account</SectionDivider>
-        {account.map(([label, value]) => (
-          <div key={label} className="flex items-center justify-between border-b border-border py-2">
-            <span className="text-sm text-muted-foreground">{label}</span>
-            <span className="text-sm text-foreground">{value}</span>
-          </div>
-        ))}
+        <div className="flex items-center justify-between border-b border-border py-2">
+          <span className="text-sm text-muted-foreground">Adventurer Name</span>
+          <span className="text-sm text-foreground">{session?.user?.name ?? "Aric Stormcloak"}</span>
+        </div>
+        <div className="flex items-center justify-between border-b border-border py-2">
+          <span className="text-sm text-muted-foreground">Coins</span>
+          <span className="text-sm text-foreground">🪙 {sheet.totalCoins}</span>
+        </div>
 
         <SectionDivider>Keyboard Shortcuts</SectionDivider>
         {shortcuts.map(([key, desc]) => (
