@@ -92,6 +92,7 @@ export const TYPE_ICON: Record<TaskType, string> = {
 export const mockTasks: Task[] = [
   {
     id: "t1",
+    pinned: false,
     title: "Investigate checkout 500 on mobile",
     description: "Users report a 500 error submitting checkout on iOS Safari only.",
     project: "ATS",
@@ -114,6 +115,7 @@ export const mockTasks: Task[] = [
   },
   {
     id: "t2",
+    pinned: false,
     title: "Fix checkout 500 (child of investigation)",
     project: "ATS",
     status: "blocked",
@@ -131,6 +133,7 @@ export const mockTasks: Task[] = [
   },
   {
     id: "t3",
+    pinned: false,
     title: "Write thesis chapter 3 draft",
     project: "Thesis",
     status: "todo",
@@ -147,6 +150,7 @@ export const mockTasks: Task[] = [
   },
   {
     id: "t4",
+    pinned: false,
     title: "Client A — landing page revisions",
     project: "Client A",
     status: "waiting_external",
@@ -163,6 +167,7 @@ export const mockTasks: Task[] = [
   },
   {
     id: "t5",
+    pinned: false,
     title: "Deploy Atlas v0.1 to Vercel",
     project: "Atlas",
     status: "ready",
@@ -178,6 +183,7 @@ export const mockTasks: Task[] = [
   },
   {
     id: "t6",
+    pinned: false,
     title: "Sprint planning meeting notes",
     project: "Full-time",
     status: "done",
@@ -196,6 +202,7 @@ export const mockTasks: Task[] = [
   },
   {
     id: "t7",
+    pinned: false,
     title: "Group project — capture raw notes",
     project: "Group Project",
     status: "inbox",
@@ -209,6 +216,7 @@ export const mockTasks: Task[] = [
   },
   {
     id: "t8",
+    pinned: false,
     title: "QA regression pass on release branch",
     project: "ATS",
     status: "testing",
@@ -226,6 +234,7 @@ export const mockTasks: Task[] = [
   // Completed tasks below feed the Character Sheet's skill/stat derivation (docs/03-design.md §11.8)
   {
     id: "t9",
+    pinned: false,
     title: "JWT auth (access + refresh tokens)",
     project: "ATS",
     status: "done",
@@ -242,6 +251,7 @@ export const mockTasks: Task[] = [
   },
   {
     id: "t10",
+    pinned: false,
     title: "Full-text search endpoint",
     project: "Atlas",
     status: "done",
@@ -258,6 +268,7 @@ export const mockTasks: Task[] = [
   },
   {
     id: "t11",
+    pinned: false,
     title: "Fix session-invalidation auth bypass",
     project: "ATS",
     status: "done",
@@ -274,6 +285,7 @@ export const mockTasks: Task[] = [
   },
   {
     id: "t12",
+    pinned: false,
     title: "E2E checkout regression suite",
     project: "Client A",
     status: "done",
@@ -290,6 +302,7 @@ export const mockTasks: Task[] = [
   },
   {
     id: "t13",
+    pinned: false,
     title: "Candidate pipeline UI redesign",
     project: "ATS",
     status: "done",
@@ -306,6 +319,7 @@ export const mockTasks: Task[] = [
   },
   {
     id: "t14",
+    pinned: false,
     title: "Survey distributed consensus literature",
     project: "Thesis",
     status: "done",
@@ -322,6 +336,7 @@ export const mockTasks: Task[] = [
   },
   {
     id: "t15",
+    pinned: false,
     title: "REST API docs (OpenAPI 3.1)",
     project: "ATS",
     status: "done",
@@ -338,6 +353,7 @@ export const mockTasks: Task[] = [
   },
   {
     id: "t16",
+    pinned: false,
     title: "Slow reporting query analysis",
     project: "ATS",
     status: "done",

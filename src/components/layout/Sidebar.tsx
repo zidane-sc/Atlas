@@ -8,7 +8,7 @@ import { Companion } from "@/components/gamification/Companion";
 import { XpBar } from "@/components/gamification/XpBar";
 import { useTasks } from "@/components/providers/TasksProvider";
 import { useCommandPalette } from "@/components/providers/CommandPaletteProvider";
-import { computeCharacterSheet, getNextStreakMilestone, calculateStreak } from "@/lib/gamification";
+import { computeCharacterSheet, getNextStreakMilestone, calculateStreak, completedAt, formatLocalDate } from "@/lib/gamification";
 import { MOCK_NOW } from "@/lib/mock-data";
 import { NAV_CORE, NAV_MANAGE, NAV_SMART_VIEWS, NAV_TASKS, type NavItemBase } from "@/lib/nav-items";
 import { isOverdue } from "@/lib/task-utils";
@@ -78,11 +78,26 @@ export function Sidebar() {
   const { tasks, openCreateForm, justCompleted, bonusXp, bonusCoins } = useTasks();
   const { setOpen: setCommandPaletteOpen } = useCommandPalette();
   const sheet = useMemo(() => computeCharacterSheet(tasks, bonusXp, bonusCoins), [tasks, bonusXp, bonusCoins]);
-  const streakDays = useMemo(() => calculateStreak(tasks), [tasks]);
+  const streakDays = useMemo(() => {
+    const s = calculateStreak(tasks);
+    console.log("== STREAK DEBUG ==");
+    console.log("Total Tasks count:", tasks.length);
+    console.log("Calculated Streak output:", s);
+    tasks.forEach(t => {
+      const at = completedAt(t);
+      const local = at ? formatLocalDate(at) : null;
+      console.log(`Task "${t.title}" (status: ${t.status}) -> completedAt: ${at} -> localDate: ${local} -> history:`, t.statusHistory);
+    });
+    return s;
+  }, [tasks]);
   const todayCompletedCount = useMemo(() => {
     const today = new Date();
     const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
-    return tasks.filter((t) => t.status === "done").length;
+    return tasks.filter((t) => {
+      if (t.status !== "done") return false;
+      const doneAt = completedAt(t);
+      return doneAt ? formatLocalDate(doneAt) === todayStr : false;
+    }).length;
   }, [tasks]);
   const milestone = getNextStreakMilestone(streakDays);
   const pathname = usePathname();
@@ -113,7 +128,15 @@ export function Sidebar() {
       <div className="flex flex-col gap-1.5 px-4 py-3" style={{ borderBottom: "1px solid var(--color-border)" }}>
         <XpBar level={sheet.globalLevel} xpIntoLevel={sheet.xpIntoLevel} xpForNextLevel={sheet.xpForNextLevel} compact />
         <div className="flex items-center gap-3 text-sm">
-          <span style={{ color: "var(--color-streak-flame)" }}>🔥 {streakDays}d</span>
+          <span
+            title={todayCompletedCount === 0 ? "You need to complete a task today to fire the streak!" : "Streak active!"}
+            style={{
+              color: todayCompletedCount === 0 ? "var(--color-dim)" : "var(--color-streak-flame)",
+              cursor: "help",
+            }}
+          >
+            <span style={{ filter: todayCompletedCount === 0 ? "grayscale(1) opacity(0.5)" : "none", display: "inline-block" }}>🔥</span> {streakDays}d
+          </span>
           <span style={{ color: "var(--color-coin)" }}>🪙 {sheet.totalCoins}</span>
         </div>
         {milestone && (

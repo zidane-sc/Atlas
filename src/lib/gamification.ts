@@ -56,8 +56,7 @@ export function calcTaskCoins(priority: Priority, storyPoint: number | undefined
 }
 
 export function completedAt(task: Task): string | null {
-  const doneEntry = task.statusHistory.find((h) => h.toStatus === "done");
-  return doneEntry?.changedAt ?? null;
+  return task.completedAt ?? task.statusHistory.find((h) => h.toStatus === "done")?.changedAt ?? null;
 }
 
 /** No dedicated `created_at` in the mock Task shape — the first status log entry stands in for it. */
@@ -225,7 +224,8 @@ export function computeAchievementProgress(
     case "a3": { // Speed Runner — most quests completed on any single calendar day
       const perDay: Record<string, number> = {};
       for (const t of done) {
-        const day = completedAt(t)?.slice(0, 10);
+        const at = completedAt(t);
+        const day = at ? formatLocalDate(at) : undefined;
         if (day) perDay[day] = (perDay[day] ?? 0) + 1;
       }
       const maxPerDay = Math.max(0, ...Object.values(perDay));
@@ -271,11 +271,11 @@ export function computeAchievementProgress(
   }
 }
 
-/** Hour-of-day (UTC) check spanning midnight when `startHour > endHour` — e.g. 22→4 covers 22:00–03:59. */
+/** Hour-of-day (local) check spanning midnight when `startHour > endHour` — e.g. 22→4 covers 22:00–03:59. */
 function isCompletedInHourRange(task: Task, startHour: number, endHour: number): boolean {
   const at = completedAt(task);
   if (!at) return false;
-  const hour = new Date(at).getUTCHours();
+  const hour = new Date(at).getHours();
   return startHour > endHour ? hour >= startHour || hour < endHour : hour >= startHour && hour < endHour;
 }
 
@@ -291,7 +291,8 @@ export function computeUnlockedAchievements(
   for (const id of ACHIEVEMENT_IDS) {
     const progress = computeAchievementProgress(id, tasks, projects, sprints);
     const unlocked = progress !== null && progress.max > 0 && progress.current >= progress.max;
-    result[id] = { unlocked, unlockedAt: unlocked ? (findUnlockDate(id, done, projects)?.slice(0, 10) ?? null) : null };
+    const unlockDate = unlocked ? findUnlockDate(id, done, projects) : null;
+    result[id] = { unlocked, unlockedAt: unlockDate ? formatLocalDate(unlockDate) : null };
   }
   return result;
 }
@@ -331,7 +332,7 @@ function findUnlockDate(id: string, done: Task[], projects: Project[]): string |
       const perDay: Record<string, string[]> = {};
       for (const t of sortedByCompletion) {
         const at = completedAt(t);
-        const day = at?.slice(0, 10);
+        const day = at ? formatLocalDate(at) : null;
         if (day && at) (perDay[day] ??= []).push(at);
       }
       const bestDay = Object.values(perDay).sort((a, b) => b.length - a.length)[0];
@@ -347,35 +348,46 @@ function findUnlockDate(id: string, done: Task[], projects: Project[]): string |
   }
 }
 
+export function formatLocalDate(dateInput: Date | string): string {
+  const d = typeof dateInput === "string" ? new Date(dateInput) : dateInput;
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+export function parseLocalDate(dateStr: string): Date {
+  const [year, month, day] = dateStr.split("-").map(Number);
+  return new Date(year, month - 1, day);
+}
+
 export function calculateStreak(tasks: Task[], nowStr?: string): number {
   const doneTasks = tasks.filter((t) => t.status === "done");
   const completionDates = new Set<string>();
   for (const t of doneTasks) {
     const at = completedAt(t);
     if (at) {
-      completionDates.add(at.slice(0, 10));
+      completionDates.add(formatLocalDate(at));
     }
   }
 
   if (completionDates.size === 0) return 0;
 
   const today = nowStr ? new Date(nowStr) : new Date();
-  const formatDate = (d: Date) => d.toISOString().slice(0, 10);
-
-  const todayStr = formatDate(today);
+  const todayStr = formatLocalDate(today);
   const yesterday = new Date(today);
   yesterday.setDate(yesterday.getDate() - 1);
-  const yesterdayStr = formatDate(yesterday);
+  const yesterdayStr = formatLocalDate(yesterday);
 
   if (!completionDates.has(todayStr) && !completionDates.has(yesterdayStr)) {
     return 0;
   }
 
-  const current = new Date(completionDates.has(todayStr) ? todayStr : yesterdayStr);
+  const current = parseLocalDate(completionDates.has(todayStr) ? todayStr : yesterdayStr);
   let streak = 0;
 
   while (true) {
-    const dateStr = formatDate(current);
+    const dateStr = formatLocalDate(current);
     if (completionDates.has(dateStr)) {
       streak++;
       current.setDate(current.getDate() - 1);

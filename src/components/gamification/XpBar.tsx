@@ -31,7 +31,7 @@ export function XpBar({
           showLabel={false}
         />
         <div className="mt-0.5 flex justify-between text-sm" style={{ color: "var(--color-text-muted)" }}>
-          <span style={{ color: "var(--color-xp-gold)" }}>{xpIntoLevel} XP</span>
+          <span style={{ color: "var(--color-xp-gold)" }}>{xpIntoLevel} / {xpForNextLevel} XP</span>
           <span>{pct}%</span>
         </div>
       </div>

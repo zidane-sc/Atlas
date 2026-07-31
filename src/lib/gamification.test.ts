@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   calcTaskCoins,
   calcTaskXP,
+  completedAt,
   computeCharacterSheet,
   computeRecapGrade,
   getCompanionMood,
@@ -19,6 +20,7 @@ function task(overrides: Partial<Task> & Pick<Task, "id" | "priority" | "type" |
     relations: [],
     attachments: [],
     deliverables: [],
+    pinned: false,
     statusHistory: [],
     ...overrides,
   };
@@ -162,5 +164,51 @@ describe("calculateStreak", () => {
       task({ id: "3", priority: "p2", type: "coding", status: "done", statusHistory: [{ fromStatus: "todo", toStatus: "done", changedAt: "2026-07-28T09:00:00Z" }] }),
     ];
     expect(calculateStreak(list, "2026-07-30T15:00:00Z")).toBe(0);
+  });
+});
+
+describe("completedAt — prioritizes task.completedAt over status logs", () => {
+  it("prefers the task.completedAt timestamp when both sources exist", () => {
+    const t = task({
+      id: "1",
+      priority: "p2",
+      type: "coding",
+      status: "done",
+      completedAt: "2026-07-29T17:00:00Z",
+      statusHistory: [{ fromStatus: "in_progress", toStatus: "done", changedAt: "2026-07-30T10:00:00Z" }],
+    });
+    expect(completedAt(t)).toBe("2026-07-29T17:00:00Z");
+  });
+
+  it("falls back to the done status-log entry when completedAt is absent", () => {
+    const t = task({
+      id: "1",
+      priority: "p2",
+      type: "coding",
+      status: "done",
+      statusHistory: [{ fromStatus: "in_progress", toStatus: "done", changedAt: "2026-07-30T10:00:00Z" }],
+    });
+    expect(completedAt(t)).toBe("2026-07-30T10:00:00Z");
+  });
+
+  it("feeds the streak with the local date of task.completedAt, not the status log", () => {
+    const list = [
+      task({
+        id: "1",
+        priority: "p2",
+        type: "coding",
+        status: "done",
+        completedAt: "2026-07-29T10:00:00Z",
+        statusHistory: [{ fromStatus: "in_progress", toStatus: "done", changedAt: "2026-07-30T10:00:00Z" }],
+      }),
+      task({
+        id: "2",
+        priority: "p2",
+        type: "coding",
+        status: "done",
+        statusHistory: [{ fromStatus: "todo", toStatus: "done", changedAt: "2026-07-28T10:00:00Z" }],
+      }),
+    ];
+    expect(calculateStreak(list, "2026-07-30T12:00:00Z")).toBe(2);
   });
 });

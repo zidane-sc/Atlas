@@ -120,10 +120,10 @@ export function SmartViewTaskCard({ task, onSelect }: { task: Task; onSelect: (t
       </div>
 
       {/* Time spent indicator */}
-      {task.timeSpentSeconds > 0 && (
+      {(task.timeSpentSeconds ?? 0) > 0 && (
         <div className="mt-2 pt-2 border-t border-border/40">
           <div className="text-xs text-muted-foreground">
-            ⏱ {Math.floor(task.timeSpentSeconds / 3600)}h {Math.floor((task.timeSpentSeconds % 3600) / 60)}m spent
+            ⏱ {Math.floor((task.timeSpentSeconds ?? 0) / 3600)}h {Math.floor(((task.timeSpentSeconds ?? 0) % 3600) / 60)}m spent
           </div>
         </div>
       )}

@@ -2,14 +2,24 @@
 
 import { useMemo } from "react";
 import { useTasks } from "@/components/providers/TasksProvider";
-import { computeCharacterSheet, SKILL_META, STATS, calculateStreak } from "@/lib/gamification";
+import { computeCharacterSheet, SKILL_META, STATS, calculateStreak, completedAt } from "@/lib/gamification";
 import { TYPE_ICON } from "@/lib/mock-data";
 
 export default function Page() {
   const { tasks, bonusXp, bonusCoins } = useTasks();
   const sheet = useMemo(() => computeCharacterSheet(tasks, bonusXp, bonusCoins), [tasks, bonusXp, bonusCoins]);
   const streakDays = useMemo(() => calculateStreak(tasks), [tasks]);
-  const taskXp = useMemo(() => tasks.reduce((sum, task) => sum + (task.xp || 0), 0), [tasks]);
+  const taskXp = sheet.globalXP;
+
+  const todayCompletedCount = useMemo(() => {
+    const today = new Date();
+    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+    return tasks.filter((t) => {
+      if (t.status !== "done") return false;
+      const doneAt = completedAt(t);
+      return doneAt ? doneAt.startsWith(todayStr) : false;
+    }).length;
+  }, [tasks]);
 
   return (
     <div className="flex h-full flex-col">
@@ -23,9 +33,6 @@ export default function Page() {
           className="p-4"
           style={{ background: "linear-gradient(135deg, var(--color-bg-panel-alt) 0%, var(--color-bg-deep) 100%)", borderBottom: "1px solid var(--color-border)" }}
         >
-          <div className="mb-3 text-[9px]" style={{ color: "var(--color-dim)" }}>
-            📊 Calculated from your tasks
-          </div>
           <div className="flex gap-4 items-start">
             {/* Left: Avatar */}
             <div className="relative shrink-0">
@@ -58,8 +65,17 @@ export default function Page() {
                   <span>🪙</span>
                   <span className="font-display">{sheet.totalCoins}</span>
                 </div>
-                <div className="flex items-center gap-1 px-2 py-1.5 text-[13px]" style={{ backgroundColor: "var(--color-bg-panel-alt)", border: "1px solid var(--color-border)", color: "var(--color-streak-flame)" }}>
-                  <span>🔥</span>
+                <div
+                  title={todayCompletedCount === 0 ? "You need to complete a task today to fire the streak!" : "Streak active!"}
+                  className="flex items-center gap-1 px-2 py-1.5 text-[13px]"
+                  style={{
+                    backgroundColor: "var(--color-bg-panel-alt)",
+                    border: "1px solid var(--color-border)",
+                    color: todayCompletedCount === 0 ? "var(--color-dim)" : "var(--color-streak-flame)",
+                    cursor: "help",
+                  }}
+                >
+                  <span style={{ filter: todayCompletedCount === 0 ? "grayscale(1) opacity(0.5)" : "none", display: "inline-block" }}>🔥</span>
                   <span className="font-display">{streakDays}d</span>
                 </div>
                 <div className="flex items-center gap-1 px-2 py-1.5 text-[13px]" style={{ backgroundColor: "var(--color-bg-panel-alt)", border: "1px solid var(--color-border)", color: "var(--color-status-ready)" }}>

@@ -141,17 +141,17 @@ export async function updateTask(id: string, input: unknown): Promise<ActionResu
         });
       }
 
-      if (input.priority && input.priority !== existing.priority) {
-        changes.priority = { from: existing.priority, to: input.priority };
+      if (parsed.data.priority && parsed.data.priority !== existing.priority) {
+        changes.priority = { from: existing.priority, to: parsed.data.priority };
       }
-      if (input.effort && input.effort !== existing.effort) {
-        changes.effort = { from: existing.effort, to: input.effort };
+      if (parsed.data.effort && parsed.data.effort !== existing.effort) {
+        changes.effort = { from: existing.effort, to: parsed.data.effort };
       }
-      if (input.storyPoint && input.storyPoint !== existing.storyPoint) {
-        changes.storyPoint = { from: existing.storyPoint, to: input.storyPoint };
+      if (parsed.data.storyPoint && parsed.data.storyPoint !== existing.storyPoint) {
+        changes.storyPoint = { from: existing.storyPoint, to: parsed.data.storyPoint };
       }
-      if (input.title && input.title !== existing.title) {
-        changes.title = { from: existing.title, to: input.title };
+      if (parsed.data.title && parsed.data.title !== existing.title) {
+        changes.title = { from: existing.title, to: parsed.data.title };
       }
 
       const action = status === "done" ? "completed" : (Object.keys(changes).length > 0 ? "updated" : "updated");

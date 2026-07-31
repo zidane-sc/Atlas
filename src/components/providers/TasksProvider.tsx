@@ -18,7 +18,7 @@ import {
   startFocusTimerAction as apiStartFocusTimer,
   stopFocusTimerAction as apiStopFocusTimer,
 } from "@/lib/actions/tasks";
-import { calcTaskXP } from "@/lib/gamification";
+import { calcTaskXP, calculateStreak } from "@/lib/gamification";
 import { purchaseDecoration as apiPurchaseDecoration, placeDecoration as apiPlaceDecoration } from "@/lib/actions/decorations";
 import type { TaskFilters } from "@/lib/task-filters";
 import type { SavedFilterClient } from "@/lib/actions/filters";
@@ -40,6 +40,7 @@ interface CompletionOverlay {
   id: string;
   xp: number;
   title: string;
+  streak?: number;
 }
 
 export function playChime() {
@@ -155,7 +156,7 @@ export function TasksProvider({
   const { toast } = useToast();
   const { projects } = useProjects();
   const { sprints } = useSprints();
-  const { soundEnabled } = useSettings();
+  const { soundEnabled, focusMinutes } = useSettings();
 
   useEffect(() => {
     if (justCompletedAt == null) return;
@@ -231,13 +232,19 @@ export function TasksProvider({
           const onTime = !prev.dueDate || new Date() <= new Date(`${prev.dueDate}T23:59:59`);
           const xp = calcTaskXP(values.priority, values.storyPoint, onTime);
           const cid = crypto.randomUUID();
-          setCompletions((c) => [...c, { id: cid, xp, title: values.title }]);
+
+          const oldStreak = calculateStreak(tasks);
+          const updatedTasks = tasks.map((t) => t.id === id ? { ...t, status: "done" as const } : t);
+          const newStreak = calculateStreak(updatedTasks);
+          const streakExtended = newStreak > oldStreak;
+
+          setCompletions((c) => [...c, { id: cid, xp, title: values.title, streak: streakExtended ? newStreak : undefined }]);
           if (soundEnabled) {
             playChime();
           }
           setTimeout(() => {
             setCompletions((c) => c.filter((x) => x.id !== cid));
-          }, 1500);
+          }, streakExtended ? 2500 : 1500);
         }
 
         // Optimistic update
@@ -457,6 +464,20 @@ export function TasksProvider({
           return;
         }
 
+        const { seconds: finalSeconds, startedAt, endedAt, phase } = res.data;
+
+        if (phase === "focus") {
+          const limitSeconds = focusMinutes * 60;
+          const loggedSeconds = Math.min(finalSeconds, limitSeconds);
+
+          dispatch({ type: "addTime", id: taskId, seconds: loggedSeconds });
+
+          apiLogWorkSession(taskId, loggedSeconds, startedAt, endedAt).catch((err) => {
+            toast(err?.error?.message ?? "Failed to log work session", "error");
+            dispatch({ type: "addTime", id: taskId, seconds: -loggedSeconds });
+          });
+        }
+
         const nextPhase = current.phase === "focus" ? "break" : "focus";
         setActiveTimer(null);
 
@@ -469,8 +490,8 @@ export function TasksProvider({
           });
         }
 
-        const startedAt = Date.now();
-        setActiveTimer({ taskId, startedAt, phase: nextPhase });
+        const startedAtMs = Date.now();
+        setActiveTimer({ taskId, startedAt: startedAtMs, phase: nextPhase });
         const startRes = await apiStartFocusTimer(taskId, nextPhase);
         if (!startRes.success) {
           toast(startRes.error.message, "error");
@@ -609,6 +630,13 @@ export function TasksProvider({
             <div className="animate-float-xp font-display text-sm text-[var(--color-xp-gold)] mt-2">
               +{c.xp} XP
             </div>
+            {c.streak !== undefined && (
+              <div className="mt-3 flex flex-col items-center gap-1 border-t border-border pt-3 w-full animate-pulse">
+                <span className="text-3xl animate-bounce" style={{ filter: "drop-shadow(0 0 8px var(--color-streak-flame))", animationDuration: "0.6s" }}>🔥</span>
+                <span className="font-display text-[9px] tracking-widest text-[var(--color-streak-flame)] font-bold">STREAK EXTENDED!</span>
+                <span className="font-display text-sm text-foreground font-bold">{c.streak} DAYS</span>
+              </div>
+            )}
             {/* 12 Particle burst pixels */}
             <div className="absolute inset-0 flex items-center justify-center overflow-hidden">
               {Array.from({ length: 12 }).map((_, i) => {

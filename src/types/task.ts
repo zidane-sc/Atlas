@@ -109,6 +109,7 @@ export interface Task {
   deliverables: TaskDeliverable[];
   statusHistory: TaskStatusLogEntry[];
   comments?: TaskComment[];
+  completedAt?: string;
 }
 
 export interface TaskComment {
@@ -127,4 +128,5 @@ export interface ActivityLogClient {
   projectEmoji?: string;
   projectName?: string;
   sprintName?: string;
+  details?: any;
 }

@@ -54,25 +54,39 @@ export function mapDbTaskToClient(dbTask: DbTaskWithLogs, dbProjects?: DbProject
     timeSpentSeconds: dbTask.timeSpentSeconds,
     pinned: dbTask.pinned,
     dueDate: dbTask.dueDate ? dbTask.dueDate.toISOString().split("T")[0] : undefined,
+    completedAt: dbTask.completedAt ? dbTask.completedAt.toISOString() : undefined,
     sprint: sprint ? sprint.name : (dbTask.sprintId ? (SPRINT_REV_MAP[dbTask.sprintId] ?? undefined) : undefined),
     reporter: dbTask.reporter as Reporter,
     tags: dbTask.tags,
     relations: (dbTask.relations as unknown as TaskRelation[]) || [],
     attachments: (dbTask.attachments as unknown as TaskAttachment[]) || [],
     deliverables: (dbTask.deliverables as unknown as TaskDeliverable[]) || [],
-    statusHistory: dbTask.statusHistory
-      ? dbTask.statusHistory.map((h) => ({
-          fromStatus: h.fromStatus as TaskStatus | null,
-          toStatus: h.toStatus as TaskStatus,
-          changedAt: h.changedAt.toISOString(),
-        }))
-      : [
-          {
-            fromStatus: null,
-            toStatus: dbTask.status as TaskStatus,
-            changedAt: dbTask.createdAt.toISOString(),
-          },
-        ],
+    statusHistory: (() => {
+      const history = dbTask.statusHistory && dbTask.statusHistory.length > 0
+        ? dbTask.statusHistory.map((h) => ({
+            fromStatus: h.fromStatus as TaskStatus | null,
+            toStatus: h.toStatus as TaskStatus,
+            changedAt: h.changedAt.toISOString(),
+          }))
+        : [];
+
+      // If task is completed but has no "done" transition entry in status logs, force one
+      if (dbTask.status === "done" && !history.some((h) => h.toStatus === "done")) {
+        history.push({
+          fromStatus: null,
+          toStatus: "done" as TaskStatus,
+          changedAt: (dbTask.completedAt || dbTask.createdAt).toISOString(),
+        });
+      } else if (history.length === 0) {
+        // Fallback for non-completed tasks with empty logs
+        history.push({
+          fromStatus: null,
+          toStatus: dbTask.status as TaskStatus,
+          changedAt: dbTask.createdAt.toISOString(),
+        });
+      }
+      return history;
+    })(),
     comments: dbTask.comments
       ? dbTask.comments.map((c) => ({
           id: c.id,
@@ -112,11 +126,13 @@ export function buildTaskFromValues(id: string, changedAt: string, values: TaskF
     waitingOn: values.waitingOn,
     sprint: values.sprint,
     reporter: values.reporter,
+    pinned: false,
     tags: values.tags,
     relations: values.relations,
     attachments: values.attachments,
     deliverables: values.deliverables,
     statusHistory: [{ fromStatus: null, toStatus: values.status, changedAt }],
+    completedAt: values.status === "done" ? changedAt : undefined,
   };
 }
 
@@ -156,6 +172,9 @@ export function tasksReducer(tasks: Task[], action: TasksAction): Task[] {
           statusHistory: statusChanged
             ? [...t.statusHistory, { fromStatus: t.status, toStatus: action.values.status, changedAt: action.changedAt }]
             : t.statusHistory,
+          completedAt: statusChanged
+            ? (action.values.status === "done" ? action.changedAt : undefined)
+            : t.completedAt,
         };
       });
     }

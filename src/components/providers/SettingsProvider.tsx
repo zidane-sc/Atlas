@@ -7,6 +7,7 @@ interface SettingsContextValue {
   settings: UserSetting[];
   updateSetting: (key: string, value: unknown) => Promise<boolean>;
   reduceMotion: boolean;
+  setReduceMotion: (value: boolean) => void;
   soundEnabled: boolean;
   focusMinutes: number;
   breakMinutes: number;
@@ -53,16 +54,21 @@ export function SettingsProvider({
     return false;
   }, []);
 
+  const setReduceMotion = useCallback((value: boolean) => {
+    void updateSetting("reduceMotion", value);
+  }, [updateSetting]);
+
   const value = useMemo<SettingsContextValue>(
     () => ({
       settings,
       updateSetting,
       reduceMotion,
+      setReduceMotion,
       soundEnabled,
       focusMinutes,
       breakMinutes,
     }),
-    [settings, updateSetting, reduceMotion, soundEnabled, focusMinutes, breakMinutes]
+    [settings, updateSetting, reduceMotion, setReduceMotion, soundEnabled, focusMinutes, breakMinutes]
   );
 
   return <SettingsContext.Provider value={value}>{children}</SettingsContext.Provider>;
