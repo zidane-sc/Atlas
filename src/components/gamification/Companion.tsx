@@ -120,8 +120,8 @@ export function Companion({
 
   return (
     <div
-      className="relative px-3 pt-2.5 pb-1.5"
-      style={{ borderTop: "1px solid var(--color-border)" }}
+      className="relative px-3 pt-2.5 pb-1.5 z-40"
+      style={{ borderTop: "1px solid var(--color-border)", overflow: "visible" }}
       onMouseEnter={() => !showPinned && setShowMood(true)}
       onMouseLeave={() => setShowMood(false)}
     >
