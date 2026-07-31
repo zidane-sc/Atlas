@@ -160,6 +160,40 @@ const updateDrawerLastSelectedSchema = z.object({
   itemId: z.string().uuid(),
 });
 
+export async function getUserStatsAction(): Promise<
+  ActionResult<{
+    bonusXp: number;
+    bonusCoins: number;
+  }>
+> {
+  const session = await auth();
+  if (!session?.user?.email) {
+    return { success: false, error: { code: "UNAUTHORIZED", message: "Sign in required." } };
+  }
+
+  try {
+    const user = await db.user.findUnique({
+      where: { email: session.user.email },
+      select: { bonusXp: true, bonusCoins: true },
+    });
+
+    if (!user) {
+      return { success: false, error: { code: "NOT_FOUND", message: "User not found." } };
+    }
+
+    return {
+      success: true,
+      data: {
+        bonusXp: user.bonusXp,
+        bonusCoins: user.bonusCoins,
+      },
+    };
+  } catch (error) {
+    console.error("Failed to fetch user stats:", error);
+    return { success: false, error: { code: "INTERNAL", message: "Failed to fetch user stats." } };
+  }
+}
+
 export async function updateDrawerLastSelectedAction(
   pickerType: "task" | "sprint" | "project",
   itemId: string
