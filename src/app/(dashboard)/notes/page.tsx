@@ -141,6 +141,7 @@ export default function NotesPage() {
           <NoteList notes={notes} onSelectNote={handleSelectNote} onDeleteNote={handleDelete} />
         )}
       </div>
+      </div>
     </>
   );
 }
