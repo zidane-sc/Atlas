@@ -439,14 +439,18 @@ export function NoteEditor({ noteId, initialData, onSave, onClose }: NoteEditorP
                               ? "--color-priority-p1"
                               : "--color-primary-gold";
 
-                        const statusEmoji =
+                        const statusLabel =
                           task.status === "done"
-                            ? "✓"
+                            ? "Done"
                             : task.status === "in_progress"
-                              ? "▶"
+                              ? "In Progress"
                               : task.status === "blocked"
-                                ? "⊘"
-                                : "○";
+                                ? "Blocked"
+                                : task.status === "ready"
+                                  ? "Ready"
+                                  : task.status === "inbox"
+                                    ? "Inbox"
+                                    : task.status.charAt(0).toUpperCase() + task.status.slice(1);
 
                         return (
                           <button
@@ -469,7 +473,9 @@ export function NoteEditor({ noteId, initialData, onSave, onClose }: NoteEditorP
                               color: "var(--color-foreground)",
                             }}
                           >
-                            <span className="text-xs flex-shrink-0">{statusEmoji}</span>
+                            <span className="text-xs flex-shrink-0 px-1 rounded" style={{ backgroundColor: `var(${priorityColor})/20`, color: `var(${priorityColor})` }}>
+                              {statusLabel}
+                            </span>
                             <span className="truncate flex-1">{task.title}</span>
                             {task.project && (
                               <span className="text-xs text-muted-foreground flex-shrink-0">
