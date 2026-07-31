@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { createNoteAction, updateNoteAction } from "@/lib/actions/notes";
+import { createNoteAction, updateNoteAction, getNoteAction } from "@/lib/actions/notes";
 import { insertMarkdown } from "@/lib/markdown";
 import { MarkdownToolbar } from "./MarkdownToolbar";
 import { MarkdownPreview } from "./MarkdownPreview";
@@ -64,6 +64,20 @@ export function NoteEditor({ noteId, initialData, onSave, onClose }: NoteEditorP
       setTags(initialData.note.tags);
     }
   }, [initialData?.note.id]);
+
+  useEffect(() => {
+    if (noteId && !initialData) {
+      const fetchNote = async () => {
+        const result = await getNoteAction(noteId);
+        if (result.success && result.data?.note) {
+          setTitle(result.data.note.title);
+          setContent(result.data.note.content);
+          setTags(result.data.note.tags);
+        }
+      };
+      fetchNote();
+    }
+  }, [noteId, initialData]);
 
   useEffect(() => {
     return () => {
