@@ -105,7 +105,7 @@ export function Companion({
   return (
     <div
       className="relative px-3 pt-2.5 pb-1.5"
-      style={{ borderTop: "1px solid var(--color-border)" }}
+      style={{ ...(compact ? {} : { borderTop: "1px solid var(--color-border)" }) }}
       onMouseEnter={() => setTip(true)}
       onMouseLeave={() => setTip(false)}
     >

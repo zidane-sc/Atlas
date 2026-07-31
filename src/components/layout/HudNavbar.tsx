@@ -95,6 +95,8 @@ export function HudNavbar({
             color: "var(--color-primary-gold)",
           }}
           title={user?.email ?? user?.name ?? ""}
+          role="img"
+          aria-label={user?.name ?? user?.email ?? ""}
         >
           {initial}
         </div>

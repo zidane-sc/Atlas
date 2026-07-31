@@ -1,6 +1,6 @@
 import { PixBar } from "@/components/ui/PixBar";
 
-/** XP progress meter — docs/03-design.md §10 (Dashboard) uses 24 blocks, the Sidebar's compact strip uses 10, the HUD navbar uses 8. */
+/** XP progress meter — docs/03-design.md §10 (Dashboard) uses 24 blocks, the default density uses 20, the compact strip uses 10, the HUD navbar uses 8. */
 export function XpBar({
   level,
   xpIntoLevel,

@@ -35,7 +35,7 @@ const SMART_VIEW_COUNT: Record<string, (tasks: Task[]) => number> = {
   "/tasks/focus": (tasks) => tasks.filter((t) => t.status === "ready" && (t.priority === "p0" || t.priority === "p1")).length,
 };
 
-const NAV_QUEST: NavItem = { href: "", label: "New Quest", icon: Plus };
+const NAV_QUEST_LABEL = "New Quest";
 
 function NavLink({ href, label, icon: Icon, count, badgeColorVar }: NavItem) {
   const pathname = usePathname();
@@ -183,7 +183,7 @@ export function Sidebar() {
           }}
         >
           <Plus size={12} />
-          <span className="flex-1">{NAV_QUEST.label}</span>
+          <span className="flex-1">{NAV_QUEST_LABEL}</span>
         </button>
       </nav>
 
