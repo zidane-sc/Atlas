@@ -18,6 +18,8 @@ const WEEKDAY_LABELS = [
 
 const CELL = 11;
 const GAP = 3;
+const TOOLTIP_WIDTH = 132;
+const TOOLTIP_HEIGHT = 42;
 
 function levelFor(count: number, maxCount: number): number {
   if (count <= 0 || maxCount <= 0) return 0;
@@ -121,13 +123,23 @@ export default function ActivityHeatmap({ tasks, nowAnchor }: { tasks: Task[]; n
             week.map((cell, d) => (
               <div
                 key={cell.date}
+                title={cell.date}
                 onMouseEnter={(e) => {
                   const el = e.currentTarget;
+                  const gridEl = el.offsetParent as HTMLElement | null;
+                  const gridWidth = gridEl?.clientWidth ?? 0;
+                  const gridHeight = gridEl?.clientHeight ?? 0;
+                  const left = Math.min(
+                    el.offsetLeft + el.offsetWidth + GAP,
+                    Math.max(0, gridWidth - TOOLTIP_WIDTH)
+                  );
+                  const placeBelow = el.offsetTop + CELL <= gridHeight - TOOLTIP_HEIGHT;
+                  const top = placeBelow ? el.offsetTop : Math.max(0, el.offsetTop - TOOLTIP_HEIGHT - GAP);
                   setTip({
                     date: cell.date,
                     count: cell.count,
-                    left: el.offsetLeft + el.offsetWidth + GAP,
-                    top: el.offsetTop,
+                    left,
+                    top,
                   });
                 }}
                 onMouseLeave={() => setTip(null)}

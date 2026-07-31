@@ -36,6 +36,11 @@ describe("buildHeatmapGrid", () => {
     expect(grid.weeks[0][0].date).toBe("2025-08-03");
   });
 
+  it("ends the window on the Saturday of the anchor week", () => {
+    const grid = buildHeatmapGrid([], ANCHOR);
+    expect(grid.weeks[51][6].date).toBe("2026-08-01");
+  });
+
   it("places a single completion in the matching day cell", () => {
     const tasks = [task({ id: "t1", priority: "p2", type: "coding", status: "done", completedAt: "2026-03-15T12:00:00" })];
     const grid = buildHeatmapGrid(tasks, ANCHOR);
@@ -65,6 +70,19 @@ describe("buildHeatmapGrid", () => {
     const tasks = [task({ id: "t1", priority: "p2", type: "coding", status: "done", completedAt: "2026-07-31T10:00:00" })];
     const grid = buildHeatmapGrid(tasks, ANCHOR);
     expect(cellFor(grid, "2026-07-31")?.count).toBe(1);
+  });
+
+  it("includes a completion exactly on the window start", () => {
+    const tasks = [task({ id: "t1", priority: "p2", type: "coding", status: "done", completedAt: "2025-08-03T09:00:00" })];
+    const grid = buildHeatmapGrid(tasks, ANCHOR);
+    expect(cellFor(grid, "2025-08-03")?.count).toBe(1);
+  });
+
+  it("excludes completions after the anchor week", () => {
+    const tasks = [task({ id: "t1", priority: "p2", type: "coding", status: "done", completedAt: "2026-08-02T09:00:00" })];
+    const grid = buildHeatmapGrid(tasks, ANCHOR);
+    expect(grid.weeks.flat().every((c) => c.count === 0)).toBe(true);
+    expect(grid.maxCount).toBe(0);
   });
 
   it("tracks the peak single-day count as maxCount", () => {

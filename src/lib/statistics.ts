@@ -13,7 +13,7 @@ export interface HeatmapGrid {
 
 /**
  * Per-day completion counts for the trailing 52 weeks, grouped into weeks of
- * 7 cells each (Sun..Sat), ending on the Sunday of the anchor week.
+ * 7 cells each (Sun..Sat), ending with the anchor week (Sun..Sat).
  */
 export function buildHeatmapGrid(tasks: Task[], nowAnchor: string): HeatmapGrid {
   const counts = new Map<string, number>();
