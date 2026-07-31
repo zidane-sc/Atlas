@@ -36,6 +36,7 @@ import {
 import { useProjects } from "@/components/providers/ProjectsProvider";
 import { useSprints } from "@/components/providers/SprintsProvider";
 import { sortProjectsForPicker } from "@/lib/picker-sort";
+import { sortSprintsForPicker } from "@/lib/picker-sort";
 import { STATUS_LABEL, TYPE_ICON } from "@/lib/mock-data";
 import type {
   AttachmentType,
@@ -144,6 +145,8 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
   const [projectFocused, setProjectFocused] = useState(false);
   const projectInputRef = useRef<HTMLInputElement>(null);
   const [sprintSearch, setSprintSearch] = useState("");
+  const [sprintFocused, setSprintFocused] = useState(false);
+  const sprintInputRef = useRef<HTMLInputElement>(null);
   const [editingAttachmentIndex, setEditingAttachmentIndex] = useState<number | null>(null);
   const [editingDeliverableIndex, setEditingDeliverableIndex] = useState<number | null>(null);
 
@@ -445,6 +448,7 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
               <label className={LC}>Sprint</label>
               <div className="relative">
                 <input
+                  ref={sprintInputRef}
                   aria-label="Sprint"
                   className={FIELD}
                   placeholder="Search sprint..."
@@ -459,12 +463,17 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
                   onFocus={(e) => {
                     setSprintSearch("");
                     e.target.select();
+                    setSprintFocused(true);
                   }}
+                  onBlur={() => setSprintFocused(false)}
                 />
-                {sprintSearch && (
+                {sprintFocused && (
                   <ul className="border border-border max-h-20 overflow-y-auto bg-secondary text-xs absolute top-full left-0 right-0 z-10">
-                    {sprints.filter(s => s.name.toLowerCase().includes(sprintSearch.toLowerCase())).map((s) => (
-                      <li key={s.id} className="px-2 py-1 cursor-pointer hover:bg-primary/10 border-b border-border last:border-b-0" onClick={() => { set("sprint", s.name); setSprintSearch(""); }}>
+                    {(sprintSearch
+                      ? sprints.filter(s => s.name.toLowerCase().includes(sprintSearch.toLowerCase()))
+                      : sortSprintsForPicker(sprints).slice(0, 5)
+                    ).map((s) => (
+                      <li key={s.id} className="px-2 py-1 cursor-pointer hover:bg-primary/10 border-b border-border last:border-b-0" onMouseDown={(e) => e.preventDefault()} onClick={() => { set("sprint", s.name); setSprintSearch(""); sprintInputRef.current?.blur(); }}>
                         {s.name}
                       </li>
                     ))}
