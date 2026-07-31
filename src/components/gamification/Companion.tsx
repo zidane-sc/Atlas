@@ -285,17 +285,17 @@ export function Companion({
             {hasPinned && (
               <div
                 style={px({
-                  top: -4,
-                  right: -4,
-                  width: 12,
-                  height: 12,
+                  top: -6,
+                  right: -6,
+                  width: 20,
+                  height: 20,
                   backgroundColor: "var(--color-primary-gold)",
-                  border: "1px solid var(--color-primary-gold-dim)",
+                  border: "2px solid var(--color-primary-gold-dim)",
                   borderRadius: "50%",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  fontSize: "8px",
+                  fontSize: "14px",
                   lineHeight: "1",
                 })}
               >
