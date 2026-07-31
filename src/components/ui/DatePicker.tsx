@@ -99,7 +99,7 @@ export function DatePicker({ value, onChange }: { value?: string; onChange: (dat
             <button
               type="button"
               onClick={handlePrevMonth}
-              className="border border-border px-2 py-1 hover:bg-secondary/50 text-sm"
+              className="border-2 border-border px-2 py-1 hover:bg-secondary/80 hover:border-primary transition-colors text-sm font-medium"
             >
               ←
             </button>
@@ -109,7 +109,7 @@ export function DatePicker({ value, onChange }: { value?: string; onChange: (dat
             <button
               type="button"
               onClick={handleNextMonth}
-              className="border border-border px-2 py-1 hover:bg-secondary/50 text-sm"
+              className="border-2 border-border px-2 py-1 hover:bg-secondary/80 hover:border-primary transition-colors text-sm font-medium"
             >
               →
             </button>
