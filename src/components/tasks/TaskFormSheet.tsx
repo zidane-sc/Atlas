@@ -37,6 +37,7 @@ import { useProjects } from "@/components/providers/ProjectsProvider";
 import { useSprints } from "@/components/providers/SprintsProvider";
 import { sortProjectsForPicker } from "@/lib/picker-sort";
 import { sortSprintsForPicker } from "@/lib/picker-sort";
+import { sortTasksForPicker } from "@/lib/picker-sort";
 import { STATUS_LABEL, TYPE_ICON } from "@/lib/mock-data";
 import type {
   AttachmentType,
@@ -141,6 +142,8 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
   const [deliverableUrl, setDeliverableUrl] = useState("");
   const [tagInput, setTagInput] = useState("");
   const [relationSearch, setRelationSearch] = useState("");
+  const [relationFocused, setRelationFocused] = useState(false);
+  const relationInputRef = useRef<HTMLInputElement>(null);
   const [projectSearch, setProjectSearch] = useState("");
   const [projectFocused, setProjectFocused] = useState(false);
   const projectInputRef = useRef<HTMLInputElement>(null);
@@ -559,11 +562,14 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
                   ))}
                 </select>
                 <input
+                  ref={relationInputRef}
                   aria-label="Search quest"
                   className={FIELD}
                   placeholder="Search quest..."
                   value={relationSearch}
                   onChange={(e) => setRelationSearch(e.target.value)}
+                  onFocus={() => setRelationFocused(true)}
+                  onBlur={() => setRelationFocused(false)}
                   onKeyDown={(e) => {
                     if (e.key === "Enter" && relationTargetId) {
                       e.preventDefault();
@@ -572,10 +578,13 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
                   }}
                 />
               </div>
-              {relationSearch && (
+              {relationFocused && (
                 <ul className="border border-border max-h-20 overflow-y-auto bg-secondary text-xs">
-                  {otherTasks.filter(t => t.title.toLowerCase().includes(relationSearch.toLowerCase())).slice(0, 5).map((t) => (
-                    <li key={t.id} className="px-2 py-1 cursor-pointer hover:bg-primary/10 border-b border-border last:border-b-0" onClick={() => { setRelationTargetId(t.id); setRelationSearch(""); }}>
+                  {(relationSearch
+                    ? otherTasks.filter(t => t.title.toLowerCase().includes(relationSearch.toLowerCase()))
+                    : sortTasksForPicker(otherTasks)
+                  ).slice(0, 5).map((t) => (
+                    <li key={t.id} className="px-2 py-1 cursor-pointer hover:bg-primary/10 border-b border-border last:border-b-0" onMouseDown={(e) => e.preventDefault()} onClick={() => { setRelationTargetId(t.id); setRelationSearch(""); relationInputRef.current?.blur(); }}>
                       {t.title}
                     </li>
                   ))}
