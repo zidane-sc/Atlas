@@ -13,18 +13,32 @@ const handleButtonClick = (e: React.MouseEvent, callback: () => void) => {
 };
 
 const generateTable = (cols: number, rows: number) => {
-  const headerCells = Array.from({ length: cols }, (_, i) => `Col${i + 1}`);
-  const headerRow = "| " + headerCells.join(" | ") + " |";
+  let table = "";
 
-  const separatorCells = Array.from({ length: cols }, () => "-----");
-  const separatorRow = "|" + separatorCells.join("|") + "|";
+  // Header row
+  table += "|";
+  for (let i = 0; i < cols; i++) {
+    table += ` Col${i + 1} |`;
+  }
+  table += "\n";
 
-  const dataCell = " ";
-  const dataCellArray = Array.from({ length: cols }, () => dataCell);
-  const dataRow = "| " + dataCellArray.join(" | ") + " |";
+  // Separator row
+  table += "|";
+  for (let i = 0; i < cols; i++) {
+    table += " --- |";
+  }
+  table += "\n";
 
-  const allDataRows = Array.from({ length: rows }, () => dataRow).join("\n");
-  return `${headerRow}\n${separatorRow}\n${allDataRows}`;
+  // Data rows
+  for (let r = 0; r < rows; r++) {
+    table += "|";
+    for (let c = 0; c < cols; c++) {
+      table += "  |";
+    }
+    if (r < rows - 1) table += "\n";
+  }
+
+  return table;
 };
 
 export function MarkdownToolbar({ onInsert }: MarkdownToolbarProps) {
