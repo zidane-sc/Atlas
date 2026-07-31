@@ -25,6 +25,32 @@ export function NoteEditor({ noteId, initialData, onSave, onClose }: NoteEditorP
   const [lastSaved, setLastSaved] = useState<string | null>(null);
   const saveTimeoutRef = useRef<NodeJS.Timeout>();
 
+  const handleAutoSave = useCallback(async () => {
+    if (!title.trim() || !content.trim()) return;
+
+    setSaving(true);
+    try {
+      const result = noteId
+        ? await updateNoteAction({
+            noteId,
+            title,
+            content,
+            tags,
+          })
+        : await createNoteAction({
+            title,
+            content,
+            tags,
+          });
+
+      if (result.success) {
+        setLastSaved(new Date().toLocaleTimeString());
+      }
+    } finally {
+      setSaving(false);
+    }
+  }, [title, content, tags, noteId]);
+
   const handleSave = useCallback(async () => {
     if (!title.trim() || !content.trim()) return;
 
@@ -54,8 +80,8 @@ export function NoteEditor({ noteId, initialData, onSave, onClose }: NoteEditorP
 
   const debouncedSave = useCallback(() => {
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
-    saveTimeoutRef.current = setTimeout(handleSave, 500);
-  }, [handleSave]);
+    saveTimeoutRef.current = setTimeout(handleAutoSave, 500);
+  }, [handleAutoSave]);
 
   useEffect(() => {
     if (initialData?.note) {
@@ -115,7 +141,7 @@ export function NoteEditor({ noteId, initialData, onSave, onClose }: NoteEditorP
       textarea.setSelectionRange(result.newCursorPos, result.newCursorPos);
       textarea.focus();
     }, 0);
-    if (!noteId) debouncedSave();
+    debouncedSave();
   };
 
   const handleAddTag = () => {
@@ -123,7 +149,7 @@ export function NoteEditor({ noteId, initialData, onSave, onClose }: NoteEditorP
       const newTag = tagInput.trim().startsWith("#") ? tagInput.trim() : `#${tagInput.trim()}`;
       setTags([...tags, newTag]);
       setTagInput("");
-      if (!noteId) debouncedSave();
+      debouncedSave();
     }
   };
 
@@ -138,7 +164,7 @@ export function NoteEditor({ noteId, initialData, onSave, onClose }: NoteEditorP
           value={title}
           onChange={(e) => {
             setTitle(e.target.value);
-            if (!noteId) debouncedSave();
+            debouncedSave();
           }}
           placeholder="Note title..."
           className="flex-1 font-display text-lg bg-transparent border-none outline-none"
@@ -164,7 +190,7 @@ export function NoteEditor({ noteId, initialData, onSave, onClose }: NoteEditorP
             value={content}
             onChange={(e) => {
               setContent(e.target.value);
-              if (!noteId) debouncedSave();
+              debouncedSave();
             }}
             onBlur={handleSave}
             placeholder="Write markdown..."
@@ -189,7 +215,7 @@ export function NoteEditor({ noteId, initialData, onSave, onClose }: NoteEditorP
                   type="button"
                   onClick={() => {
                     setTags(tags.filter((t) => t !== tag));
-                    if (!noteId) debouncedSave();
+                    debouncedSave();
                   }}
                   className="ml-1 hover:text-destructive"
                 >
