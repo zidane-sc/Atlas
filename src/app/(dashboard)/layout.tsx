@@ -154,8 +154,8 @@ export default async function DashboardLayout({
 
   return (
     <ToastProvider>
-      <DefaultViewRedirect />
       <SettingsProvider initialSettings={owner.settings as unknown as UserSetting[]}>
+        <DefaultViewRedirect />
         <ProjectsProvider initialProjects={projects}>
           <SprintsProvider initialSprints={sprints}>
             <TasksProvider
