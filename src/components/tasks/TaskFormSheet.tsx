@@ -84,7 +84,9 @@ const EMPTY_FORM: Omit<TaskFormValues, "project"> = {
 
 const LC = "mb-1 block text-sm tracking-widest text-muted-foreground uppercase";
 const FIELD =
-  "w-full border-2 border-border bg-secondary px-3 py-1.5 text-sm text-foreground outline-none focus:border-primary";
+  "w-full border-2 border-border bg-secondary px-3 py-1.5 text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:border-primary focus:border-primary";
+const FIELD_ERROR =
+  "w-full border-2 border-status-blocked bg-card px-3 py-1.5 text-sm text-status-blocked outline-none focus-visible:ring-2 focus-visible:ring-status-blocked";
 
 function humanize(value: string) {
   return value.replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase());
@@ -133,6 +135,7 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
       : { ...EMPTY_FORM, project: projects[0]?.name ?? "" }
   );
   const [errors, setErrors] = useState<Partial<Record<keyof TaskFormValues, string>>>({});
+  const [submitting, setSubmitting] = useState(false);
 
   const [relationType, setRelationType] = useState<RelationType>("related");
   const [relationTargetId, setRelationTargetId] = useState("");
@@ -217,12 +220,17 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
       setErrors(fieldErrors);
       return;
     }
-    if (mode === "edit" && task) {
-      updateTask(task.id, result.data);
-    } else {
-      createTask(result.data);
+    setSubmitting(true);
+    try {
+      if (mode === "edit" && task) {
+        updateTask(task.id, result.data);
+      } else {
+        createTask(result.data);
+      }
+    } finally {
+      setSubmitting(false);
+      closeForm();
     }
-    closeForm();
   };
 
   const previewXP = calcTaskXP(form.priority, form.storyPoint, true);
@@ -293,7 +301,7 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
       <div className="border-b border-border px-4 pt-4 pb-3">
         <label className={LC}>Quest Title *</label>
         <input
-          className={FIELD}
+          className={errors.title ? FIELD_ERROR : FIELD}
           value={form.title}
           onChange={(e) => set("title", e.target.value)}
           placeholder="What needs to be done?"
@@ -784,8 +792,8 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
       </div>
 
       <div className="flex items-center justify-between border-t border-border p-4" style={{ backgroundColor: "var(--color-bg-panel-alt)" }}>
-        <Button type="button" variant="ghost" onClick={closeForm}>Cancel</Button>
-        <Button type="submit"><Check size={12} />{mode === "edit" ? "Save Changes" : "Create Quest"}</Button>
+        <Button type="button" variant="ghost" onClick={closeForm} disabled={submitting}>Cancel</Button>
+        <Button type="submit" disabled={submitting}>{submitting ? "⋳ Saving..." : <><Check size={12} />{mode === "edit" ? "Save Changes" : "Create Quest"}</> }</Button>
       </div>
     </form>
   );
