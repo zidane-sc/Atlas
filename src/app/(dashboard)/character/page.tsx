@@ -1,12 +1,33 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
+import { useSession } from "next-auth/react";
 import { useTasks } from "@/components/providers/TasksProvider";
 import { computeCharacterSheet, SKILL_META, STATS, calculateStreak, completedAt } from "@/lib/gamification";
 import { TYPE_ICON } from "@/lib/mock-data";
+import { updateUserProfileAction } from "@/lib/actions/user";
 
 export default function Page() {
+  const { data: session } = useSession();
   const { tasks, bonusXp, bonusCoins } = useTasks();
+  const [isEditing, setIsEditing] = useState(false);
+  const [formName, setFormName] = useState(session?.user?.name ?? "");
+  const [formGuild, setFormGuild] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState<{ type: string; text: string } | null>(null);
+
+  const handleSave = async () => {
+    setSaving(true);
+    setMessage(null);
+    const result = await updateUserProfileAction(formName, formGuild);
+    if (result.success) {
+      setMessage({ type: "success", text: "Profile updated!" });
+      setIsEditing(false);
+    } else {
+      setMessage({ type: "error", text: result.error?.message ?? "Failed to update" });
+    }
+    setSaving(false);
+  };
   const sheet = useMemo(() => computeCharacterSheet(tasks, bonusXp, bonusCoins), [tasks, bonusXp, bonusCoins]);
   const streakDays = useMemo(() => calculateStreak(tasks), [tasks]);
   const taskXp = sheet.globalXP;
@@ -52,7 +73,60 @@ export default function Page() {
 
             {/* Center: Name, Class, Quick Stats */}
             <div className="flex-1 min-w-0">
-              <div className="mb-1 font-display text-base text-foreground">Aric Stormcloak</div>
+              {isEditing ? (
+                <div className="mb-3 flex flex-col gap-2">
+                  <input
+                    type="text"
+                    value={formName}
+                    onChange={(e) => setFormName(e.target.value)}
+                    className="px-2 py-1 border border-border rounded text-base bg-card"
+                    placeholder="Name"
+                  />
+                  <input
+                    type="text"
+                    value={formGuild}
+                    onChange={(e) => setFormGuild(e.target.value)}
+                    className="px-2 py-1 border border-border rounded text-sm bg-card"
+                    placeholder="Guild"
+                    maxLength={100}
+                  />
+                  <div className="flex gap-2">
+                    <button
+                      onClick={handleSave}
+                      disabled={saving}
+                      className="px-3 py-1 bg-primary text-primary-foreground rounded text-xs"
+                    >
+                      {saving ? "Saving..." : "Save"}
+                    </button>
+                    <button
+                      onClick={() => setIsEditing(false)}
+                      className="px-3 py-1 border border-border rounded text-xs"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                  {message && (
+                    <p style={{ fontSize: "12px", color: message.type === "error" ? "var(--color-status-blocked)" : "var(--color-status-ready)" }}>
+                      {message.text}
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <>
+                  <div className="mb-1 font-display text-base text-foreground flex justify-between items-center">
+                    {session?.user?.name ?? "Aric Stormcloak"}
+                    <button
+                      onClick={() => setIsEditing(true)}
+                      className="text-xs px-2 py-1 border border-border rounded hover:bg-primary/10"
+                    >
+                      Edit
+                    </button>
+                  </div>
+                  <div className="mb-3 font-display text-[11px]" style={{ color: "var(--color-primary-gold)" }}>
+                    {formGuild || "Adventurer"}
+                  </div>
+                </>
+              )}
               <div className="mb-3 font-display text-[11px]" style={{ color: "var(--color-primary-gold)" }}>
                 {sheet.classTitle.toUpperCase()}
               </div>
