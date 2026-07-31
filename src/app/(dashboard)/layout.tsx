@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { Sidebar } from "@/components/layout/Sidebar";
+import { DefaultViewRedirect } from "@/components/layout/DefaultViewRedirect";
 import { CommandPalette } from "@/components/layout/CommandPalette";
 import { TaskFormSheet } from "@/components/tasks/TaskFormSheet";
 import { ProjectFormSheet } from "@/components/projects/ProjectFormSheet";
@@ -153,6 +154,7 @@ export default async function DashboardLayout({
 
   return (
     <ToastProvider>
+      <DefaultViewRedirect />
       <SettingsProvider initialSettings={owner.settings as unknown as UserSetting[]}>
         <ProjectsProvider initialProjects={projects}>
           <SprintsProvider initialSprints={sprints}>

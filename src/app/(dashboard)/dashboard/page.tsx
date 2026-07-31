@@ -9,12 +9,15 @@ import { StatPanel } from "@/components/gamification/StatPanel";
 import { DailyQuestCard } from "@/components/gamification/DailyQuestCard";
 import { TaskListView } from "@/components/tasks/TaskListView";
 import { useTasks } from "@/components/providers/TasksProvider";
+import { useSettings } from "@/components/providers/SettingsProvider";
 import { useSprints } from "@/components/providers/SprintsProvider";
 import { calcTaskCoins, calcTaskXP, completedAt, computeCharacterSheet, isTaskOnTime, calculateStreak } from "@/lib/gamification";
 import { formatDueDate, isDueToday, isOverdue } from "@/lib/task-utils";
 import { MOCK_NOW, TYPE_ICON, todaysDailyQuest } from "@/lib/mock-data";
 
 export default function Page() {
+  const { settings } = useSettings();
+  const compactView = settings.find((s) => s.key === "compactView")?.value ?? false;
   const { tasks, activityLogs, bonusXp, bonusCoins, lastQuestClaimedAt, claimDailyQuest } = useTasks();
   const { sprints } = useSprints();
   const sheet = useMemo(() => computeCharacterSheet(tasks, bonusXp, bonusCoins), [tasks, bonusXp, bonusCoins]);
@@ -102,7 +105,7 @@ export default function Page() {
           <div className="mb-3 flex items-center justify-between">
             <span className="text-sm tracking-widest" style={{ color: "var(--color-primary-gold)" }}>◆ TODAY&apos;S QUESTS</span>
           </div>
-          <TaskListView tasks={todaysQuest} empty="[ ALL CLEAR ]" variant="compact" />
+          <TaskListView tasks={todaysQuest} variant={compactView ? "compact" : "card"} empty="[ ALL CLEAR ]" variant="compact" />
         </section>
 
         <section className="border-2 border-border bg-card p-4">
