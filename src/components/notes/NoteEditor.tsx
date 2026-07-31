@@ -145,8 +145,11 @@ export function NoteEditor({ noteId, initialData, onSave, onClose }: NoteEditorP
   };
 
   const handleAddTag = () => {
-    if (tagInput.trim() && !tags.includes(tagInput.trim())) {
-      const newTag = tagInput.trim().startsWith("#") ? tagInput.trim() : `#${tagInput.trim()}`;
+    if (!tagInput.trim()) return;
+
+    const newTag = tagInput.trim().startsWith("#") ? tagInput.trim() : `#${tagInput.trim()}`;
+
+    if (!tags.includes(newTag)) {
       setTags([...tags, newTag]);
       setTagInput("");
       debouncedSave();
