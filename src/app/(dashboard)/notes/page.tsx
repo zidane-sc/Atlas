@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { listNotesAction, deleteNoteAction } from "@/lib/actions/notes";
 import { NoteList } from "@/components/notes/NoteList";
 import { NoteEditor } from "@/components/notes/NoteEditor";
+import { DeleteConfirmModal } from "@/components/notes/DeleteConfirmModal";
 import type { NotePreview } from "@/types/note";
 
 export default function NotesPage() {
@@ -14,6 +15,8 @@ export default function NotesPage() {
   const [allTags, setAllTags] = useState<string[]>([]);
   const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
+  const [deleteModal, setDeleteModal] = useState<{ isOpen: boolean; noteId: string | null; title: string }>({ isOpen: false, noteId: null, title: "" });
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     loadNotes();
@@ -34,10 +37,23 @@ export default function NotesPage() {
     setLoading(false);
   };
 
-  const handleDelete = async (id: string) => {
-    if (confirm("Delete this note?")) {
-      await deleteNoteAction(id);
-      setNotes(notes.filter((n) => n.id !== id));
+  const handleDelete = (id: string) => {
+    const note = notes.find((n) => n.id === id);
+    if (note) {
+      setDeleteModal({ isOpen: true, noteId: id, title: note.title });
+    }
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deleteModal.noteId) return;
+
+    setIsDeleting(true);
+    try {
+      await deleteNoteAction(deleteModal.noteId);
+      setNotes(notes.filter((n) => n.id !== deleteModal.noteId));
+      setDeleteModal({ isOpen: false, noteId: null, title: "" });
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -65,12 +81,20 @@ export default function NotesPage() {
   }
 
   return (
-    <div className="flex h-full flex-col">
-      <div className="px-6 py-3 border-b border-border bg-panel-alt">
-        <h1 className="font-display text-sm tracking-wide" style={{ color: "var(--color-primary-gold)" }}>
-          📝 NOTES
-        </h1>
-      </div>
+    <>
+      <DeleteConfirmModal
+        noteTitle={deleteModal.title}
+        isOpen={deleteModal.isOpen}
+        isLoading={isDeleting}
+        onConfirm={handleConfirmDelete}
+        onCancel={() => setDeleteModal({ isOpen: false, noteId: null, title: "" })}
+      />
+      <div className="flex h-full flex-col">
+        <div className="px-6 py-3 border-b-2 bg-panel-alt" style={{ borderColor: "var(--color-primary-gold)" }}>
+          <h1 className="font-display text-sm tracking-wide" style={{ color: "var(--color-primary-gold)" }}>
+            📚 NOTES
+          </h1>
+        </div>
 
       <div className="flex-1 flex flex-col gap-4 p-6 overflow-hidden">
         <div className="flex gap-2">
@@ -117,6 +141,6 @@ export default function NotesPage() {
           <NoteList notes={notes} onSelectNote={handleSelectNote} onDeleteNote={handleDelete} />
         )}
       </div>
-    </div>
+    </>
   );
 }
