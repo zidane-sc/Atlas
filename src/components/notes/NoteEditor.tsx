@@ -406,8 +406,8 @@ export function NoteEditor({ noteId, initialData, onSave, onClose }: NoteEditorP
                 onChange={(e) => setTaskSearch(e.target.value)}
                 onFocus={() => setShowTaskPicker(true)}
                 onBlur={() => setTimeout(() => setShowTaskPicker(false), 100)}
-                placeholder="quest..."
-                className="w-full px-2 py-0.5 border border-gray-500 rounded bg-panel text-xs font-display transition-all"
+                placeholder="quest"
+                className="w-full px-1.5 py-0.25 border border-gray-500 rounded bg-panel text-xs transition-all"
                 style={{
                   borderColor: showTaskPicker ? "var(--color-primary-gold)" : "var(--color-border)",
                   color: "var(--color-foreground)",
@@ -417,11 +417,11 @@ export function NoteEditor({ noteId, initialData, onSave, onClose }: NoteEditorP
               {/* Task Picker Dropdown */}
               {showTaskPicker && (
                 <div
-                  className="absolute top-full left-0 right-0 mt-1 border border-gray-500 rounded bg-panel overflow-hidden z-50 shadow-lg"
+                  className="absolute top-full left-0 right-0 mt-0.5 border border-gray-500 rounded bg-panel overflow-hidden z-50"
                   style={{ borderColor: "var(--color-primary-gold)" }}
                 >
                   <div
-                    className="max-h-32 overflow-y-auto"
+                    className="max-h-24 overflow-y-auto"
                     style={{ backgroundColor: "var(--color-bg-panel)" }}
                   >
                     {tasks
@@ -451,7 +451,7 @@ export function NoteEditor({ noteId, initialData, onSave, onClose }: NoteEditorP
                               setShowTaskPicker(false);
                               debouncedSave();
                             }}
-                            className="w-full text-left px-2 py-1 transition-all text-xs hover:bg-primary/20"
+                            className="w-full text-left px-1.5 py-0.5 transition-all text-xs hover:bg-primary/20"
                             style={{
                               borderBottom:
                                 idx < arr.length - 1
@@ -463,7 +463,7 @@ export function NoteEditor({ noteId, initialData, onSave, onClose }: NoteEditorP
                             <div className="truncate">
                               {task.title}
                               <span
-                                className="ml-1 px-1 rounded text-xs font-display"
+                                className="ml-1 px-0.5 rounded text-xs"
                                 style={{
                                   backgroundColor: `var(${priorityColor})/20`,
                                   color: `var(${priorityColor})`,
@@ -481,7 +481,7 @@ export function NoteEditor({ noteId, initialData, onSave, onClose }: NoteEditorP
                         task.title.toLowerCase().includes(taskSearch.toLowerCase())
                     ).length === 0 && (
                       <div
-                        className="px-2 py-1 text-xs text-center font-display"
+                        className="px-1.5 py-0.5 text-xs text-center"
                         style={{ color: "var(--color-text-muted)" }}
                       >
                         {taskSearch ? "No results" : "No quests"}
