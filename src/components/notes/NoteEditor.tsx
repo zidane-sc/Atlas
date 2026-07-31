@@ -150,6 +150,12 @@ export function NoteEditor({ noteId, initialData, onSave, onClose }: NoteEditorP
     };
   }, []);
 
+  useEffect(() => {
+    if (taskIds.length > 0 || linkedTasks.length > 0) {
+      debouncedSave();
+    }
+  }, [taskIds.length, linkedTasks.length]);
+
   const handleInsertMarkdown = (syntax: any, isBlock?: boolean) => {
     const textarea = textareaRef.current;
     if (!textarea) return;
