@@ -256,3 +256,48 @@ export async function updateDrawerLastSelectedAction(
     return { success: false, error: { code: "INTERNAL", message: "Failed to update drawer selection." } };
   }
 }
+
+const updateUserProfileSchema = z.object({
+  name: z.string().min(1, "Name required").max(50, "Name too long"),
+  guild: z.string().max(100, "Guild too long").optional(),
+});
+
+export async function updateUserProfileAction(
+  name: string,
+  guild?: string
+): Promise<ActionResult<{ name: string; guild?: string }>> {
+  const session = await auth();
+  if (!session?.user?.email) {
+    return { success: false, error: { code: "UNAUTHORIZED", message: "Sign in required." } };
+  }
+
+  const parsed = updateUserProfileSchema.safeParse({ name, guild });
+  if (!parsed.success) {
+    return {
+      success: false,
+      error: { code: "VALIDATION_ERROR", message: parsed.error.issues[0]?.message ?? "Invalid input." },
+    };
+  }
+
+  try {
+    const updated = await db.user.update({
+      where: { email: session.user.email },
+      data: {
+        name: parsed.data.name,
+        guild: parsed.data.guild,
+      },
+      select: { name: true, guild: true },
+    });
+
+    return {
+      success: true,
+      data: {
+        name: updated.name,
+        guild: updated.guild ?? undefined,
+      },
+    };
+  } catch (error) {
+    console.error("Failed to update user profile:", error);
+    return { success: false, error: { code: "INTERNAL", message: "Failed to update profile." } };
+  }
+}
