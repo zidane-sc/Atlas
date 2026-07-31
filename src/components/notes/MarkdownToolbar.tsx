@@ -27,7 +27,7 @@ const generateTable = (cols: number, rows: number) => {
   // Separator row
   table += "|";
   for (let i = 0; i < cols; i++) {
-    table += cellPadding + "|";
+    table += "-".repeat(cellPadding.length) + "|";
   }
   table += "\n";
 
