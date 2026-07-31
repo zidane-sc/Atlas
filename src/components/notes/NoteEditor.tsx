@@ -2,6 +2,10 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { createNoteAction, updateNoteAction } from "@/lib/actions/notes";
+import { insertMarkdown } from "@/lib/markdown";
+import { MarkdownToolbar } from "./MarkdownToolbar";
+import { MarkdownPreview } from "./MarkdownPreview";
+import { GamificationFooter } from "./GamificationFooter";
 import type { Note, NoteWithMeta } from "@/types/note";
 
 interface NoteEditorProps {
@@ -12,6 +16,7 @@ interface NoteEditorProps {
 }
 
 export function NoteEditor({ noteId, initialData, onSave, onClose }: NoteEditorProps) {
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [title, setTitle] = useState(initialData?.note.title || "");
   const [content, setContent] = useState(initialData?.note.content || "");
   const [tags, setTags] = useState(initialData?.note.tags || []);
@@ -58,6 +63,39 @@ export function NoteEditor({ noteId, initialData, onSave, onClose }: NoteEditorP
     };
   }, []);
 
+  const handleInsertMarkdown = (syntax: any, isBlock?: boolean) => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const text = content;
+
+    let result;
+    if (isBlock) {
+      const lineStart = text.lastIndexOf("\n", start) + 1;
+      const lineText = text.slice(lineStart, end);
+      result = {
+        newText: text.slice(0, lineStart) + syntax.before + lineText + text.slice(end),
+        newCursorPos: lineStart + syntax.before.length + lineText.length,
+      };
+    } else if (typeof syntax === "string") {
+      result = {
+        newText: text.slice(0, start) + syntax + text.slice(end),
+        newCursorPos: start + syntax.length,
+      };
+    } else {
+      result = insertMarkdown(text, start, end, syntax);
+    }
+
+    setContent(result.newText);
+    setTimeout(() => {
+      textarea.setSelectionRange(result.newCursorPos, result.newCursorPos);
+      textarea.focus();
+    }, 0);
+    debouncedSave();
+  };
+
   const handleAddTag = () => {
     if (tagInput.trim() && !tags.includes(tagInput.trim())) {
       setTags([...tags, tagInput.trim()]);
@@ -66,9 +104,12 @@ export function NoteEditor({ noteId, initialData, onSave, onClose }: NoteEditorP
     }
   };
 
+  const wordCount = content.split(/\s+/).filter(Boolean).length;
+
   return (
-    <div className="flex h-full flex-col">
-      <div className="flex justify-between items-center p-4 border-b border-border">
+    <div className="flex h-full flex-col border-2 border-primary-gold" style={{ backgroundColor: "var(--color-bg-panel)" }}>
+      {/* Header */}
+      <div className="flex justify-between items-center p-3 border-b-2 border-primary-gold">
         <input
           type="text"
           value={title}
@@ -77,9 +118,12 @@ export function NoteEditor({ noteId, initialData, onSave, onClose }: NoteEditorP
             debouncedSave();
           }}
           placeholder="Note title..."
-          className="flex-1 font-semibold text-lg bg-transparent border-none outline-none"
+          className="flex-1 font-display text-lg bg-transparent border-none outline-none"
+          style={{ color: "var(--color-foreground)" }}
         />
-        <div className="text-xs text-muted-foreground">{lastSaved && `Saved ${lastSaved}`}</div>
+        <div className="text-xs text-muted-foreground ml-2">
+          {saving ? "Saving..." : lastSaved ? `Saved ${lastSaved}` : ""}
+        </div>
         {onClose && (
           <button onClick={onClose} className="ml-4 text-muted-foreground hover:text-foreground">
             ✕
@@ -87,37 +131,48 @@ export function NoteEditor({ noteId, initialData, onSave, onClose }: NoteEditorP
         )}
       </div>
 
-      <div className="flex-1 flex flex-col gap-4 p-4 overflow-hidden">
-        <textarea
-          value={content}
-          onChange={(e) => {
-            setContent(e.target.value);
-            debouncedSave();
-          }}
-          onBlur={handleSave}
-          placeholder="Write your note in markdown..."
-          className="flex-1 p-3 border border-border rounded bg-card text-sm font-mono resize-none"
-        />
+      {/* Split Pane */}
+      <div className="flex flex-1 overflow-hidden">
+        {/* Editor Left */}
+        <div className="flex flex-col flex-1 border-r-2 border-primary-gold">
+          <MarkdownToolbar onInsert={handleInsertMarkdown} />
+          <textarea
+            ref={textareaRef}
+            value={content}
+            onChange={(e) => {
+              setContent(e.target.value);
+              debouncedSave();
+            }}
+            onBlur={handleSave}
+            placeholder="Write markdown..."
+            className="flex-1 p-4 font-mono text-sm bg-panel text-foreground border-none outline-none resize-none"
+          />
+        </div>
 
-        <div className="flex gap-2 items-end">
-          <div className="flex-1">
-            <label className="text-xs text-muted-foreground mb-1 block">Tags</label>
-            <div className="flex gap-2 flex-wrap mb-2">
-              {tags.map((tag) => (
-                <span key={tag} className="px-2 py-1 bg-secondary text-secondary-foreground rounded text-xs">
-                  {tag}
-                  <button
-                    onClick={() => {
-                      setTags(tags.filter((t) => t !== tag));
-                      debouncedSave();
-                    }}
-                    className="ml-1 hover:text-destructive"
-                  >
-                    ✕
-                  </button>
-                </span>
-              ))}
-            </div>
+        {/* Preview Right */}
+        <div className="flex-1 border-l-2 border-primary-gold overflow-hidden">
+          <MarkdownPreview content={content} />
+        </div>
+      </div>
+
+      {/* Footer with Tags & Gamification */}
+      <div className="border-t-2 border-primary-gold">
+        <div className="flex items-center gap-3 p-3 text-xs text-muted-foreground">
+          <div className="flex gap-2 flex-wrap flex-1">
+            {tags.map((tag) => (
+              <span key={tag} className="px-2 py-1 bg-secondary text-secondary-foreground rounded">
+                {tag}
+                <button
+                  onClick={() => {
+                    setTags(tags.filter((t) => t !== tag));
+                    debouncedSave();
+                  }}
+                  className="ml-1 hover:text-destructive"
+                >
+                  ✕
+                </button>
+              </span>
+            ))}
             <input
               type="text"
               value={tagInput}
@@ -128,17 +183,13 @@ export function NoteEditor({ noteId, initialData, onSave, onClose }: NoteEditorP
                   handleAddTag();
                 }
               }}
-              placeholder="Add tag and press Enter..."
-              className="w-full px-2 py-1 border border-border rounded bg-card text-xs"
+              placeholder="Add tag..."
+              className="px-2 py-1 border border-primary-gold rounded bg-panel text-xs"
+              style={{ color: "var(--color-foreground)" }}
             />
           </div>
-          <button
-            onClick={handleAddTag}
-            className="px-3 py-1 bg-secondary text-secondary-foreground rounded text-xs"
-          >
-            Add
-          </button>
         </div>
+        <GamificationFooter wordCount={wordCount} hasStreak={false} />
       </div>
     </div>
   );
