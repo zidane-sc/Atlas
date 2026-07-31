@@ -154,3 +154,71 @@ export async function claimDailyQuestAction(
     return { success: false, error: { code: "INTERNAL", message: "Failed to claim daily quest." } };
   }
 }
+
+const updateDrawerLastSelectedSchema = z.object({
+  pickerType: z.enum(["task", "sprint", "project"]),
+  itemId: z.string().uuid(),
+});
+
+export async function updateDrawerLastSelectedAction(
+  pickerType: "task" | "sprint" | "project",
+  itemId: string
+): Promise<ActionResult<{ drawerLastSelected: Record<string, string | null> }>> {
+  const session = await auth();
+  if (!session?.user?.email) {
+    return { success: false, error: { code: "UNAUTHORIZED", message: "Sign in required." } };
+  }
+
+  const parsed = updateDrawerLastSelectedSchema.safeParse({ pickerType, itemId });
+  if (!parsed.success) {
+    return {
+      success: false,
+      error: { code: "VALIDATION_ERROR", message: parsed.error.issues[0]?.message ?? "Invalid input." },
+    };
+  }
+
+  try {
+    const user = await db.user.findUnique({
+      where: { email: session.user.email },
+      select: { settings: true },
+    });
+
+    if (!user) {
+      return { success: false, error: { code: "NOT_FOUND", message: "User not found." } };
+    }
+
+    const currentSettings = (user.settings || []) as unknown as UserSetting[];
+    const drawerSetting = currentSettings.find((s) => s.key === "drawerLastSelected");
+    let drawerLastSelected = (drawerSetting?.value as Record<string, string | null>) || { task: null, sprint: null, project: null };
+    drawerLastSelected[pickerType] = itemId;
+
+    const updatedSettings = currentSettings
+      .filter((s) => s.key !== "drawerLastSelected")
+      .concat([
+        {
+          key: "drawerLastSelected",
+          label: "Drawer Last Selected",
+          type: "json",
+          value: drawerLastSelected,
+        } as unknown as UserSetting,
+      ]);
+
+    const updated = await db.user.update({
+      where: { email: session.user.email },
+      data: {
+        settings: updatedSettings as unknown as Prisma.InputJsonValue,
+      },
+      select: { settings: true },
+    });
+
+    return {
+      success: true,
+      data: {
+        drawerLastSelected: drawerLastSelected,
+      },
+    };
+  } catch (error) {
+    console.error("Failed to update drawer last selected:", error);
+    return { success: false, error: { code: "INTERNAL", message: "Failed to update drawer selection." } };
+  }
+}
