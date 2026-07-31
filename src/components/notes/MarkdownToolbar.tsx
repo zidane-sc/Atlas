@@ -14,18 +14,20 @@ const handleButtonClick = (e: React.MouseEvent, callback: () => void) => {
 
 const generateTable = (cols: number, rows: number) => {
   let table = "";
+  const cellPadding = "       "; // 7 spaces per cell
 
   // Header row
   table += "|";
   for (let i = 0; i < cols; i++) {
-    table += ` Col${i + 1} |`;
+    const header = `Col${i + 1}`;
+    table += " " + header + cellPadding.slice(header.length + 1) + "|";
   }
   table += "\n";
 
   // Separator row
   table += "|";
   for (let i = 0; i < cols; i++) {
-    table += " --- |";
+    table += cellPadding + "|";
   }
   table += "\n";
 
@@ -33,7 +35,7 @@ const generateTable = (cols: number, rows: number) => {
   for (let r = 0; r < rows; r++) {
     table += "|";
     for (let c = 0; c < cols; c++) {
-      table += "  |";
+      table += cellPadding + "|";
     }
     if (r < rows - 1) table += "\n";
   }
