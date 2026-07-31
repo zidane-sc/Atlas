@@ -183,7 +183,7 @@ export function Companion({
             style={{ backgroundColor: "var(--color-bg-panel-alt)" }}
           >
             <span className="font-display text-xs tracking-widest" style={{ color: "var(--color-primary-gold)" }}>
-              💭 PIP THINKING...
+              📌 PINBOARD
             </span>
             <button onClick={() => setShowPinned(false)} className="p-0.5 hover:text-destructive transition-colors">
               <X size={14} />
