@@ -23,6 +23,8 @@ const generateTable = (cols: number, rows: number) => {
 
 export function MarkdownToolbar({ onInsert }: MarkdownToolbarProps) {
   const [showTablePicker, setShowTablePicker] = useState(false);
+  const [tableCols, setTableCols] = useState(3);
+  const [tableRows, setTableRows] = useState(3);
   const buttonClass =
     "px-2 py-1 border-2 border-gray-400 bg-panel text-foreground hover:bg-panel-alt active:border-primary-gold active:text-primary-gold text-xs font-display transition-colors";
 
@@ -154,30 +156,45 @@ export function MarkdownToolbar({ onInsert }: MarkdownToolbarProps) {
           ▦
         </button>
         {showTablePicker && (
-          <div className="absolute top-full left-0 mt-1 p-2 bg-panel border border-gray-600 z-10">
-            <div className="text-xs mb-2 text-foreground">Columns × Rows:</div>
-            <div className="grid grid-cols-5 gap-1">
-              {Array.from({ length: 5 }, (_, c) =>
-                Array.from({ length: 5 }, (_, r) => (
-                  <button
-                    key={`${c + 1}x${r + 1}`}
-                    type="button"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      onInsert({
-                        before: generateTable(c + 1, r + 1),
-                        after: "",
-                      });
-                      setShowTablePicker(false);
-                    }}
-                    className="w-6 h-6 border border-gray-400 bg-panel text-xs text-foreground hover:bg-panel-alt"
-                    title={`${c + 1}×${r + 1}`}
-                  >
-                    {c + 1}
-                  </button>
-                ))
-              )}
+          <div className="absolute top-full left-0 mt-1 p-3 bg-panel border border-gray-600 z-10">
+            <div className="flex gap-3 items-center">
+              <div className="flex items-center gap-1">
+                <label className="text-xs text-foreground">Cols:</label>
+                <input
+                  type="number"
+                  min="1"
+                  max="10"
+                  value={tableCols}
+                  onChange={(e) => setTableCols(Math.max(1, parseInt(e.target.value) || 1))}
+                  className="w-10 px-2 py-1 border border-gray-400 bg-panel text-foreground text-xs"
+                />
+              </div>
+              <div className="flex items-center gap-1">
+                <label className="text-xs text-foreground">Rows:</label>
+                <input
+                  type="number"
+                  min="1"
+                  max="10"
+                  value={tableRows}
+                  onChange={(e) => setTableRows(Math.max(1, parseInt(e.target.value) || 1))}
+                  className="w-10 px-2 py-1 border border-gray-400 bg-panel text-foreground text-xs"
+                />
+              </div>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onInsert({
+                    before: generateTable(tableCols, tableRows),
+                    after: "",
+                  });
+                  setShowTablePicker(false);
+                }}
+                className="px-2 py-1 border border-gray-400 bg-panel text-foreground hover:bg-panel-alt text-xs"
+              >
+                Insert
+              </button>
             </div>
           </div>
         )}
