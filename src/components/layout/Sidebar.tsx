@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Moon, Plus, Search } from "lucide-react";
@@ -11,10 +11,13 @@ import { useTasks } from "@/components/providers/TasksProvider";
 import { useCommandPalette } from "@/components/providers/CommandPaletteProvider";
 import { computeCharacterSheet, getNextStreakMilestone, calculateStreak, completedAt, formatLocalDate } from "@/lib/gamification";
 import { updateTask as updateTaskAction } from "@/lib/actions/tasks";
+import { updateNoteAction } from "@/lib/actions/notes";
+import { listNotesAction } from "@/lib/actions/notes";
 import { MOCK_NOW } from "@/lib/mock-data";
 import { NAV_CORE, NAV_MANAGE, NAV_SMART_VIEWS, NAV_TASKS, type NavItemBase } from "@/lib/nav-items";
 import { isOverdue } from "@/lib/task-utils";
 import type { Task } from "@/types/task";
+import type { NotePreview } from "@/types/note";
 
 type NavItem = NavItemBase & {
   count?: number;
@@ -79,7 +82,18 @@ function GroupLabel({ children }: { children: React.ReactNode }) {
 export function Sidebar() {
   const { tasks, openCreateForm, justCompleted, bonusXp, bonusCoins, updateTask } = useTasks();
   const [showQuit, setShowQuit] = useState(false);
+  const [pinnedNotes, setPinnedNotes] = useState<NotePreview[]>([]);
   const { setOpen: setCommandPaletteOpen } = useCommandPalette();
+
+  useEffect(() => {
+    const fetchPinnedNotes = async () => {
+      const result = await listNotesAction({ skip: 0, take: 100 });
+      if (result.success) {
+        setPinnedNotes(result.data!.notes.filter((n) => n.pinned));
+      }
+    };
+    fetchPinnedNotes();
+  }, []);
   const sheet = useMemo(() => computeCharacterSheet(tasks, bonusXp, bonusCoins), [tasks, bonusXp, bonusCoins]);
   const streakDays = useMemo(() => {
     const s = calculateStreak(tasks);
@@ -221,8 +235,10 @@ export function Sidebar() {
         todayCompleted={todayCompletedCount}
         justCompleted={justCompleted}
         pinnedTasks={pinnedTasks}
+        pinnedNotes={pinnedNotes}
         onOpenTask={() => {}}
         onUnpinTask={(taskId) => updateTaskAction(taskId, { pinned: false })}
+        onUnpinNote={(noteId) => updateNoteAction({ noteId, pinned: false })}
       />
       <div className="p-3">
         <button

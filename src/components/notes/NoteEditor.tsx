@@ -200,7 +200,7 @@ export function NoteEditor({ noteId, initialData, onSave, onClose }: NoteEditorP
             onClick={() => {
               if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
               if (title.trim() && content.trim()) {
-                onSave?.({ id: noteId || noteCreatedRef.current || "", title, content, tags, userId: "", createdAt: "", updatedAt: "" });
+                onSave?.({ id: noteId || noteCreatedRef.current || "", title, content, tags, pinned: false, userId: "", createdAt: "", updatedAt: "" });
               }
               onClose();
             }}

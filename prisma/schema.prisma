@@ -290,6 +290,7 @@ model Note {
   title     String
   content   String   @db.Text
   tags      String[] @default([])
+  pinned    Boolean  @default(false)
 
   attachments NoteAttachment[]
   taskLinks   NoteTaskLink[]

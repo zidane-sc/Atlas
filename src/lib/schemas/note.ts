@@ -12,6 +12,7 @@ export const updateNoteSchema = z.object({
   title: z.string().min(1).max(255).optional(),
   content: z.string().min(1).optional(),
   tags: z.array(z.string()).optional(),
+  pinned: z.boolean().optional(),
   taskIds: z.array(z.string().uuid()).optional(),
 });
 

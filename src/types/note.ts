@@ -4,6 +4,7 @@ export interface Note {
   title: string;
   content: string;
   tags: string[];
+  pinned: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -13,6 +14,7 @@ export interface NotePreview {
   title: string;
   preview: string;
   tags: string[];
+  pinned: boolean;
   createdAt: string;
   updatedAt: string;
   linkedTaskCount: number;
