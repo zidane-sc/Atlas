@@ -327,7 +327,7 @@ export function NoteEditor({ noteId, initialData, onSave, onClose }: NoteEditorP
 
           {/* Linked Tasks Column */}
           <div>
-            <div className="flex gap-1 flex-wrap mb-2 min-h-6">
+            <div className="space-y-1 mb-2 min-h-6">
               {linkedTasks.slice(0, 2).map((task) => {
                 const linkedTask = tasks.find((t) => t.id === task.id);
                 const priorityColor =
@@ -336,17 +336,31 @@ export function NoteEditor({ noteId, initialData, onSave, onClose }: NoteEditorP
                     : linkedTask?.priority === "p1"
                       ? "--color-priority-p1"
                       : "--color-primary-gold";
+                const statusEmoji =
+                  linkedTask?.status === "done"
+                    ? "✓"
+                    : linkedTask?.status === "in_progress"
+                      ? "▶"
+                      : linkedTask?.status === "blocked"
+                        ? "⊘"
+                        : "○";
+
                 return (
                   <div
                     key={task.id}
-                    className="px-1.5 py-0.5 border rounded flex items-center gap-0.5 text-xs font-display transition-all hover:scale-105"
+                    className="px-2 py-1 border-2 rounded flex items-center gap-1.5 text-xs transition-all hover:bg-primary/5"
                     style={{
                       borderColor: `var(${priorityColor})`,
-                      backgroundColor: `var(${priorityColor})/10`,
-                      color: `var(${priorityColor})`,
+                      color: "var(--color-foreground)",
                     }}
                   >
-                    <span className="truncate max-w-[60px] text-xs">{task.title}</span>
+                    <span
+                      className="font-bold text-xs flex-shrink-0"
+                      style={{ color: `var(${priorityColor})` }}
+                    >
+                      {statusEmoji}
+                    </span>
+                    <span className="truncate text-xs flex-1">{task.title}</span>
                     <button
                       type="button"
                       onClick={() => {
@@ -355,7 +369,8 @@ export function NoteEditor({ noteId, initialData, onSave, onClose }: NoteEditorP
                         setLinkedTasks(linkedTasks.filter((t) => t.id !== task.id));
                         debouncedSave();
                       }}
-                      className="hover:opacity-60 transition-opacity flex-shrink-0"
+                      className="hover:opacity-60 transition-opacity flex-shrink-0 text-xs"
+                      style={{ color: `var(${priorityColor})` }}
                     >
                       ✕
                     </button>
@@ -363,7 +378,7 @@ export function NoteEditor({ noteId, initialData, onSave, onClose }: NoteEditorP
                 );
               })}
               {linkedTasks.length > 2 && (
-                <span className="text-muted-foreground text-xs">+{linkedTasks.length - 2}</span>
+                <div className="text-muted-foreground text-xs px-2 py-0.5">+{linkedTasks.length - 2} more</div>
               )}
             </div>
 
