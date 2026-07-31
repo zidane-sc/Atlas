@@ -122,6 +122,7 @@ export async function updateNoteAction(input: unknown): Promise<ActionResult<Not
         ...(parsed.data.title !== undefined && { title: parsed.data.title }),
         ...(parsed.data.content !== undefined && { content: parsed.data.content }),
         ...(parsed.data.tags !== undefined && { tags: parsed.data.tags }),
+        ...(parsed.data.pinned !== undefined && { pinned: parsed.data.pinned }),
       },
     });
 
