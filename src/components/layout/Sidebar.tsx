@@ -127,8 +127,8 @@ export function Sidebar() {
 
   return (
     <aside
-      className="flex h-full w-52 shrink-0 flex-col overflow-y-auto border-r-2 border-border"
-      style={{ backgroundColor: "var(--color-bg-panel-alt)" }}
+      className="flex h-full w-52 shrink-0 flex-col overflow-y-auto border-r-2 border-border relative"
+      style={{ backgroundColor: "var(--color-bg-panel-alt)", overflowX: "visible" }}
     >
       <div className="px-4 py-4" style={{ borderBottom: "1px solid var(--color-border)" }}>
         <div style={{ fontFamily: "var(--font-press-start), monospace", fontSize: "12px", color: "var(--color-primary-gold)" }}>

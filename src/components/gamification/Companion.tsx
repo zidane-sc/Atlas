@@ -151,10 +151,10 @@ export function Companion({
       {/* Pinned Hub Popup with Tabs */}
       {showPinned && (pinnedTasks.length > 0 || pinnedNotes.length > 0) && (
         <div
-          className="fixed z-50 border-2 bg-card overflow-hidden flex flex-col"
+          className="absolute z-50 border-2 bg-card overflow-visible flex flex-col"
           style={{
-            top: "80px",
-            right: "20px",
+            bottom: "calc(100% + 12px)",
+            right: "-330px",
             width: "320px",
             maxHeight: "500px",
             borderColor: "var(--color-primary-gold)",
