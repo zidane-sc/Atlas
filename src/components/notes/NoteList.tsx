@@ -48,7 +48,7 @@ export function NoteList({ notes, onSelectNote, onDeleteNote }: NoteListProps) {
                   ✕
                 </button>
               </div>
-              <p className="text-xs text-muted-foreground mb-3 line-clamp-2 flex-1">{note.preview}</p>
+              <p className="text-sm text-muted-foreground mb-3 line-clamp-2 flex-1">{note.preview}</p>
               <div className="flex gap-1 items-center text-xs flex-wrap mb-3">
                 {note.tags.slice(0, 2).map((tag) => (
                   <span key={tag} className="px-2 py-1 bg-secondary text-secondary-foreground rounded text-xs">
