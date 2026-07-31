@@ -238,7 +238,7 @@ Replace the dropdown block (lines 414–422). Change the render condition from `
       ? projects.filter(p => p.name.toLowerCase().includes(projectSearch.toLowerCase()))
       : sortProjectsForPicker(projects).slice(0, 5)
     ).map((p) => (
-      <li key={p.id} className="px-2 py-1 cursor-pointer hover:bg-primary/10 border-b border-border last:border-b-0" onClick={() => { set("project", p.name); setProjectSearch(""); projectInputRef.current?.blur(); }}>
+      <li key={p.id} className="px-2 py-1 cursor-pointer hover:bg-primary/10 border-b border-border last:border-b-0" onMouseDown={(e) => e.preventDefault()} onClick={() => { set("project", p.name); setProjectSearch(""); projectInputRef.current?.blur(); }}>
         {p.emoji} {p.name}
       </li>
     ))}
@@ -247,6 +247,8 @@ Replace the dropdown block (lines 414–422). Change the render condition from `
 ```
 
 Blurring the input on selection triggers `onBlur` → `setProjectFocused(false)`, hiding the list and matching the existing behavior of hiding the dropdown after picking.
+
+Note: `onMouseDown={(e) => e.preventDefault()}` on the `<li>` is required — without it, mousedown on the item blurs the input first, `onBlur` unmounts the list, and the subsequent `click` never fires. This was added per human decision during Task 2 review (plan contradiction resolved).
 
 - [ ] **Step 4: Verify**
 
@@ -319,7 +321,7 @@ Replace the dropdown block (lines 455–463). Change condition from `sprintSearc
       ? sprints.filter(s => s.name.toLowerCase().includes(sprintSearch.toLowerCase()))
       : sortSprintsForPicker(sprints).slice(0, 5)
     ).map((s) => (
-      <li key={s.id} className="px-2 py-1 cursor-pointer hover:bg-primary/10 border-b border-border last:border-b-0" onClick={() => { set("sprint", s.name); setSprintSearch(""); sprintInputRef.current?.blur(); }}>
+      <li key={s.id} className="px-2 py-1 cursor-pointer hover:bg-primary/10 border-b border-border last:border-b-0" onMouseDown={(e) => e.preventDefault()} onClick={() => { set("sprint", s.name); setSprintSearch(""); sprintInputRef.current?.blur(); }}>
         {s.name}
       </li>
     ))}
@@ -394,7 +396,7 @@ Replace the dropdown block (lines 557–565). Change condition from `relationSea
       ? otherTasks.filter(t => t.title.toLowerCase().includes(relationSearch.toLowerCase()))
       : sortTasksForPicker(otherTasks)
     ).slice(0, 5).map((t) => (
-      <li key={t.id} className="px-2 py-1 cursor-pointer hover:bg-primary/10 border-b border-border last:border-b-0" onClick={() => { setRelationTargetId(t.id); setRelationSearch(""); relationInputRef.current?.blur(); }}>
+      <li key={t.id} className="px-2 py-1 cursor-pointer hover:bg-primary/10 border-b border-border last:border-b-0" onMouseDown={(e) => e.preventDefault()} onClick={() => { setRelationTargetId(t.id); setRelationSearch(""); relationInputRef.current?.blur(); }}>
         {t.title}
       </li>
     ))}
