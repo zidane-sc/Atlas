@@ -58,6 +58,8 @@ function StatCard({
 export function SaveAndQuitOverlay({ onClose }: { onClose: () => void }) {
   const { tasks, bonusXp, bonusCoins } = useTasks();
   const [saving, setSaving] = useState(false);
+  const savingRef = useRef(false);
+  const timeoutRef = useRef<number | null>(null);
   const quitRef = useRef<HTMLButtonElement>(null);
   const today = useMemo(() => todayStr(), []);
 
@@ -93,10 +95,19 @@ export function SaveAndQuitOverlay({ onClose }: { onClose: () => void }) {
   }, []);
 
   const handleQuit = useCallback(() => {
-    if (saving) return;
+    if (savingRef.current) return;
+    savingRef.current = true;
     setSaving(true);
-    window.setTimeout(() => signOut(), 600);
-  }, [saving]);
+    timeoutRef.current = window.setTimeout(() => signOut(), 600);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
