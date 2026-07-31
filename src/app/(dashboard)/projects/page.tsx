@@ -19,8 +19,8 @@ export default function Page() {
         <h1 className="font-display" style={{ fontSize: "11px", color: "var(--color-primary-gold)" }}>◈ PROJECTS</h1>
         <Button size="sm" onClick={openCreateForm}><Plus size={12} /> New Project</Button>
       </div>
-      <div className="flex-1 overflow-y-auto p-6">
-        <div className="grid gap-4 grid-cols-1 md:grid-cols-3">
+      <div className="flex-1 overflow-y-auto p-4 sm:p-6">
+        <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
           {projects.map((p) => {
             const projectTasks = allTasks.filter((t) => t.project === p.name);
             const completedTasks = projectTasks.filter((t) => t.status === "done").length;

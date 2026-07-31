@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronDown } from "lucide-react";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { getTaskNotesAction } from "@/lib/actions/notes";
 import type { NotePreview } from "@/types/note";
 
@@ -44,7 +45,7 @@ export function TaskNoteLinks({ taskId, onAddNote }: TaskNoteLinksProps) {
         {loading ? (
           <div className="text-xs text-muted-foreground">Loading...</div>
         ) : notes.length === 0 ? (
-          <div className="text-xs text-muted-foreground">No linked notes yet.</div>
+          <EmptyState message="No linked notes" icon="📝" variant="compact" />
         ) : (
           notes.map((note) => (
             <button

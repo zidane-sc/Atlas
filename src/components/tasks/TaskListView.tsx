@@ -6,6 +6,7 @@ import { TaskCard } from "./TaskCard";
 import { TaskRow } from "./TaskRow";
 import { PriorityMark } from "./PriorityMark";
 import { StatusBadge } from "./StatusBadge";
+import { EmptyState } from "@/components/ui/EmptyState";
 
 /** Generic task list, reused across Dashboard/Today/Waiting/Focus/List views. */
 export function TaskListView({
@@ -22,7 +23,10 @@ export function TaskListView({
   const { openEditForm } = useTasks();
 
   if (tasks.length === 0) {
-    return <p className="py-6 text-center text-sm text-muted-foreground">{empty ?? "Nothing here."}</p>;
+    if (variant === "compact") {
+      return <EmptyState message={empty ?? "No quests"} variant="compact" />;
+    }
+    return <EmptyState message={empty ?? "No quests"} icon="📭" />;
   }
 
   if (variant === "compact") {

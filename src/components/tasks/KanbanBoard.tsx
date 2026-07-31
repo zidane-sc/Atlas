@@ -5,6 +5,7 @@ import { useTasks } from "@/components/providers/TasksProvider";
 import { KANBAN_COLUMNS, STATUS_COLOR_VAR, STATUS_LABEL, STATUS_SHAPE } from "@/lib/mock-data";
 import type { Task, TaskStatus } from "@/types/task";
 import { TaskCard } from "./TaskCard";
+import { EmptyState } from "@/components/ui/EmptyState";
 
 export function KanbanBoard({ tasks }: { tasks: Task[] }) {
   const { openEditForm, updateTask } = useTasks();
@@ -68,9 +69,7 @@ export function KanbanBoard({ tasks }: { tasks: Task[] }) {
                   <TaskCard key={task.id} task={task} onSelect={openEditForm} onMoveStatus={moveTask} />
                 ))}
                 {columnTasks.length === 0 && (
-                  <div className="border-2 border-dashed border-border py-8 text-center text-sm" style={{ color: "var(--color-dim)" }}>
-                    [ EMPTY ]
-                  </div>
+                  <EmptyState icon="─" message={STATUS_LABEL[status]} variant="dashed" />
                 )}
               </div>
             </div>
