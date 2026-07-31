@@ -2,12 +2,14 @@
 
 import { useState, useEffect } from "react";
 import { listNotesAction, deleteNoteAction, updateNoteAction } from "@/lib/actions/notes";
+import { useToast } from "@/components/providers/ToastProvider";
 import { NoteList } from "@/components/notes/NoteList";
 import { NoteEditor } from "@/components/notes/NoteEditor";
 import { DeleteConfirmModal } from "@/components/notes/DeleteConfirmModal";
 import type { NotePreview } from "@/types/note";
 
 export default function NotesPage() {
+  const { toast } = useToast();
   const [notes, setNotes] = useState<NotePreview[]>([]);
   const [search, setSearch] = useState("");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
@@ -62,8 +64,10 @@ export default function NotesPage() {
   };
 
   const handlePinNote = async (id: string, pinned: boolean) => {
+    const note = notes.find((n) => n.id === id);
     await updateNoteAction({ noteId: id, pinned });
     setNotes(notes.map((n) => (n.id === id ? { ...n, pinned } : n)));
+    toast(`📌 ${pinned ? "Pinned" : "Unpinned"}: "${note?.title}"`, "success");
   };
 
   const handleSaveNote = async () => {
