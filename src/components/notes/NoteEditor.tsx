@@ -26,6 +26,7 @@ export function NoteEditor({ noteId, initialData, onSave, onClose }: NoteEditorP
   const [tagError, setTagError] = useState<string | null>(null);
   const saveTimeoutRef = useRef<NodeJS.Timeout>();
   const errorTimeoutRef = useRef<NodeJS.Timeout>();
+  const noteCreatedRef = useRef(false);
 
   const handleAutoSave = useCallback(async () => {
     if (!title.trim() || !content.trim()) return;
@@ -39,6 +40,13 @@ export function NoteEditor({ noteId, initialData, onSave, onClose }: NoteEditorP
             content,
             tags,
           })
+        : noteCreatedRef.current
+        ? await updateNoteAction({
+            noteId: noteCreatedRef.current as string,
+            title,
+            content,
+            tags,
+          })
         : await createNoteAction({
             title,
             content,
@@ -46,6 +54,9 @@ export function NoteEditor({ noteId, initialData, onSave, onClose }: NoteEditorP
           });
 
       if (result.success) {
+        if (!noteId && result.data?.id && !noteCreatedRef.current) {
+          noteCreatedRef.current = result.data.id;
+        }
         setLastSaved(new Date().toLocaleTimeString());
       }
     } finally {
@@ -186,7 +197,10 @@ export function NoteEditor({ noteId, initialData, onSave, onClose }: NoteEditorP
         </div>
         {onClose && (
           <button
-            onClick={onClose}
+            onClick={() => {
+              if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+              onClose();
+            }}
             className="ml-4 px-2 py-1 border border-gray-500 rounded hover:border-primary-gold transition-all"
             style={{ color: "var(--color-primary-gold)" }}
           >
