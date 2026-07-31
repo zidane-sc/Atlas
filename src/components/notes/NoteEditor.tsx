@@ -307,11 +307,11 @@ export function NoteEditor({ noteId, initialData, onSave, onClose }: NoteEditorP
         <div className="p-3 text-xs grid grid-cols-2 gap-3">
           {/* Tags Column */}
           <div>
-            <div className="flex gap-1 flex-wrap mb-2 min-h-8">
-              {tags.slice(0, 4).map((tag) => (
+            <div className="flex gap-1 flex-wrap mb-2 max-h-12 overflow-y-auto">
+              {tags.map((tag) => (
                 <span
                   key={tag}
-                  className="px-2 py-0.5 rounded border border-gray-500 text-xs flex items-center gap-1 group hover:border-primary-gold transition-colors"
+                  className="px-2 py-0.5 rounded border border-gray-500 text-xs flex items-center gap-1 group hover:border-primary-gold transition-colors flex-shrink-0"
                   style={{ color: "var(--color-foreground)" }}
                 >
                   {tag}
@@ -327,7 +327,6 @@ export function NoteEditor({ noteId, initialData, onSave, onClose }: NoteEditorP
                   </button>
                 </span>
               ))}
-              {tags.length > 4 && <span className="text-xs text-muted-foreground">+{tags.length - 4}</span>}
             </div>
             <div className="flex gap-1">
               <input
@@ -362,8 +361,8 @@ export function NoteEditor({ noteId, initialData, onSave, onClose }: NoteEditorP
 
           {/* Linked Tasks Column */}
           <div>
-            <div className="space-y-1 mb-2 min-h-8">
-              {linkedTasks.slice(0, 4).map((task) => {
+            <div className="space-y-1 mb-2 max-h-12 overflow-y-auto">
+              {linkedTasks.map((task) => {
                 const linkedTask = tasks.find((t) => t.id === task.id);
                 const priorityColor =
                   linkedTask?.priority === "p0"
@@ -383,7 +382,7 @@ export function NoteEditor({ noteId, initialData, onSave, onClose }: NoteEditorP
                 return (
                   <div
                     key={task.id}
-                    className="px-2 py-0.5 border rounded flex items-center gap-1 text-xs group hover:border-primary-gold transition-colors"
+                    className="px-2 py-0.5 border rounded flex items-center gap-1 text-xs group hover:border-primary-gold transition-colors flex-shrink-0"
                     style={{
                       borderColor: "var(--color-border)",
                       color: "var(--color-foreground)",
@@ -406,7 +405,6 @@ export function NoteEditor({ noteId, initialData, onSave, onClose }: NoteEditorP
                   </div>
                 );
               })}
-              {linkedTasks.length > 4 && <span className="text-xs text-muted-foreground px-1">+{linkedTasks.length - 4}</span>}
             </div>
 
             {/* Task Search Input */}
