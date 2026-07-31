@@ -306,8 +306,8 @@ export function NoteEditor({ noteId, initialData, onSave, onClose }: NoteEditorP
         </div>
         <div className="p-3 text-xs grid grid-cols-2 gap-3">
           {/* Tags Column */}
-          <div>
-            <div className="flex gap-1 flex-wrap mb-2 max-h-12 overflow-y-auto">
+          <div className="flex flex-col">
+            <div className="flex gap-1 flex-wrap mb-2 max-h-12 overflow-y-auto flex-1">
               {tags.map((tag) => (
                 <span
                   key={tag}
@@ -360,8 +360,8 @@ export function NoteEditor({ noteId, initialData, onSave, onClose }: NoteEditorP
           </div>
 
           {/* Linked Tasks Column */}
-          <div>
-            <div className="space-y-1 mb-2 max-h-12 overflow-y-auto">
+          <div className="flex flex-col">
+            <div className="space-y-1 mb-2 max-h-12 overflow-y-auto flex-1">
               {linkedTasks.map((task) => {
                 const linkedTask = tasks.find((t) => t.id === task.id);
                 const statusEmoji =
