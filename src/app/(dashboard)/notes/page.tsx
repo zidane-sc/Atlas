@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import { listNotesAction, deleteNoteAction, updateNoteAction } from "@/lib/actions/notes";
 import { useToast } from "@/components/providers/ToastProvider";
 import { NoteList } from "@/components/notes/NoteList";
@@ -9,6 +10,7 @@ import { DeleteConfirmModal } from "@/components/notes/DeleteConfirmModal";
 import type { NotePreview } from "@/types/note";
 
 export default function NotesPage() {
+  const searchParams = useSearchParams();
   const { toast } = useToast();
   const [notes, setNotes] = useState<NotePreview[]>([]);
   const [search, setSearch] = useState("");
@@ -23,6 +25,13 @@ export default function NotesPage() {
   useEffect(() => {
     loadNotes();
   }, [search, selectedTags]);
+
+  useEffect(() => {
+    const editId = searchParams.get("edit");
+    if (editId) {
+      setEditingNoteId(editId);
+    }
+  }, [searchParams]);
 
   const loadNotes = async () => {
     setLoading(true);
