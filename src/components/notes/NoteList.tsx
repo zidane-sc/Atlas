@@ -31,13 +31,19 @@ export function NoteList({ notes, onSelectNote, onDeleteNote, onPinNote }: NoteL
           {notes.map((note) => (
             <div
               key={note.id}
-              className="p-4 cursor-pointer transition-all border-2 rounded hover:border-primary-gold group h-full flex flex-col"
+              className="p-4 cursor-pointer transition-all border-2 rounded hover:border-primary-gold group h-full flex flex-col relative"
               style={{
                 borderColor: note.pinned ? "var(--color-primary-gold)" : "var(--color-border)",
                 backgroundColor: note.pinned ? "var(--color-primary-gold)/5" : "var(--color-bg-panel-alt)",
+                boxShadow: note.pinned ? "0 0 12px color-mix(in srgb, var(--color-primary-gold) 15%, transparent), inset 0 0 8px color-mix(in srgb, var(--color-primary-gold) 8%, transparent)" : "none",
               }}
               onClick={() => onSelectNote(note)}
             >
+              {note.pinned && (
+                <div className="absolute top-2 right-2 p-1" style={{ color: "var(--color-primary-gold)" }}>
+                  <Pin size={12} fill="currentColor" />
+                </div>
+              )}
               <div className="flex justify-between items-start gap-2 mb-2">
                 <h3 className="font-display text-sm text-foreground flex-1 line-clamp-2" style={{ color: "var(--color-foreground)" }}>
                   {note.title}
