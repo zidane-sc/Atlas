@@ -58,6 +58,14 @@ export function NoteEditor({ noteId, initialData, onSave, onClose }: NoteEditorP
   }, [handleSave]);
 
   useEffect(() => {
+    if (initialData?.note) {
+      setTitle(initialData.note.title);
+      setContent(initialData.note.content);
+      setTags(initialData.note.tags);
+    }
+  }, [initialData?.note.id]);
+
+  useEffect(() => {
     return () => {
       if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
     };
@@ -98,7 +106,8 @@ export function NoteEditor({ noteId, initialData, onSave, onClose }: NoteEditorP
 
   const handleAddTag = () => {
     if (tagInput.trim() && !tags.includes(tagInput.trim())) {
-      setTags([...tags, tagInput.trim()]);
+      const newTag = tagInput.trim().startsWith("#") ? tagInput.trim() : `#${tagInput.trim()}`;
+      setTags([...tags, newTag]);
       setTagInput("");
       debouncedSave();
     }
@@ -107,9 +116,9 @@ export function NoteEditor({ noteId, initialData, onSave, onClose }: NoteEditorP
   const wordCount = content.split(/\s+/).filter(Boolean).length;
 
   return (
-    <div className="flex h-full flex-col border-2 border-primary-gold" style={{ backgroundColor: "var(--color-bg-panel)" }}>
+    <div className="flex h-full flex-col border-2 border-gray-600" style={{ backgroundColor: "var(--color-bg-panel)" }}>
       {/* Header */}
-      <div className="flex justify-between items-center p-3 border-b-2 border-primary-gold">
+      <div className="flex justify-between items-center p-3 border-b border-gray-600">
         <input
           type="text"
           value={title}
@@ -134,7 +143,7 @@ export function NoteEditor({ noteId, initialData, onSave, onClose }: NoteEditorP
       {/* Split Pane */}
       <div className="flex flex-1 overflow-hidden">
         {/* Editor Left */}
-        <div className="flex flex-col flex-1 border-r-2 border-primary-gold">
+        <div className="flex flex-col flex-1 border-r border-gray-600">
           <MarkdownToolbar onInsert={handleInsertMarkdown} />
           <textarea
             ref={textareaRef}
@@ -150,13 +159,13 @@ export function NoteEditor({ noteId, initialData, onSave, onClose }: NoteEditorP
         </div>
 
         {/* Preview Right */}
-        <div className="flex-1 border-l-2 border-primary-gold overflow-hidden">
+        <div className="flex-1 border-l border-gray-600 overflow-hidden">
           <MarkdownPreview content={content} />
         </div>
       </div>
 
       {/* Footer with Tags & Gamification */}
-      <div className="border-t-2 border-primary-gold">
+      <div className="border-t border-gray-600">
         <div className="flex items-center gap-3 p-3 text-xs text-muted-foreground">
           <div className="flex gap-2 flex-wrap flex-1">
             {tags.map((tag) => (
@@ -184,7 +193,7 @@ export function NoteEditor({ noteId, initialData, onSave, onClose }: NoteEditorP
                 }
               }}
               placeholder="Add tag..."
-              className="px-2 py-1 border border-primary-gold rounded bg-panel text-xs"
+              className="px-2 py-1 border border-gray-500 rounded bg-panel text-xs"
               style={{ color: "var(--color-foreground)" }}
             />
           </div>

@@ -18,17 +18,17 @@ export function MarkdownPreview({ content }: MarkdownPreviewProps) {
         remarkPlugins={[remarkGfm]}
         components={{
           h1: ({ children }) => (
-            <h1 style={{ color: "var(--color-primary-gold)", marginBottom: "1em" }}>
+            <h1 style={{ fontSize: "1.8em", fontWeight: "bold", marginBottom: "0.5em", marginTop: "0.5em" }}>
               {children}
             </h1>
           ),
           h2: ({ children }) => (
-            <h2 style={{ color: "var(--color-primary-gold)", marginBottom: "0.8em" }}>
+            <h2 style={{ fontSize: "1.5em", fontWeight: "bold", marginBottom: "0.4em", marginTop: "0.4em" }}>
               {children}
             </h2>
           ),
           h3: ({ children }) => (
-            <h3 style={{ color: "var(--color-primary-gold)", marginBottom: "0.6em" }}>
+            <h3 style={{ fontSize: "1.2em", fontWeight: "bold", marginBottom: "0.3em", marginTop: "0.3em" }}>
               {children}
             </h3>
           ),
@@ -38,6 +38,7 @@ export function MarkdownPreview({ content }: MarkdownPreviewProps) {
               padding: "2px 6px",
               borderRadius: "3px",
               fontFamily: "monospace",
+              fontSize: "0.9em",
             }}>
               {children}
             </code>
@@ -49,15 +50,38 @@ export function MarkdownPreview({ content }: MarkdownPreviewProps) {
               borderRadius: "4px",
               overflow: "auto",
               marginBottom: "1em",
+              marginTop: "1em",
+              border: "1px solid var(--color-border)",
             }}>
               {children}
             </pre>
           ),
+          ul: ({ children }) => (
+            <ul style={{ marginLeft: "1.5em", marginBottom: "1em", marginTop: "0.5em" }}>
+              {children}
+            </ul>
+          ),
+          ol: ({ children }) => (
+            <ol style={{ marginLeft: "1.5em", marginBottom: "1em", marginTop: "0.5em" }}>
+              {children}
+            </ol>
+          ),
+          li: ({ children }) => (
+            <li style={{ marginBottom: "0.3em" }}>
+              {children}
+            </li>
+          ),
+          a: ({ children, href }) => (
+            <a href={href} style={{ color: "#0066cc", textDecoration: "underline", cursor: "pointer" }}>
+              {children}
+            </a>
+          ),
           blockquote: ({ children }) => (
             <blockquote style={{
-              borderLeft: "3px solid var(--color-primary-gold)",
+              borderLeft: "3px solid var(--color-border)",
               paddingLeft: "1em",
               marginLeft: 0,
+              marginBottom: "1em",
               color: "var(--color-text-muted)",
               fontStyle: "italic",
             }}>
@@ -65,7 +89,7 @@ export function MarkdownPreview({ content }: MarkdownPreviewProps) {
             </blockquote>
           ),
           table: ({ children }) => (
-            <table style={{ borderCollapse: "collapse", width: "100%", marginBottom: "1em" }}>
+            <table style={{ borderCollapse: "collapse", width: "100%", marginBottom: "1em", marginTop: "1em", border: "1px solid var(--color-border)" }}>
               {children}
             </table>
           ),
@@ -75,6 +99,7 @@ export function MarkdownPreview({ content }: MarkdownPreviewProps) {
               padding: "0.5em",
               backgroundColor: "var(--color-bg-panel-alt)",
               textAlign: "left",
+              fontWeight: "bold",
             }}>
               {children}
             </th>
