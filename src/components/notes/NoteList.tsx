@@ -6,9 +6,10 @@ interface NoteListProps {
   notes: NotePreview[];
   onSelectNote: (note: NotePreview) => void;
   onDeleteNote: (id: string) => void;
+  onPinNote: (id: string, pinned: boolean) => void;
 }
 
-export function NoteList({ notes, onSelectNote, onDeleteNote }: NoteListProps) {
+export function NoteList({ notes, onSelectNote, onDeleteNote, onPinNote }: NoteListProps) {
   const formatDate = (date: string) => {
     const d = new Date(date);
     const dateStr = d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "2-digit" });
@@ -36,17 +37,31 @@ export function NoteList({ notes, onSelectNote, onDeleteNote }: NoteListProps) {
                 <h3 className="font-display text-sm text-foreground flex-1 line-clamp-2" style={{ color: "var(--color-foreground)" }}>
                   {note.title}
                 </h3>
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onDeleteNote(note.id);
-                  }}
-                  className="px-2 py-1 rounded text-xs transition-all opacity-0 group-hover:opacity-100 border flex-shrink-0"
-                  style={{ borderColor: "#ef4444", color: "#ef4444" }}
-                >
-                  ✕
-                </button>
+                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onPinNote(note.id, !note.pinned);
+                    }}
+                    className="px-2 py-1 rounded text-xs transition-all border flex-shrink-0"
+                    style={{ borderColor: note.pinned ? "var(--color-primary-gold)" : "var(--color-border)", color: note.pinned ? "var(--color-primary-gold)" : "var(--color-text-muted)" }}
+                    title={note.pinned ? "Unpin" : "Pin"}
+                  >
+                    📌
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onDeleteNote(note.id);
+                    }}
+                    className="px-2 py-1 rounded text-xs transition-all border flex-shrink-0"
+                    style={{ borderColor: "#ef4444", color: "#ef4444" }}
+                  >
+                    ✕
+                  </button>
+                </div>
               </div>
               <p className="text-sm text-muted-foreground mb-3 line-clamp-2 flex-1">{note.preview}</p>
               <div className="flex gap-1 items-center text-xs flex-wrap mb-3">

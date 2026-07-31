@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { listNotesAction, deleteNoteAction } from "@/lib/actions/notes";
+import { listNotesAction, deleteNoteAction, updateNoteAction } from "@/lib/actions/notes";
 import { NoteList } from "@/components/notes/NoteList";
 import { NoteEditor } from "@/components/notes/NoteEditor";
 import { DeleteConfirmModal } from "@/components/notes/DeleteConfirmModal";
@@ -59,6 +59,11 @@ export default function NotesPage() {
 
   const handleSelectNote = (note: NotePreview) => {
     setEditingNoteId(note.id);
+  };
+
+  const handlePinNote = async (id: string, pinned: boolean) => {
+    await updateNoteAction({ noteId: id, pinned });
+    setNotes(notes.map((n) => (n.id === id ? { ...n, pinned } : n)));
   };
 
   const handleSaveNote = async () => {
@@ -138,7 +143,7 @@ export default function NotesPage() {
         {loading ? (
           <div className="flex items-center justify-center flex-1">Loading...</div>
         ) : (
-          <NoteList notes={notes} onSelectNote={handleSelectNote} onDeleteNote={handleDelete} />
+          <NoteList notes={notes} onSelectNote={handleSelectNote} onDeleteNote={handleDelete} onPinNote={handlePinNote} />
         )}
       </div>
       </div>
