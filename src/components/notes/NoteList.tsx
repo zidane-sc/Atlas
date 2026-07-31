@@ -40,7 +40,7 @@ export function NoteList({ notes, onSelectNote, onDeleteNote, onPinNote }: NoteL
               onClick={() => onSelectNote(note)}
             >
               {note.pinned && (
-                <div className="absolute top-2 right-2 p-1" style={{ color: "var(--color-primary-gold)" }}>
+                <div className="absolute top-2 left-2 p-1" style={{ color: "var(--color-primary-gold)" }}>
                   <Pin size={12} fill="currentColor" />
                 </div>
               )}
