@@ -421,7 +421,7 @@ export function NoteEditor({ noteId, initialData, onSave, onClose }: NoteEditorP
                   style={{ borderColor: "var(--color-primary-gold)" }}
                 >
                   <div
-                    className="max-h-24 overflow-y-auto"
+                    className="max-h-48 overflow-y-auto"
                     style={{ backgroundColor: "var(--color-bg-panel)" }}
                   >
                     {tasks
@@ -460,7 +460,7 @@ export function NoteEditor({ noteId, initialData, onSave, onClose }: NoteEditorP
                               setShowTaskPicker(false);
                               debouncedSave();
                             }}
-                            className="w-full text-left px-1.5 py-0.5 transition-all text-xs hover:bg-primary/20 space-y-0.5"
+                            className="w-full text-left px-1.5 py-1 transition-all text-xs hover:bg-primary/20 flex items-center gap-1.5"
                             style={{
                               borderBottom:
                                 idx < arr.length - 1
@@ -469,30 +469,30 @@ export function NoteEditor({ noteId, initialData, onSave, onClose }: NoteEditorP
                               color: "var(--color-foreground)",
                             }}
                           >
-                            <div className="flex items-center gap-1">
-                              <span className="text-xs">{statusEmoji}</span>
-                              <span className="truncate flex-1 font-semibold">{task.title}</span>
-                              <span
-                                className="px-0.5 rounded text-xs flex-shrink-0"
-                                style={{
-                                  backgroundColor: `var(${priorityColor})/20`,
-                                  color: `var(${priorityColor})`,
-                                }}
-                              >
-                                {task.priority.toUpperCase()}
+                            <span className="text-xs flex-shrink-0">{statusEmoji}</span>
+                            <span className="truncate flex-1">{task.title}</span>
+                            {task.project && (
+                              <span className="text-xs text-muted-foreground flex-shrink-0">
+                                {task.project}
                               </span>
-                            </div>
-                            <div className="text-xs text-muted-foreground flex gap-2">
-                              {task.project && <span>{task.project}</span>}
-                              {task.dueDate && (
-                                <span>
-                                  📅 {new Date(task.dueDate).toLocaleDateString("en-US", {
-                                    month: "short",
-                                    day: "numeric",
-                                  })}
-                                </span>
-                              )}
-                            </div>
+                            )}
+                            {task.dueDate && (
+                              <span className="text-xs text-muted-foreground flex-shrink-0">
+                                {new Date(task.dueDate).toLocaleDateString("en-US", {
+                                  month: "short",
+                                  day: "numeric",
+                                })}
+                              </span>
+                            )}
+                            <span
+                              className="px-0.5 rounded text-xs flex-shrink-0"
+                              style={{
+                                backgroundColor: `var(${priorityColor})/20`,
+                                color: `var(${priorityColor})`,
+                              }}
+                            >
+                              {task.priority.toUpperCase()}
+                            </span>
                           </button>
                         );
                       })}
