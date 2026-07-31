@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import { Check, ChevronDown, Copy, Trash2, Info, Pin } from "lucide-react";
 import { DatePicker } from "@/components/ui/DatePicker";
 import { BattleTimer } from "@/components/gamification/BattleTimer";
@@ -35,6 +35,7 @@ import {
 } from "@/lib/schemas/task";
 import { useProjects } from "@/components/providers/ProjectsProvider";
 import { useSprints } from "@/components/providers/SprintsProvider";
+import { sortProjectsForPicker } from "@/lib/picker-sort";
 import { STATUS_LABEL, TYPE_ICON } from "@/lib/mock-data";
 import type {
   AttachmentType,
@@ -140,6 +141,8 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
   const [tagInput, setTagInput] = useState("");
   const [relationSearch, setRelationSearch] = useState("");
   const [projectSearch, setProjectSearch] = useState("");
+  const [projectFocused, setProjectFocused] = useState(false);
+  const projectInputRef = useRef<HTMLInputElement>(null);
   const [sprintSearch, setSprintSearch] = useState("");
   const [editingAttachmentIndex, setEditingAttachmentIndex] = useState<number | null>(null);
   const [editingDeliverableIndex, setEditingDeliverableIndex] = useState<number | null>(null);
@@ -395,6 +398,7 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
                 <label className={LC}>Project</label>
                 <div className="relative">
                   <input
+                    ref={projectInputRef}
                     aria-label="Project"
                     className={FIELD}
                     placeholder="Search project..."
@@ -409,12 +413,17 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
                     onFocus={(e) => {
                       setProjectSearch("");
                       e.target.select();
+                      setProjectFocused(true);
                     }}
+                    onBlur={() => setProjectFocused(false)}
                   />
-                  {projectSearch && (
+                  {projectFocused && (
                     <ul className="border border-border max-h-20 overflow-y-auto bg-secondary text-xs absolute top-full left-0 right-0 z-10">
-                      {projects.filter(p => p.name.toLowerCase().includes(projectSearch.toLowerCase())).map((p) => (
-                        <li key={p.id} className="px-2 py-1 cursor-pointer hover:bg-primary/10 border-b border-border last:border-b-0" onClick={() => { set("project", p.name); setProjectSearch(""); }}>
+                      {(projectSearch
+                        ? projects.filter(p => p.name.toLowerCase().includes(projectSearch.toLowerCase()))
+                        : sortProjectsForPicker(projects).slice(0, 5)
+                      ).map((p) => (
+                        <li key={p.id} className="px-2 py-1 cursor-pointer hover:bg-primary/10 border-b border-border last:border-b-0" onClick={() => { set("project", p.name); setProjectSearch(""); projectInputRef.current?.blur(); }}>
                           {p.emoji} {p.name}
                         </li>
                       ))}
