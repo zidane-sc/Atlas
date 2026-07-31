@@ -362,42 +362,44 @@ export function NoteEditor({ noteId, initialData, onSave, onClose }: NoteEditorP
 
           {/* Linked Tasks Column */}
           <div className="flex flex-col">
-            <div className="space-y-1 mb-2 max-h-12 overflow-y-auto flex-1">
-              {linkedTasks.map((task) => {
-                const linkedTask = tasks.find((t) => t.id === task.id);
-                const statusEmoji =
-                  linkedTask?.status === "done"
-                    ? "✓"
-                    : linkedTask?.status === "in_progress"
-                      ? "▶"
-                      : linkedTask?.status === "blocked"
-                        ? "⊘"
-                        : "○";
+            {linkedTasks.length > 0 && (
+              <div className="flex gap-1 flex-wrap mb-2 max-h-12 overflow-y-auto">
+                {linkedTasks.map((task) => {
+                  const linkedTask = tasks.find((t) => t.id === task.id);
+                  const statusEmoji =
+                    linkedTask?.status === "done"
+                      ? "✓"
+                      : linkedTask?.status === "in_progress"
+                        ? "▶"
+                        : linkedTask?.status === "blocked"
+                          ? "⊘"
+                          : "○";
 
-                return (
-                  <div
-                    key={task.id}
-                    className="px-2 py-0.5 flex items-center gap-1 text-xs group flex-shrink-0"
-                    style={{ color: "var(--color-foreground)" }}
-                  >
-                    <span className="text-xs">{statusEmoji}</span>
-                    <span className="truncate text-xs flex-1">{task.title}</span>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const newTaskIds = taskIds.filter((id) => id !== task.id);
-                        setTaskIds(newTaskIds);
-                        setLinkedTasks(linkedTasks.filter((t) => t.id !== task.id));
-                        debouncedSave();
-                      }}
-                      className="opacity-50 group-hover:opacity-100 text-xs"
+                  return (
+                    <div
+                      key={task.id}
+                      className="px-1.5 py-0.5 rounded border border-gray-500 flex items-center gap-0.5 text-xs group hover:border-primary-gold transition-colors flex-shrink-0"
+                      style={{ color: "var(--color-foreground)" }}
                     >
-                      ✕
-                    </button>
-                  </div>
-                );
-              })}
-            </div>
+                      <span className="text-xs">{statusEmoji}</span>
+                      <span className="truncate max-w-[80px] text-xs">{task.title}</span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const newTaskIds = taskIds.filter((id) => id !== task.id);
+                          setTaskIds(newTaskIds);
+                          setLinkedTasks(linkedTasks.filter((t) => t.id !== task.id));
+                          debouncedSave();
+                        }}
+                        className="opacity-50 group-hover:opacity-100 text-xs"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
 
             {/* Task Search Input */}
             <div className="relative">
