@@ -417,7 +417,7 @@ export function NoteEditor({ noteId, initialData, onSave, onClose }: NoteEditorP
               {/* Task Picker Dropdown */}
               {showTaskPicker && (
                 <div
-                  className="absolute top-full left-0 right-0 mt-0.5 border border-gray-500 rounded bg-panel overflow-hidden z-50"
+                  className="absolute bottom-full left-0 right-0 mb-0.5 border border-gray-500 rounded bg-panel overflow-hidden z-50"
                   style={{ borderColor: "var(--color-primary-gold)" }}
                 >
                   <div
