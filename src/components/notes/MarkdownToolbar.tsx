@@ -4,6 +4,12 @@ interface MarkdownToolbarProps {
   onInsert: (syntax: { before: string; after: string } | string, isBlock?: boolean) => void;
 }
 
+const handleButtonClick = (e: React.MouseEvent, callback: () => void) => {
+  e.preventDefault();
+  e.stopPropagation();
+  callback();
+};
+
 export function MarkdownToolbar({ onInsert }: MarkdownToolbarProps) {
   const buttonClass =
     "px-2 py-1 border-2 border-gray-400 bg-panel text-foreground hover:bg-panel-alt active:border-primary-gold active:text-primary-gold text-xs font-display transition-colors";
@@ -13,7 +19,7 @@ export function MarkdownToolbar({ onInsert }: MarkdownToolbarProps) {
       {/* Text Formatting */}
       <button
         type="button"
-        onClick={() => onInsert({ before: "**", after: "**" })}
+        onClick={(e) => handleButtonClick(e, () => onInsert({ before: "**", after: "**" }))}
         className={buttonClass}
         title="Bold"
       >
@@ -21,7 +27,7 @@ export function MarkdownToolbar({ onInsert }: MarkdownToolbarProps) {
       </button>
       <button
         type="button"
-        onClick={() => onInsert({ before: "*", after: "*" })}
+        onClick={(e) => handleButtonClick(e, () => onInsert({ before: "*", after: "*" }))}
         className={buttonClass}
         title="Italic"
       >
@@ -29,7 +35,7 @@ export function MarkdownToolbar({ onInsert }: MarkdownToolbarProps) {
       </button>
       <button
         type="button"
-        onClick={() => onInsert({ before: "~~", after: "~~" })}
+        onClick={(e) => handleButtonClick(e, () => onInsert({ before: "~~", after: "~~" }))}
         className={buttonClass}
         title="Strikethrough"
       >
@@ -37,7 +43,7 @@ export function MarkdownToolbar({ onInsert }: MarkdownToolbarProps) {
       </button>
       <button
         type="button"
-        onClick={() => onInsert({ before: "`", after: "`" })}
+        onClick={(e) => handleButtonClick(e, () => onInsert({ before: "`", after: "`" }))}
         className={buttonClass}
         title="Inline Code"
       >
@@ -50,7 +56,7 @@ export function MarkdownToolbar({ onInsert }: MarkdownToolbarProps) {
       {/* Structure */}
       <button
         type="button"
-        onClick={() => onInsert({ before: "# ", after: "" }, true)}
+        onClick={(e) => handleButtonClick(e, () => onInsert({ before: "# ", after: "" }, true))}
         className={buttonClass}
         title="Heading 1"
       >
@@ -58,7 +64,7 @@ export function MarkdownToolbar({ onInsert }: MarkdownToolbarProps) {
       </button>
       <button
         type="button"
-        onClick={() => onInsert({ before: "## ", after: "" }, true)}
+        onClick={(e) => handleButtonClick(e, () => onInsert({ before: "## ", after: "" }, true))}
         className={buttonClass}
         title="Heading 2"
       >
@@ -66,7 +72,7 @@ export function MarkdownToolbar({ onInsert }: MarkdownToolbarProps) {
       </button>
       <button
         type="button"
-        onClick={() => onInsert({ before: "### ", after: "" }, true)}
+        onClick={(e) => handleButtonClick(e, () => onInsert({ before: "### ", after: "" }, true))}
         className={buttonClass}
         title="Heading 3"
       >
@@ -74,7 +80,7 @@ export function MarkdownToolbar({ onInsert }: MarkdownToolbarProps) {
       </button>
       <button
         type="button"
-        onClick={() => onInsert({ before: "> ", after: "" }, true)}
+        onClick={(e) => handleButtonClick(e, () => onInsert({ before: "> ", after: "" }, true))}
         className={buttonClass}
         title="Quote"
       >
@@ -87,7 +93,7 @@ export function MarkdownToolbar({ onInsert }: MarkdownToolbarProps) {
       {/* Lists & Checkboxes */}
       <button
         type="button"
-        onClick={() => onInsert({ before: "- ", after: "" }, true)}
+        onClick={(e) => handleButtonClick(e, () => onInsert({ before: "- ", after: "" }, true))}
         className={buttonClass}
         title="Bullet List"
       >
@@ -95,7 +101,7 @@ export function MarkdownToolbar({ onInsert }: MarkdownToolbarProps) {
       </button>
       <button
         type="button"
-        onClick={() => onInsert({ before: "1. ", after: "" }, true)}
+        onClick={(e) => handleButtonClick(e, () => onInsert({ before: "1. ", after: "" }, true))}
         className={buttonClass}
         title="Numbered List"
       >
@@ -103,7 +109,7 @@ export function MarkdownToolbar({ onInsert }: MarkdownToolbarProps) {
       </button>
       <button
         type="button"
-        onClick={() => onInsert({ before: "- [ ] ", after: "" }, true)}
+        onClick={(e) => handleButtonClick(e, () => onInsert({ before: "- [ ] ", after: "" }, true))}
         className={buttonClass}
         title="Checkbox"
       >
@@ -116,7 +122,7 @@ export function MarkdownToolbar({ onInsert }: MarkdownToolbarProps) {
       {/* Advanced */}
       <button
         type="button"
-        onClick={() => onInsert({ before: "[", after: "](url)" })}
+        onClick={(e) => handleButtonClick(e, () => onInsert({ before: "[", after: "](url)" }))}
         className={buttonClass}
         title="Link"
       >
@@ -124,11 +130,13 @@ export function MarkdownToolbar({ onInsert }: MarkdownToolbarProps) {
       </button>
       <button
         type="button"
-        onClick={() =>
-          onInsert({
-            before: "| Col1 | Col2 |\n|------|------|\n| A    | B    |",
-            after: "",
-          })
+        onClick={(e) =>
+          handleButtonClick(e, () =>
+            onInsert({
+              before: "| Col1 | Col2 |\n|------|------|\n| A    | B    |",
+              after: "",
+            })
+          )
         }
         className={buttonClass}
         title="Table"
@@ -137,7 +145,7 @@ export function MarkdownToolbar({ onInsert }: MarkdownToolbarProps) {
       </button>
       <button
         type="button"
-        onClick={() => onInsert("---")}
+        onClick={(e) => handleButtonClick(e, () => onInsert("---"))}
         className={buttonClass}
         title="Horizontal Line"
       >
