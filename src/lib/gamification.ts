@@ -417,3 +417,37 @@ export function calculateStreak(tasks: Task[], nowStr?: string): number {
 
   return streak;
 }
+
+/**
+ * Calculate XP reward for a note based on word count.
+ * Base: 1 XP per 50 words (rounded down)
+ * Bonus: +2 XP if daily streak active
+ */
+export function calculateNoteXP(wordCount: number, hasStreak: boolean = false): number {
+  const baseXP = Math.floor(wordCount / 50);
+  const streakBonus = hasStreak ? 2 : 0;
+  return Math.max(1, baseXP + streakBonus);
+}
+
+/**
+ * Achievement unlock checks for notes.
+ * Returns list of newly unlocked achievements.
+ */
+export function checkNoteAchievements(
+  totalNotes: number,
+  totalWords: number
+): string[] {
+  const unlocked: string[] = [];
+
+  if (totalNotes === 1 && totalWords >= 50) {
+    unlocked.push("Scribe I");
+  }
+  if (totalNotes >= 10 && totalWords >= 500) {
+    unlocked.push("Scribe II");
+  }
+  if (totalNotes >= 50 && totalWords >= 5000) {
+    unlocked.push("Scribe III");
+  }
+
+  return unlocked;
+}
