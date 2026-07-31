@@ -125,7 +125,7 @@ export function Companion({
       onMouseEnter={() => !showPinned && setShowMood(true)}
       onMouseLeave={() => setShowMood(false)}
     >
-      {/* Mood Tooltip or Pin Status */}
+      {/* Mood Tooltip with optional Pin Status */}
       {showMood && !showPinned && (
         <div
           className="absolute right-2 left-2 z-50 px-2.5 py-2 cursor-pointer hover:border-primary-gold transition-colors"
@@ -137,48 +137,46 @@ export function Companion({
           }}
           onClick={() => hasPinned && setShowPinned(true)}
         >
-          {hasPinned ? (
-            <>
-              <div className="mb-1 font-display text-[7px]" style={{ color: "var(--color-primary-gold)" }}>
-                📌 PINBOARD
+          <div className="mb-1 font-display text-[7px]" style={{ color: `var(${colorVar})` }}>
+            PIP · LV.{compLv}
+          </div>
+          <div className="text-xs" style={{ color: "var(--color-text-muted)", lineHeight: 1.4 }}>
+            {MOOD_MESSAGES[mood][msgIdx]}
+          </div>
+          <div className="text-xs" style={{ color: "var(--color-dim)" }}>
+            {MOOD_ICON[mood]} {mood.toUpperCase()} · {todayCompleted} done today
+          </div>
+          {hasPinned && (
+            <div className="mt-2 pt-2 border-t border-gray-600">
+              <div className="text-xs" style={{ color: "var(--color-primary-gold)" }}>
+                📌 {pinnedTasks.length + pinnedNotes.length} items pinned!
               </div>
-              <div className="text-xs" style={{ color: "var(--color-primary-gold)", lineHeight: 1.4 }}>
-                {pinnedTasks.length + pinnedNotes.length} items pinned!
-              </div>
-              <div className="mt-1 text-xs" style={{ color: "var(--color-dim)" }}>
-                Click to check 👆
-              </div>
-            </>
-          ) : (
-            <>
-              <div className="mb-1 font-display text-[7px]" style={{ color: `var(${colorVar})` }}>
-                PIP · LV.{compLv}
-              </div>
-              <div className="text-xs" style={{ color: "var(--color-text-muted)", lineHeight: 1.4 }}>
-                {MOOD_MESSAGES[mood][msgIdx]}
-              </div>
-              <div className="mt-1 text-xs" style={{ color: "var(--color-dim)" }}>
-                {MOOD_ICON[mood]} {mood.toUpperCase()} · {todayCompleted} done today
-              </div>
-            </>
+              <div className="text-xs text-muted-foreground">Click to open 👆</div>
+            </div>
           )}
         </div>
       )}
 
-      {/* Pinned Hub Popup with Tabs */}
+      {/* Pinned Hub Modal - Fixed on main page */}
       {showPinned && (pinnedTasks.length > 0 || pinnedNotes.length > 0) && (
-        <div
-          className="absolute z-50 border-2 bg-card overflow-visible flex flex-col"
-          style={{
-            bottom: "calc(100% + 12px)",
-            right: "-330px",
-            width: "320px",
-            maxHeight: "500px",
-            borderColor: "var(--color-primary-gold)",
-            boxShadow: "0 0 24px color-mix(in srgb, var(--color-primary-gold) 25%, transparent), 8px 8px 0 var(--color-primary-gold-dim)",
-            animation: "pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite",
-          }}
-        >
+        <>
+          <div
+            className="fixed inset-0 z-40 bg-black/30"
+            onClick={() => setShowPinned(false)}
+          />
+          <div
+            className="fixed z-50 border-2 bg-card overflow-hidden flex flex-col"
+            style={{
+              top: "50%",
+              left: "50%",
+              transform: "translate(-50%, -50%)",
+              width: "420px",
+              maxHeight: "600px",
+              borderColor: "var(--color-primary-gold)",
+              boxShadow: "0 0 32px color-mix(in srgb, var(--color-primary-gold) 35%, transparent), 0 0 64px rgba(0,0,0,0.5)",
+              animation: "pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite",
+            }}
+          >
           {/* Header with Tabs */}
           <div
             className="px-3 py-2 border-b-2 border-border flex items-center justify-between"
@@ -297,6 +295,7 @@ export function Companion({
             }
           `}</style>
         </div>
+        </>
       )}
 
       <div className="flex cursor-default flex-col items-center gap-0">
