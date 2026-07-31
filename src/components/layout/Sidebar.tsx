@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useEffect } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { Moon, Plus, Search } from "lucide-react";
 import { Companion } from "@/components/gamification/Companion";
 import { SaveAndQuitOverlay } from "@/components/gamification/SaveAndQuitOverlay";
@@ -80,7 +80,8 @@ function GroupLabel({ children }: { children: React.ReactNode }) {
 }
 
 export function Sidebar() {
-  const { tasks, openCreateForm, justCompleted, bonusXp, bonusCoins, updateTask } = useTasks();
+  const router = useRouter();
+  const { tasks, openCreateForm, openEditForm, justCompleted, bonusXp, bonusCoins, updateTask } = useTasks();
   const [showQuit, setShowQuit] = useState(false);
   const [pinnedNotes, setPinnedNotes] = useState<NotePreview[]>([]);
   const { setOpen: setCommandPaletteOpen } = useCommandPalette();
@@ -236,7 +237,8 @@ export function Sidebar() {
         justCompleted={justCompleted}
         pinnedTasks={pinnedTasks}
         pinnedNotes={pinnedNotes}
-        onOpenTask={() => {}}
+        onOpenTask={(task) => openEditForm(task)}
+        onOpenNote={(noteId) => router.push(`/notes?edit=${noteId}`)}
         onUnpinTask={(taskId) => updateTaskAction(taskId, { pinned: false })}
         onUnpinNote={(noteId) => updateNoteAction({ noteId, pinned: false })}
       />

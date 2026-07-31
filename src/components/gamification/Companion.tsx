@@ -97,6 +97,7 @@ export function Companion({
   pinnedTasks = [],
   pinnedNotes = [],
   onOpenTask,
+  onOpenNote,
   onUnpinTask,
   onUnpinNote,
 }: {
@@ -106,6 +107,7 @@ export function Companion({
   pinnedTasks?: Task[];
   pinnedNotes?: NotePreview[];
   onOpenTask?: (task: Task) => void;
+  onOpenNote?: (noteId: string) => void;
   onUnpinTask?: (taskId: string) => void;
   onUnpinNote?: (noteId: string) => void;
 }) {
@@ -266,6 +268,10 @@ export function Companion({
                   <div
                     key={note.id}
                     className="p-2.5 hover:bg-primary/10 transition-colors flex gap-2 group cursor-pointer"
+                    onClick={() => {
+                      onOpenNote?.(note.id);
+                      setShowPinned(false);
+                    }}
                   >
                     <div className="flex-1 min-w-0">
                       <h3 className="text-xs font-bold text-foreground line-clamp-2 group-hover:text-primary transition-colors mb-1">
