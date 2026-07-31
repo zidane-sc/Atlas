@@ -1,5 +1,6 @@
 "use client";
 
+import { Pin } from "lucide-react";
 import type { NotePreview } from "@/types/note";
 
 interface NoteListProps {
@@ -30,7 +31,10 @@ export function NoteList({ notes, onSelectNote, onDeleteNote, onPinNote }: NoteL
             <div
               key={note.id}
               className="p-4 cursor-pointer transition-all border-2 rounded hover:border-primary-gold group h-full flex flex-col"
-              style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-bg-panel-alt)" }}
+              style={{
+                borderColor: note.pinned ? "var(--color-primary-gold)" : "var(--color-border)",
+                backgroundColor: note.pinned ? "var(--color-primary-gold)/5" : "var(--color-bg-panel-alt)",
+              }}
               onClick={() => onSelectNote(note)}
             >
               <div className="flex justify-between items-start gap-2 mb-2">
@@ -44,11 +48,14 @@ export function NoteList({ notes, onSelectNote, onDeleteNote, onPinNote }: NoteL
                       e.stopPropagation();
                       onPinNote(note.id, !note.pinned);
                     }}
-                    className="px-2 py-1 rounded text-xs transition-all flex-shrink-0"
-                    style={{ color: note.pinned ? "var(--color-primary-gold)" : "var(--color-text-muted)" }}
+                    className="p-1 rounded transition-all flex-shrink-0"
+                    style={{
+                      backgroundColor: note.pinned ? "var(--color-primary-gold)" : "transparent",
+                      color: note.pinned ? "#000" : "var(--color-text-muted)",
+                    }}
                     title={note.pinned ? "Unpin" : "Pin"}
                   >
-                    📌
+                    <Pin size={14} />
                   </button>
                   <button
                     type="button"
