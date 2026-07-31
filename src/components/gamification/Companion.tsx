@@ -125,26 +125,43 @@ export function Companion({
       onMouseEnter={() => !showPinned && setShowMood(true)}
       onMouseLeave={() => setShowMood(false)}
     >
-      {/* Mood Tooltip */}
+      {/* Mood Tooltip or Pin Status */}
       {showMood && !showPinned && (
         <div
-          className="absolute right-2 left-2 z-50 px-2.5 py-2"
+          className="absolute right-2 left-2 z-50 px-2.5 py-2 cursor-pointer hover:border-primary-gold transition-colors"
           style={{
             bottom: "calc(100% + 4px)",
             backgroundColor: "var(--color-bg-panel)",
             border: `2px solid var(${colorVar})`,
             boxShadow: `0 0 12px color-mix(in srgb, var(${colorVar}) 30%, transparent)`,
           }}
+          onClick={() => hasPinned && setShowPinned(true)}
         >
-          <div className="mb-1 font-display text-[7px]" style={{ color: `var(${colorVar})` }}>
-            PIP · LV.{compLv}
-          </div>
-          <div className="text-xs" style={{ color: "var(--color-text-muted)", lineHeight: 1.4 }}>
-            {MOOD_MESSAGES[mood][msgIdx]}
-          </div>
-          <div className="mt-1 text-xs" style={{ color: "var(--color-dim)" }}>
-            {MOOD_ICON[mood]} {mood.toUpperCase()} · {todayCompleted} done today
-          </div>
+          {hasPinned ? (
+            <>
+              <div className="mb-1 font-display text-[7px]" style={{ color: "var(--color-primary-gold)" }}>
+                📌 PINBOARD
+              </div>
+              <div className="text-xs" style={{ color: "var(--color-primary-gold)", lineHeight: 1.4 }}>
+                {pinnedTasks.length + pinnedNotes.length} items pinned!
+              </div>
+              <div className="mt-1 text-xs" style={{ color: "var(--color-dim)" }}>
+                Click to check 👆
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="mb-1 font-display text-[7px]" style={{ color: `var(${colorVar})` }}>
+                PIP · LV.{compLv}
+              </div>
+              <div className="text-xs" style={{ color: "var(--color-text-muted)", lineHeight: 1.4 }}>
+                {MOOD_MESSAGES[mood][msgIdx]}
+              </div>
+              <div className="mt-1 text-xs" style={{ color: "var(--color-dim)" }}>
+                {MOOD_ICON[mood]} {mood.toUpperCase()} · {todayCompleted} done today
+              </div>
+            </>
+          )}
         </div>
       )}
 
