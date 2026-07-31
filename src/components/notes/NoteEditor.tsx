@@ -324,76 +324,172 @@ export function NoteEditor({ noteId, initialData, onSave, onClose }: NoteEditorP
 
           {/* Linked Tasks */}
           <div className="border-t border-gray-600 pt-3">
-            <div className="mb-2 flex justify-between items-center">
-              <span className="text-xs font-semibold">🔗 Linked Tasks ({linkedTasks.length})</span>
+            <div className="mb-3 flex justify-between items-center">
+              <span className="text-xs font-semibold tracking-widest" style={{ color: "var(--color-primary-gold)" }}>
+                🔗 LINKED QUESTS ({linkedTasks.length})
+              </span>
             </div>
+
+            {/* Linked Task Pills */}
             {linkedTasks.length > 0 && (
-              <div className="flex gap-1 flex-wrap mb-2">
-                {linkedTasks.map((task) => (
-                  <span key={task.id} className="px-2 py-1 bg-primary/10 text-primary rounded text-xs">
-                    {task.title}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const newTaskIds = taskIds.filter((id) => id !== task.id);
-                        setTaskIds(newTaskIds);
-                        setLinkedTasks(linkedTasks.filter((t) => t.id !== task.id));
-                        debouncedSave();
+              <div className="flex gap-2 flex-wrap mb-3 pb-2 border-b border-gray-600">
+                {linkedTasks.map((task) => {
+                  const linkedTask = tasks.find((t) => t.id === task.id);
+                  const priorityColor =
+                    linkedTask?.priority === "p0"
+                      ? "--color-priority-p0"
+                      : linkedTask?.priority === "p1"
+                        ? "--color-priority-p1"
+                        : "--color-primary-gold";
+                  return (
+                    <div
+                      key={task.id}
+                      className="px-2 py-1 border-2 rounded flex items-center gap-1 text-xs font-display transition-all hover:scale-105"
+                      style={{
+                        borderColor: `var(${priorityColor})`,
+                        backgroundColor: `var(${priorityColor})/10`,
+                        color: `var(${priorityColor})`,
                       }}
-                      className="ml-1 hover:text-destructive"
                     >
-                      ✕
-                    </button>
-                  </span>
-                ))}
+                      <span className="line-clamp-1">{task.title}</span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const newTaskIds = taskIds.filter((id) => id !== task.id);
+                          setTaskIds(newTaskIds);
+                          setLinkedTasks(linkedTasks.filter((t) => t.id !== task.id));
+                          debouncedSave();
+                        }}
+                        className="ml-1 hover:opacity-60 transition-opacity flex-shrink-0"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  );
+                })}
               </div>
             )}
+
+            {/* Task Search Input */}
             <div className="relative">
               <input
                 type="text"
                 value={taskSearch}
                 onChange={(e) => setTaskSearch(e.target.value)}
                 onFocus={() => setShowTaskPicker(true)}
-                placeholder="Search tasks to link..."
-                className="px-2 py-1 border border-gray-500 rounded bg-panel text-xs w-full"
-                style={{ color: "var(--color-foreground)" }}
+                onBlur={() => setTimeout(() => setShowTaskPicker(false), 100)}
+                placeholder="Search quests to link..."
+                className="w-full px-2 py-1 border-2 rounded bg-panel text-xs font-display transition-all"
+                style={{
+                  borderColor: showTaskPicker ? "var(--color-primary-gold)" : "var(--color-border)",
+                  color: "var(--color-foreground)",
+                }}
               />
+
+              {/* Task Picker Dropdown */}
               {showTaskPicker && (
                 <div
-                  className="absolute top-full left-0 right-0 mt-1 border border-gray-500 rounded bg-panel max-h-40 overflow-y-auto z-50"
-                  onMouseLeave={() => setShowTaskPicker(false)}
+                  className="absolute top-full left-0 right-0 mt-1 border-2 rounded bg-panel overflow-hidden z-50 shadow-lg"
+                  style={{ borderColor: "var(--color-primary-gold)" }}
                 >
-                  {tasks
-                    .filter(
+                  <div
+                    className="max-h-48 overflow-y-auto"
+                    style={{ backgroundColor: "var(--color-bg-panel)" }}
+                  >
+                    {tasks
+                      .filter(
+                        (task) =>
+                          !taskIds.includes(task.id) &&
+                          task.title.toLowerCase().includes(taskSearch.toLowerCase())
+                      )
+                      .slice(0, 10)
+                      .map((task, idx, arr) => {
+                        const priorityColor =
+                          task.priority === "p0"
+                            ? "--color-priority-p0"
+                            : task.priority === "p1"
+                              ? "--color-priority-p1"
+                              : "--color-primary-gold";
+                        const statusEmoji =
+                          task.status === "done"
+                            ? "✓"
+                            : task.status === "in_progress"
+                              ? "▶"
+                              : task.status === "blocked"
+                                ? "⊘"
+                                : "○";
+
+                        return (
+                          <button
+                            key={task.id}
+                            type="button"
+                            onMouseDown={(e) => {
+                              e.preventDefault();
+                              setTaskIds([...taskIds, task.id]);
+                              setLinkedTasks([...linkedTasks, { id: task.id, title: task.title }]);
+                              setTaskSearch("");
+                              setShowTaskPicker(false);
+                              debouncedSave();
+                            }}
+                            className="w-full text-left px-3 py-2 transition-all flex items-start gap-2 hover:bg-primary/20"
+                            style={{
+                              borderBottom:
+                                idx < arr.length - 1
+                                  ? "1px solid var(--color-border)"
+                                  : "none",
+                            }}
+                          >
+                            <span
+                              className="flex-shrink-0 text-xs font-bold w-4 text-center"
+                              style={{ color: `var(${priorityColor})` }}
+                            >
+                              {statusEmoji}
+                            </span>
+                            <div className="flex-1 min-w-0">
+                              <div
+                                className="text-xs font-semibold truncate line-clamp-1"
+                                style={{
+                                  color: "var(--color-foreground)",
+                                }}
+                              >
+                                {task.title}
+                              </div>
+                              <div
+                                className="text-xs truncate"
+                                style={{
+                                  color: "var(--color-text-muted)",
+                                }}
+                              >
+                                {task.project || "No project"}
+                              </div>
+                            </div>
+                            <div
+                              className="flex-shrink-0 px-1 py-0.5 rounded text-xs font-display"
+                              style={{
+                                backgroundColor: `var(${priorityColor})/20`,
+                                color: `var(${priorityColor})`,
+                              }}
+                            >
+                              {task.priority.toUpperCase()}
+                            </div>
+                          </button>
+                        );
+                      })}
+                    {tasks.filter(
                       (task) =>
                         !taskIds.includes(task.id) &&
                         task.title.toLowerCase().includes(taskSearch.toLowerCase())
-                    )
-                    .slice(0, 8)
-                    .map((task) => (
-                      <button
-                        key={task.id}
-                        type="button"
-                        onClick={() => {
-                          setTaskIds([...taskIds, task.id]);
-                          setLinkedTasks([...linkedTasks, { id: task.id, title: task.title }]);
-                          setTaskSearch("");
-                          setShowTaskPicker(false);
-                          debouncedSave();
-                        }}
-                        className="w-full text-left px-2 py-1 hover:bg-primary/10 text-xs border-b border-gray-600 last:border-b-0 transition-colors"
-                        style={{ color: "var(--color-foreground)" }}
+                    ).length === 0 && (
+                      <div
+                        className="px-3 py-2 text-xs text-center font-display"
+                        style={{ color: "var(--color-text-muted)" }}
                       >
-                        {task.title}
-                      </button>
-                    ))}
-                  {tasks.filter(
-                    (task) =>
-                      !taskIds.includes(task.id) &&
-                      task.title.toLowerCase().includes(taskSearch.toLowerCase())
-                  ).length === 0 && (
-                    <div className="px-2 py-1 text-xs text-muted-foreground">No tasks found</div>
-                  )}
+                        {taskSearch
+                          ? "No quests found matching your search"
+                          : "No more quests to link"}
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
             </div>
