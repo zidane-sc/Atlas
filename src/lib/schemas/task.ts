@@ -123,6 +123,7 @@ export const updateTaskSchema = z.object({
   startDate: z.string().regex(DATE_RE, "Use YYYY-MM-DD").nullable().optional(),
   dueDate: z.string().regex(DATE_RE, "Use YYYY-MM-DD").nullable().optional(),
   tags: z.array(z.string().trim().min(1)).optional(),
+  pinned: z.boolean().optional(),
   relations: z.array(relationSchema).optional(),
   attachments: z.array(attachmentSchema).optional(),
   deliverables: z.array(deliverableSchema).optional(),

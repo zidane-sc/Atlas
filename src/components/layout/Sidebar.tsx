@@ -10,6 +10,7 @@ import { XpBar } from "@/components/gamification/XpBar";
 import { useTasks } from "@/components/providers/TasksProvider";
 import { useCommandPalette } from "@/components/providers/CommandPaletteProvider";
 import { computeCharacterSheet, getNextStreakMilestone, calculateStreak, completedAt, formatLocalDate } from "@/lib/gamification";
+import { updateTask as updateTaskAction } from "@/lib/actions/tasks";
 import { MOCK_NOW } from "@/lib/mock-data";
 import { NAV_CORE, NAV_MANAGE, NAV_SMART_VIEWS, NAV_TASKS, type NavItemBase } from "@/lib/nav-items";
 import { isOverdue } from "@/lib/task-utils";
@@ -76,7 +77,7 @@ function GroupLabel({ children }: { children: React.ReactNode }) {
 }
 
 export function Sidebar() {
-  const { tasks, openCreateForm, justCompleted, bonusXp, bonusCoins } = useTasks();
+  const { tasks, openCreateForm, justCompleted, bonusXp, bonusCoins, updateTask } = useTasks();
   const [showQuit, setShowQuit] = useState(false);
   const { setOpen: setCommandPaletteOpen } = useCommandPalette();
   const sheet = useMemo(() => computeCharacterSheet(tasks, bonusXp, bonusCoins), [tasks, bonusXp, bonusCoins]);
@@ -98,6 +99,7 @@ export function Sidebar() {
       return doneAt ? formatLocalDate(doneAt) === todayStr : false;
     }).length;
   }, [tasks]);
+  const pinnedTasks = useMemo(() => tasks.filter((t) => t.pinned), [tasks]);
   const milestone = getNextStreakMilestone(streakDays);
   const pathname = usePathname();
 
@@ -214,7 +216,14 @@ export function Sidebar() {
         ))}
       </nav>
 
-      <Companion level={sheet.globalLevel} todayCompleted={todayCompletedCount} justCompleted={justCompleted} />
+      <Companion
+        level={sheet.globalLevel}
+        todayCompleted={todayCompletedCount}
+        justCompleted={justCompleted}
+        pinnedTasks={pinnedTasks}
+        onOpenTask={() => {}}
+        onUnpinTask={(taskId) => updateTaskAction(taskId, { pinned: false })}
+      />
       <div className="p-3">
         <button
           type="button"

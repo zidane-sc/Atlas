@@ -105,7 +105,7 @@ export default function Page() {
           <div className="mb-3 flex items-center justify-between">
             <span className="text-sm tracking-widest" style={{ color: "var(--color-primary-gold)" }}>◆ TODAY&apos;S QUESTS</span>
           </div>
-          <TaskListView tasks={todaysQuest} variant={compactView ? "compact" : "card"} empty="[ ALL CLEAR ]" variant="compact" />
+          <TaskListView tasks={todaysQuest} variant={compactView ? "compact" : "card"} empty="[ ALL CLEAR ]" />
         </section>
 
         <section className="border-2 border-border bg-card p-4">

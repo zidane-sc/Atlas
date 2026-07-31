@@ -100,7 +100,7 @@ export async function updateNoteAction(input: unknown): Promise<ActionResult<Not
 
     const existing = await db.note.findUnique({ where: { id: parsed.data.noteId }, select: { userId: true } });
     if (!existing || existing.userId !== user.id) {
-      return { success: false, error: { code: "FORBIDDEN", message: "Not authorized." } };
+      return { success: false, error: { code: "UNAUTHORIZED", message: "Not authorized." } };
     }
 
     if (parsed.data.taskIds !== undefined) {
@@ -160,7 +160,7 @@ export async function deleteNoteAction(noteId: string): Promise<ActionResult<voi
 
     const note = await db.note.findUnique({ where: { id: noteId }, select: { userId: true } });
     if (!note || note.userId !== user.id) {
-      return { success: false, error: { code: "FORBIDDEN", message: "Not authorized." } };
+      return { success: false, error: { code: "UNAUTHORIZED", message: "Not authorized." } };
     }
 
     await db.note.delete({ where: { id: noteId } });
@@ -201,7 +201,7 @@ export async function getNoteAction(noteId: string): Promise<ActionResult<NoteWi
     });
 
     if (!note || note.userId !== user.id) {
-      return { success: false, error: { code: "FORBIDDEN", message: "Not authorized." } };
+      return { success: false, error: { code: "UNAUTHORIZED", message: "Not authorized." } };
     }
 
     return {
@@ -342,6 +342,7 @@ export async function getTaskNotesAction(taskId: string): Promise<ActionResult<{
             content: true,
             tags: true,
             createdAt: true,
+            updatedAt: true,
             userId: true,
             _count: { select: { taskLinks: true } },
           },
@@ -357,6 +358,7 @@ export async function getTaskNotesAction(taskId: string): Promise<ActionResult<{
         preview: link.note.content.length > 30 ? link.note.content.slice(0, 30) + "..." : link.note.content,
         tags: link.note.tags,
         createdAt: link.note.createdAt.toISOString(),
+        updatedAt: link.note.updatedAt.toISOString(),
         linkedTaskCount: link.note._count.taskLinks,
       }));
 
@@ -396,7 +398,7 @@ export async function uploadNoteAttachmentAction(
     });
 
     if (!note || note.userId !== user.id) {
-      return { success: false, error: { code: "FORBIDDEN", message: "Not authorized." } };
+      return { success: false, error: { code: "UNAUTHORIZED", message: "Not authorized." } };
     }
 
     const attachment = await db.noteAttachment.create({

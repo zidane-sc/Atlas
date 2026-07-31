@@ -24,9 +24,9 @@ export function NoteEditor({ noteId, initialData, onSave, onClose }: NoteEditorP
   const [saving, setSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<string | null>(null);
   const [tagError, setTagError] = useState<string | null>(null);
-  const saveTimeoutRef = useRef<NodeJS.Timeout>();
-  const errorTimeoutRef = useRef<NodeJS.Timeout>();
-  const noteCreatedRef = useRef(false);
+  const saveTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
+  const errorTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
+  const noteCreatedRef = useRef<string | null>(null);
 
   const handleAutoSave = useCallback(async () => {
     if (!title.trim() || !content.trim()) return;

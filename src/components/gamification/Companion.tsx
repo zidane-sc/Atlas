@@ -1,9 +1,13 @@
 "use client";
 
 import { useState } from "react";
+import { X } from "lucide-react";
 import { getCompanionMood, type CompanionMood } from "@/lib/gamification";
+import { TYPE_ICON } from "@/lib/mock-data";
+import { PriorityMark } from "@/components/tasks/PriorityMark";
+import type { Task } from "@/types/task";
 
-/** Ambient sidebar companion, pixel-exact port of reference-design's CompanionWidget — docs/03-design.md §11.9 */
+/** Ambient sidebar companion with pinned task hub */
 const MOOD_MESSAGES: Record<CompanionMood, string[]> = {
   excited: ["QUEST COMPLETE!! ⚡", "We did it!! 🎉", "YES YES YES!! ✨", "More XP!!! 🏆"],
   happy: ["Streak is strong! 🔥", "You're on fire!", "Let's keep going!", "I believe in you ✨"],
@@ -89,25 +93,34 @@ export function Companion({
   level,
   todayCompleted,
   justCompleted = false,
+  pinnedTasks = [],
+  onOpenTask,
+  onUnpinTask,
 }: {
   level: number;
   todayCompleted: number;
   justCompleted?: boolean;
+  pinnedTasks?: Task[];
+  onOpenTask?: (task: Task) => void;
+  onUnpinTask?: (taskId: string) => void;
 }) {
-  const [tip, setTip] = useState(false);
+  const [showPinned, setShowPinned] = useState(false);
+  const [showMood, setShowMood] = useState(false);
   const [msgIdx] = useState(() => Math.floor(Math.random() * 4));
   const mood = getCompanionMood(todayCompleted, justCompleted);
   const compLv = Math.max(1, Math.round(level * 0.65));
   const colorVar = MOOD_COLOR_VAR[mood];
+  const hasPinned = pinnedTasks && pinnedTasks.length > 0;
 
   return (
     <div
       className="relative px-3 pt-2.5 pb-1.5"
       style={{ borderTop: "1px solid var(--color-border)" }}
-      onMouseEnter={() => setTip(true)}
-      onMouseLeave={() => setTip(false)}
+      onMouseEnter={() => !showPinned && setShowMood(true)}
+      onMouseLeave={() => setShowMood(false)}
     >
-      {tip && (
+      {/* Mood Tooltip */}
+      {showMood && !showPinned && (
         <div
           className="absolute right-2 left-2 z-50 px-2.5 py-2"
           style={{
@@ -129,10 +142,72 @@ export function Companion({
         </div>
       )}
 
+      {/* Pinned Tasks Popup */}
+      {showPinned && hasPinned && (
+        <div
+          className="absolute right-0 left-0 z-50 border-2 bg-card overflow-hidden flex flex-col"
+          style={{
+            bottom: "calc(100% + 8px)",
+            maxHeight: "400px",
+            borderColor: "var(--color-primary-gold)",
+            boxShadow: "4px 4px 0 var(--color-primary-gold-dim)",
+          }}
+        >
+          <div
+            className="px-3 py-2 border-b-2 border-border flex items-center justify-between"
+            style={{ backgroundColor: "var(--color-bg-panel-alt)" }}
+          >
+            <span className="font-display text-xs tracking-widest uppercase" style={{ color: "var(--color-primary-gold)" }}>
+              📌 PINNED ({pinnedTasks.length})
+            </span>
+            <button onClick={() => setShowPinned(false)} className="p-0.5 hover:text-destructive transition-colors">
+              <X size={14} />
+            </button>
+          </div>
+
+          <div className="overflow-y-auto flex-1 divide-y divide-border">
+            {pinnedTasks.map((task) => (
+              <div
+                key={task.id}
+                className="p-2.5 hover:bg-primary/10 transition-colors flex gap-2 group cursor-pointer"
+                onClick={() => {
+                  onOpenTask?.(task);
+                  setShowPinned(false);
+                }}
+              >
+                <span className="text-base shrink-0">{TYPE_ICON[task.type]}</span>
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-xs font-bold text-foreground line-clamp-2 group-hover:text-primary transition-colors mb-1">
+                    {task.title}
+                  </h3>
+                  <div className="flex items-center gap-1 flex-wrap">
+                    <PriorityMark priority={task.priority} />
+                    <span className="text-xs px-1.5 py-0.5 border border-border whitespace-nowrap text-xs font-bold" style={{ backgroundColor: "var(--color-bg-panel-alt)" }}>
+                      {task.status.replace(/_/g, " ").toUpperCase()}
+                    </span>
+                    {task.dueDate && <span className="text-xs text-muted-foreground">📅 {task.dueDate.slice(5)}</span>}
+                  </div>
+                </div>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onUnpinTask?.(task.id);
+                  }}
+                  className="p-0.5 hover:text-destructive transition-colors shrink-0 opacity-0 group-hover:opacity-100"
+                >
+                  <X size={12} />
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="flex cursor-default flex-col items-center gap-0">
         <div style={{ animation: MOOD_ANIMATION[mood], transformOrigin: "bottom center", display: "inline-block" }}>
           {/* body */}
           <div
+            onClick={() => hasPinned && setShowPinned(!showPinned)}
             style={{
               position: "relative",
               width: W,
@@ -140,6 +215,7 @@ export function Companion({
               backgroundColor: `var(${colorVar})`,
               border: "2px solid rgba(0,0,0,0.35)",
               imageRendering: "pixelated",
+              cursor: hasPinned ? "pointer" : "default",
             }}
           >
             <div style={px({ top: 3, left: 3, width: 6, height: 6, backgroundColor: "rgba(255,255,255,0.28)" })} />
@@ -204,6 +280,28 @@ export function Companion({
             )}
 
             <Mouth mood={mood} />
+
+            {/* Pinned indicator badge */}
+            {hasPinned && (
+              <div
+                style={px({
+                  top: -4,
+                  right: -4,
+                  width: 12,
+                  height: 12,
+                  backgroundColor: "var(--color-primary-gold)",
+                  border: "1px solid var(--color-primary-gold-dim)",
+                  borderRadius: "50%",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: "8px",
+                  lineHeight: "1",
+                })}
+              >
+                📌
+              </div>
+            )}
           </div>
 
           {/* feet */}

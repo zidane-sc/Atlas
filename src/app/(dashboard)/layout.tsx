@@ -5,7 +5,6 @@ import { CommandPalette } from "@/components/layout/CommandPalette";
 import { TaskFormSheet } from "@/components/tasks/TaskFormSheet";
 import { ProjectFormSheet } from "@/components/projects/ProjectFormSheet";
 import { SprintFormSheet } from "@/components/sprints/SprintFormSheet";
-import { PinnedTaskFABWrapper } from "@/components/tasks/PinnedTaskFABWrapper";
 import { TasksProvider } from "@/components/providers/TasksProvider";
 import { ProjectsProvider } from "@/components/providers/ProjectsProvider";
 import { SprintsProvider } from "@/components/providers/SprintsProvider";
@@ -177,7 +176,6 @@ export default async function DashboardLayout({
                 <TaskFormSheet />
                 <ProjectFormSheet />
                 <SprintFormSheet />
-                <PinnedTaskFABWrapper />
                 <CommandPalette />
               </CommandPaletteProvider>
             </TasksProvider>
