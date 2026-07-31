@@ -8,6 +8,7 @@ import { useTasks } from "@/components/providers/TasksProvider";
 import { useProjects } from "@/components/providers/ProjectsProvider";
 import { calcTaskXP, completedAt, computeRecapGrade, createdAt, isTaskOnTime, calculateStreak } from "@/lib/gamification";
 import { TYPE_ICON } from "@/lib/mock-data";
+import ActivityHeatmap from "@/components/statistics/ActivityHeatmap";
 import type { Project } from "@/types/gamification";
 import type { Priority, Task, TaskType } from "@/types/task";
 
@@ -207,6 +208,7 @@ export default function Page() {
 
       <div className="flex-1 overflow-y-auto p-6">
         <div className="flex flex-col gap-5">
+          <ActivityHeatmap tasks={allTasks} nowAnchor={nowAnchor} />
           <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
             {kpis.map((k) => (
               <div key={k.label} className="border-2 border-border bg-card p-4 text-center">
