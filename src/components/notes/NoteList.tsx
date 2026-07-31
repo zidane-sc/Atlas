@@ -44,9 +44,8 @@ export function NoteList({ notes, onSelectNote, onDeleteNote, onPinNote }: NoteL
                       e.stopPropagation();
                       onPinNote(note.id, !note.pinned);
                     }}
-                    className="px-2 py-1 rounded text-xs transition-all border flex-shrink-0"
+                    className="px-2 py-1 rounded text-xs transition-all flex-shrink-0"
                     style={{
-                      borderColor: note.pinned ? "var(--color-primary-gold)" : "var(--color-border)",
                       color: note.pinned ? "var(--color-primary-gold)" : "var(--color-text-muted)",
                     }}
                     title={note.pinned ? "Unpin" : "Pin"}
