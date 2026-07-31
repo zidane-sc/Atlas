@@ -38,6 +38,7 @@ import { useSprints } from "@/components/providers/SprintsProvider";
 import { sortProjectsForPicker } from "@/lib/picker-sort";
 import { sortSprintsForPicker } from "@/lib/picker-sort";
 import { sortTasksForPicker } from "@/lib/picker-sort";
+import { handleDropdownKeydown, type DropdownNavState } from "@/lib/dropdown-nav";
 import { updateDrawerLastSelectedAction } from "@/lib/actions/user";
 import { TaskNoteLinks } from "@/components/notes/TaskNoteLinks";
 import { STATUS_LABEL, TYPE_ICON } from "@/lib/mock-data";
@@ -151,10 +152,13 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
   const relationInputRef = useRef<HTMLInputElement>(null);
   const [projectSearch, setProjectSearch] = useState("");
   const [projectFocused, setProjectFocused] = useState(false);
+  const [projectSelectedIndex, setProjectSelectedIndex] = useState(-1);
   const projectInputRef = useRef<HTMLInputElement>(null);
   const [sprintSearch, setSprintSearch] = useState("");
   const [sprintFocused, setSprintFocused] = useState(false);
+  const [sprintSelectedIndex, setSprintSelectedIndex] = useState(-1);
   const sprintInputRef = useRef<HTMLInputElement>(null);
+  const [relationSelectedIndex, setRelationSelectedIndex] = useState(-1);
   const [editingAttachmentIndex, setEditingAttachmentIndex] = useState<number | null>(null);
   const [editingDeliverableIndex, setEditingDeliverableIndex] = useState<number | null>(null);
 
@@ -162,6 +166,24 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
     () => (task ? tasks.find((t) => t.id === task.id) || task : null),
     [task, tasks]
   );
+
+  const projectOptions = useMemo(() => {
+    return projectSearch
+      ? projects.filter(p => p.name.toLowerCase().includes(projectSearch.toLowerCase()))
+      : sortProjectsForPicker(projects).slice(0, 5);
+  }, [projectSearch, projects]);
+
+  const sprintOptions = useMemo(() => {
+    return sprintSearch
+      ? sprints.filter(s => s.name.toLowerCase().includes(sprintSearch.toLowerCase()))
+      : sortSprintsForPicker(sprints).slice(0, 5);
+  }, [sprintSearch, sprints]);
+
+  const relationOptions = useMemo(() => {
+    return relationSearch
+      ? otherTasks.filter(t => t.title.toLowerCase().includes(relationSearch.toLowerCase()))
+      : sortTasksForPicker(otherTasks).slice(0, 5);
+  }, [relationSearch, otherTasks]);
 
   const set = <K extends keyof TaskFormValues>(key: K, value: TaskFormValues[K]) =>
     setForm((f) => ({ ...f, [key]: value }));
@@ -422,24 +444,45 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
                     onChange={(e) => {
                       const val = e.target.value;
                       setProjectSearch(val);
+                      setProjectSelectedIndex(-1);
                       if (!projects.some(p => `${p.emoji} ${p.name}` === val)) {
                         set("project", "");
                       }
                     }}
+                    onKeyDown={(e) => {
+                      const newState = handleDropdownKeydown(
+                        e,
+                        { selected: projectSelectedIndex, total: projectOptions.length },
+                        (idx) => {
+                          const p = projectOptions[idx];
+                          if (p) {
+                            void updateDrawerLastSelectedAction("project", p.id);
+                            set("project", p.name);
+                            setProjectSearch("");
+                          }
+                        },
+                        () => { projectInputRef.current?.blur(); setProjectFocused(false); }
+                      );
+                      setProjectSelectedIndex(newState.selected);
+                    }}
                     onFocus={(e) => {
                       setProjectSearch("");
+                      setProjectSelectedIndex(-1);
                       e.target.select();
                       setProjectFocused(true);
                     }}
-                    onBlur={() => setProjectFocused(false)}
+                    onBlur={() => { setProjectFocused(false); setProjectSelectedIndex(-1); }}
                   />
-                  {projectFocused && (
+                  {projectFocused && projectOptions.length > 0 && (
                     <ul className="border border-border max-h-20 overflow-y-auto bg-secondary text-xs absolute top-full left-0 right-0 z-10">
-                      {(projectSearch
-                        ? projects.filter(p => p.name.toLowerCase().includes(projectSearch.toLowerCase()))
-                        : sortProjectsForPicker(projects).slice(0, 5)
-                      ).map((p) => (
-                        <li key={p.id} className="px-2 py-1 cursor-pointer hover:bg-primary/10 border-b border-border last:border-b-0" onMouseDown={(e) => e.preventDefault()} onClick={() => { void updateDrawerLastSelectedAction("project", p.id); set("project", p.name); setProjectSearch(""); projectInputRef.current?.blur(); }}>
+                      {projectOptions.map((p, idx) => (
+                        <li
+                          key={p.id}
+                          className={`px-2 py-1 cursor-pointer border-b border-border last:border-b-0 ${projectSelectedIndex === idx ? "bg-primary/20 font-semibold" : "hover:bg-primary/10"}`}
+                          onMouseDown={(e) => e.preventDefault()}
+                          onMouseEnter={() => setProjectSelectedIndex(idx)}
+                          onClick={() => { void updateDrawerLastSelectedAction("project", p.id); set("project", p.name); setProjectSearch(""); setProjectFocused(false); projectInputRef.current?.blur(); }}
+                        >
                           {p.emoji} {p.name}
                         </li>
                       ))}
@@ -469,24 +512,45 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
                   onChange={(e) => {
                     const val = e.target.value;
                     setSprintSearch(val);
+                    setSprintSelectedIndex(-1);
                     if (!sprints.some(s => s.name === val)) {
                       set("sprint", undefined);
                     }
                   }}
+                  onKeyDown={(e) => {
+                    const newState = handleDropdownKeydown(
+                      e,
+                      { selected: sprintSelectedIndex, total: sprintOptions.length },
+                      (idx) => {
+                        const s = sprintOptions[idx];
+                        if (s) {
+                          void updateDrawerLastSelectedAction("sprint", s.id);
+                          set("sprint", s.name);
+                          setSprintSearch("");
+                        }
+                      },
+                      () => { sprintInputRef.current?.blur(); setSprintFocused(false); }
+                    );
+                    setSprintSelectedIndex(newState.selected);
+                  }}
                   onFocus={(e) => {
                     setSprintSearch("");
+                    setSprintSelectedIndex(-1);
                     e.target.select();
                     setSprintFocused(true);
                   }}
-                  onBlur={() => setSprintFocused(false)}
+                  onBlur={() => { setSprintFocused(false); setSprintSelectedIndex(-1); }}
                 />
-                {sprintFocused && (
+                {sprintFocused && sprintOptions.length > 0 && (
                   <ul className="border border-border max-h-20 overflow-y-auto bg-secondary text-xs absolute top-full left-0 right-0 z-10">
-                    {(sprintSearch
-                      ? sprints.filter(s => s.name.toLowerCase().includes(sprintSearch.toLowerCase()))
-                      : sortSprintsForPicker(sprints).slice(0, 5)
-                    ).map((s) => (
-                      <li key={s.id} className="px-2 py-1 cursor-pointer hover:bg-primary/10 border-b border-border last:border-b-0" onMouseDown={(e) => e.preventDefault()} onClick={() => { void updateDrawerLastSelectedAction("sprint", s.id); set("sprint", s.name); setSprintSearch(""); sprintInputRef.current?.blur(); }}>
+                    {sprintOptions.map((s, idx) => (
+                      <li
+                        key={s.id}
+                        className={`px-2 py-1 cursor-pointer border-b border-border last:border-b-0 ${sprintSelectedIndex === idx ? "bg-primary/20 font-semibold" : "hover:bg-primary/10"}`}
+                        onMouseDown={(e) => e.preventDefault()}
+                        onMouseEnter={() => setSprintSelectedIndex(idx)}
+                        onClick={() => { void updateDrawerLastSelectedAction("sprint", s.id); set("sprint", s.name); setSprintSearch(""); setSprintFocused(false); sprintInputRef.current?.blur(); }}
+                      >
                         {s.name}
                       </li>
                     ))}
@@ -577,24 +641,45 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
                   className={FIELD}
                   placeholder="Search quest..."
                   value={relationSearch}
-                  onChange={(e) => setRelationSearch(e.target.value)}
-                  onFocus={() => setRelationFocused(true)}
-                  onBlur={() => setRelationFocused(false)}
+                  onChange={(e) => {
+                    setRelationSearch(e.target.value);
+                    setRelationSelectedIndex(-1);
+                  }}
                   onKeyDown={(e) => {
                     if (e.key === "Enter" && relationTargetId) {
                       e.preventDefault();
                       addRelation();
+                      return;
                     }
+                    const newState = handleDropdownKeydown(
+                      e,
+                      { selected: relationSelectedIndex, total: relationOptions.length },
+                      (idx) => {
+                        const t = relationOptions[idx];
+                        if (t) {
+                          void updateDrawerLastSelectedAction("task", t.id);
+                          setRelationTargetId(t.id);
+                          setRelationSearch("");
+                        }
+                      },
+                      () => { relationInputRef.current?.blur(); setRelationFocused(false); }
+                    );
+                    setRelationSelectedIndex(newState.selected);
                   }}
+                  onFocus={() => { setRelationFocused(true); setRelationSelectedIndex(-1); }}
+                  onBlur={() => { setRelationFocused(false); setRelationSelectedIndex(-1); }}
                 />
               </div>
-              {relationFocused && (
+              {relationFocused && relationOptions.length > 0 && (
                 <ul className="border border-border max-h-20 overflow-y-auto bg-secondary text-xs">
-                  {(relationSearch
-                    ? otherTasks.filter(t => t.title.toLowerCase().includes(relationSearch.toLowerCase()))
-                    : sortTasksForPicker(otherTasks)
-                  ).slice(0, 5).map((t) => (
-                    <li key={t.id} className="px-2 py-1 cursor-pointer hover:bg-primary/10 border-b border-border last:border-b-0" onMouseDown={(e) => e.preventDefault()} onClick={() => { void updateDrawerLastSelectedAction("task", t.id); setRelationTargetId(t.id); setRelationSearch(""); relationInputRef.current?.blur(); }}>
+                  {relationOptions.map((t, idx) => (
+                    <li
+                      key={t.id}
+                      className={`px-2 py-1 cursor-pointer border-b border-border last:border-b-0 ${relationSelectedIndex === idx ? "bg-primary/20 font-semibold" : "hover:bg-primary/10"}`}
+                      onMouseDown={(e) => e.preventDefault()}
+                      onMouseEnter={() => setRelationSelectedIndex(idx)}
+                      onClick={() => { void updateDrawerLastSelectedAction("task", t.id); setRelationTargetId(t.id); setRelationSearch(""); setRelationFocused(false); relationInputRef.current?.blur(); }}
+                    >
                       {t.title}
                     </li>
                   ))}
