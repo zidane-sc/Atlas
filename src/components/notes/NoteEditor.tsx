@@ -33,6 +33,7 @@ export function NoteEditor({ noteId, initialData, onSave, onClose }: NoteEditorP
   const [saving, setSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<string | null>(null);
   const [tagError, setTagError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(!initialData && !!noteId);
   const saveTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
   const errorTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
   const noteCreatedRef = useRef<string | null>(null);
@@ -123,13 +124,18 @@ export function NoteEditor({ noteId, initialData, onSave, onClose }: NoteEditorP
   useEffect(() => {
     if (noteId && !initialData) {
       const fetchNote = async () => {
-        const result = await getNoteAction(noteId);
-        if (result.success && result.data?.note) {
-          setTitle(result.data.note.title);
-          setContent(result.data.note.content);
-          setTags(result.data.note.tags);
-          setLinkedTasks(result.data.linkedTasks);
-          setTaskIds(result.data.linkedTasks.map((t) => t.id));
+        setIsLoading(true);
+        try {
+          const result = await getNoteAction(noteId);
+          if (result.success && result.data?.note) {
+            setTitle(result.data.note.title);
+            setContent(result.data.note.content);
+            setTags(result.data.note.tags);
+            setLinkedTasks(result.data.linkedTasks);
+            setTaskIds(result.data.linkedTasks.map((t) => t.id));
+          }
+        } finally {
+          setIsLoading(false);
         }
       };
       fetchNote();
@@ -194,6 +200,33 @@ export function NoteEditor({ noteId, initialData, onSave, onClose }: NoteEditorP
   };
 
   const wordCount = content.split(/\s+/).filter(Boolean).length;
+
+  if (isLoading) {
+    return (
+      <div className="flex h-full flex-col border-2 border-gray-600 shadow-lg items-center justify-center" style={{ backgroundColor: "var(--color-bg-panel)" }}>
+        <div className="text-center">
+          <div className="text-xl font-display mb-2" style={{ color: "var(--color-primary-gold)" }}>
+            📖
+          </div>
+          <div className="text-sm text-muted-foreground font-display">Loading note...</div>
+          <div className="mt-2 flex gap-1 justify-center">
+            <div
+              className="w-1 h-1 rounded-full animate-pulse"
+              style={{ backgroundColor: "var(--color-primary-gold)" }}
+            />
+            <div
+              className="w-1 h-1 rounded-full animate-pulse"
+              style={{ backgroundColor: "var(--color-primary-gold)", animationDelay: "100ms" }}
+            />
+            <div
+              className="w-1 h-1 rounded-full animate-pulse"
+              style={{ backgroundColor: "var(--color-primary-gold)", animationDelay: "200ms" }}
+            />
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-full flex-col border-2 border-gray-600 shadow-lg" style={{ backgroundColor: "var(--color-bg-panel)" }}>
