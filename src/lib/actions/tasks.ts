@@ -6,6 +6,7 @@ import { db } from "@/lib/db";
 import { createTaskSchema, updateTaskSchema } from "@/lib/schemas/task";
 import { Prisma, type Task } from "@/generated/prisma/client";
 import type { ActionResult } from "@/lib/actions/types";
+import { calcTaskXP, isTaskOnTime } from "@/lib/gamification";
 
 function toDate(value: string | null | undefined) {
   if (value === undefined) return undefined;
@@ -139,6 +140,27 @@ export async function updateTask(id: string, input: unknown): Promise<ActionResu
             toStatus: updated.status,
           },
         });
+
+        // Award XP when task completes
+        if (updated.status === "done") {
+          const xpEarned = calcTaskXP(
+            updated.priority,
+            updated.storyPoint ?? undefined,
+            isTaskOnTime(updated as any)
+          );
+
+          const currentUser = await tx.user.findUnique({
+            where: { id: owner.id },
+            select: { bonusXp: true },
+          });
+
+          await tx.user.update({
+            where: { id: owner.id },
+            data: {
+              bonusXp: (currentUser?.bonusXp ?? 0) + xpEarned,
+            },
+          });
+        }
       }
 
       if (parsed.data.priority && parsed.data.priority !== existing.priority) {
