@@ -364,12 +364,6 @@ export function NoteEditor({ noteId, initialData, onSave, onClose }: NoteEditorP
             <div className="space-y-1 mb-2 max-h-12 overflow-y-auto">
               {linkedTasks.map((task) => {
                 const linkedTask = tasks.find((t) => t.id === task.id);
-                const priorityColor =
-                  linkedTask?.priority === "p0"
-                    ? "--color-priority-p0"
-                    : linkedTask?.priority === "p1"
-                      ? "--color-priority-p1"
-                      : "--color-primary-gold";
                 const statusEmoji =
                   linkedTask?.status === "done"
                     ? "✓"
@@ -382,13 +376,10 @@ export function NoteEditor({ noteId, initialData, onSave, onClose }: NoteEditorP
                 return (
                   <div
                     key={task.id}
-                    className="px-2 py-0.5 border rounded flex items-center gap-1 text-xs group hover:border-primary-gold transition-colors flex-shrink-0"
-                    style={{
-                      borderColor: "var(--color-border)",
-                      color: "var(--color-foreground)",
-                    }}
+                    className="px-2 py-0.5 flex items-center gap-1 text-xs group flex-shrink-0"
+                    style={{ color: "var(--color-foreground)" }}
                   >
-                    <span style={{ color: `var(${priorityColor})` }}>{statusEmoji}</span>
+                    <span className="text-xs">{statusEmoji}</span>
                     <span className="truncate text-xs flex-1">{task.title}</span>
                     <button
                       type="button"
@@ -398,7 +389,7 @@ export function NoteEditor({ noteId, initialData, onSave, onClose }: NoteEditorP
                         setLinkedTasks(linkedTasks.filter((t) => t.id !== task.id));
                         debouncedSave();
                       }}
-                      className="opacity-50 group-hover:opacity-100"
+                      className="opacity-50 group-hover:opacity-100 text-xs"
                     >
                       ✕
                     </button>
