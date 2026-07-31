@@ -46,11 +46,12 @@ function NavLink({ href, label, icon: Icon, count, badgeColorVar }: NavItem) {
   return (
     <Link
       href={href}
-      className="flex w-full items-center gap-2 px-3 py-1 text-sm transition-all"
+      className="flex w-full items-center gap-2 px-3 py-1 text-sm transition-all focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 rounded-sm"
       style={{
         backgroundColor: active ? "var(--color-bg-panel)" : "transparent",
         color: active ? "var(--color-primary-gold)" : "var(--color-text-muted)",
         borderLeft: active ? "2px solid var(--color-primary-gold)" : "2px solid transparent",
+        outlineColor: "var(--color-primary-gold)",
       }}
     >
       <Icon size={12} />

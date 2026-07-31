@@ -586,11 +586,23 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
 
             <div>
               <label className={LC}>Tags</label>
-              <div className="mb-2 flex flex-wrap gap-1">
+              <div className="mb-3 flex flex-wrap gap-2">
                 {form.tags.map((t) => (
-                  <span key={t} className="inline-flex items-center gap-1 border px-1.5 text-xs text-muted-foreground" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-bg-panel-alt)" }}>
+                  <span
+                    key={t}
+                    className="inline-flex items-center gap-1.5 border-2 px-2 py-1 text-xs font-medium text-foreground transition-colors"
+                    style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-bg-panel-alt)" }}
+                  >
                     #{t}
-                    <button type="button" onClick={() => removeTag(t)} style={{ color: "var(--color-status-blocked)" }}>✕</button>
+                    <button
+                      type="button"
+                      onClick={() => removeTag(t)}
+                      className="hover:opacity-70 transition-opacity"
+                      style={{ color: "var(--color-status-blocked)" }}
+                      title="Remove tag"
+                    >
+                      ✕
+                    </button>
                   </span>
                 ))}
               </div>
