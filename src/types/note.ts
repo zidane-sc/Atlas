@@ -14,6 +14,7 @@ export interface NotePreview {
   preview: string;
   tags: string[];
   createdAt: string;
+  updatedAt: string;
   linkedTaskCount: number;
 }
 

@@ -286,6 +286,7 @@ export async function listNotesAction(
           content: true,
           tags: true,
           createdAt: true,
+          updatedAt: true,
           _count: { select: { taskLinks: true } },
         },
         orderBy: { createdAt: "desc" },
@@ -301,6 +302,7 @@ export async function listNotesAction(
       preview: note.content.length > 50 ? note.content.slice(0, 50) + "..." : note.content,
       tags: note.tags,
       createdAt: note.createdAt.toISOString(),
+      updatedAt: note.updatedAt.toISOString(),
       linkedTaskCount: note._count.taskLinks,
     }));
 

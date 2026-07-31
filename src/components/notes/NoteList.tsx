@@ -63,6 +63,7 @@ export function NoteList({ notes, onSelectNote, onDeleteNote }: NoteListProps) {
               </div>
               <div className="border-t border-gray-600 pt-2 text-xs text-muted-foreground space-y-1">
                 <div>📅 Created: {formatDate(note.createdAt)}</div>
+                <div>✏️ Updated: {formatDate(note.updatedAt)}</div>
               </div>
             </div>
           ))}
