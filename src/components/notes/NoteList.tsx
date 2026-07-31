@@ -10,7 +10,10 @@ interface NoteListProps {
 
 export function NoteList({ notes, onSelectNote, onDeleteNote }: NoteListProps) {
   const formatDate = (date: string) => {
-    return new Date(date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "2-digit" });
+    const d = new Date(date);
+    const dateStr = d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "2-digit" });
+    const timeStr = d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true });
+    return `${dateStr} ${timeStr}`;
   };
 
   return (
