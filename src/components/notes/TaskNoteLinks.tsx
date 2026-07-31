@@ -29,10 +29,6 @@ export function TaskNoteLinks({ taskId, onAddNote }: TaskNoteLinksProps) {
     setLoading(false);
   };
 
-  if (notes.length === 0 && !open) {
-    return null;
-  }
-
   return (
     <div className="mt-4 border-t border-border pt-4">
       <button
@@ -40,7 +36,7 @@ export function TaskNoteLinks({ taskId, onAddNote }: TaskNoteLinksProps) {
         className="flex items-center gap-2 text-sm font-semibold text-foreground hover:text-primary"
       >
         <span>{open ? "▼" : "▶"}</span>
-        <span>Linked Notes ({notes.length})</span>
+        <span>📝 Linked Notes ({notes.length})</span>
       </button>
 
       {open && (
@@ -54,11 +50,16 @@ export function TaskNoteLinks({ taskId, onAddNote }: TaskNoteLinksProps) {
               <div key={note.id} className="p-2 bg-secondary rounded text-xs">
                 <div className="font-semibold">{note.title}</div>
                 <div className="text-muted-foreground">{note.preview}</div>
+                {note.linkedTaskCount > 0 && (
+                  <div className="text-xs mt-1 text-muted-foreground">
+                    🔗 {note.linkedTaskCount} quest{note.linkedTaskCount > 1 ? 's' : ''}
+                  </div>
+                )}
               </div>
             ))
           )}
           {onAddNote && (
-            <button onClick={onAddNote} className="text-xs text-primary hover:underline">
+            <button onClick={onAddNote} className="text-xs text-primary hover:underline mt-2">
               + Link a note
             </button>
           )}
