@@ -1,14 +1,12 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useSession } from "next-auth/react";
 import { listNotesAction, deleteNoteAction } from "@/lib/actions/notes";
 import { NoteList } from "@/components/notes/NoteList";
 import { NoteEditor } from "@/components/notes/NoteEditor";
 import type { NotePreview } from "@/types/note";
 
 export default function NotesPage() {
-  const { data: session } = useSession();
   const [notes, setNotes] = useState<NotePreview[]>([]);
   const [search, setSearch] = useState("");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
