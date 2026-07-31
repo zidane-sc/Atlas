@@ -1,10 +1,11 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Plus, Search } from "lucide-react";
+import { Moon, Plus, Search } from "lucide-react";
 import { Companion } from "@/components/gamification/Companion";
+import { SaveAndQuitOverlay } from "@/components/gamification/SaveAndQuitOverlay";
 import { XpBar } from "@/components/gamification/XpBar";
 import { useTasks } from "@/components/providers/TasksProvider";
 import { useCommandPalette } from "@/components/providers/CommandPaletteProvider";
@@ -76,6 +77,7 @@ function GroupLabel({ children }: { children: React.ReactNode }) {
 
 export function Sidebar() {
   const { tasks, openCreateForm, justCompleted, bonusXp, bonusCoins } = useTasks();
+  const [showQuit, setShowQuit] = useState(false);
   const { setOpen: setCommandPaletteOpen } = useCommandPalette();
   const sheet = useMemo(() => computeCharacterSheet(tasks, bonusXp, bonusCoins), [tasks, bonusXp, bonusCoins]);
   const streakDays = useMemo(() => {
@@ -221,7 +223,24 @@ export function Sidebar() {
         >
           <Plus size={12} /> New Quest
         </button>
+        <button
+          type="button"
+          onClick={() => setShowQuit(true)}
+          className="pixel-button mt-2 flex w-full items-center justify-center gap-1.5 border-2 border-border bg-transparent px-3 py-1.5 text-sm transition-colors"
+          style={{ color: "var(--color-text-muted)" }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.color = "var(--color-text)";
+            e.currentTarget.style.borderColor = "var(--color-primary-gold)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.color = "var(--color-text-muted)";
+            e.currentTarget.style.borderColor = "var(--color-border)";
+          }}
+        >
+          <Moon size={12} /> Save &amp; Quit
+        </button>
       </div>
+      {showQuit && <SaveAndQuitOverlay onClose={() => setShowQuit(false)} />}
     </aside>
   );
 }
