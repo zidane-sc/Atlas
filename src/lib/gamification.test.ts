@@ -129,11 +129,12 @@ describe("getCompanionMood — docs/03-design.md §11.9", () => {
     expect(getCompanionMood(0, true)).toBe("excited");
   });
 
-  it("steps down through happy/idle/sad on streak length", () => {
-    expect(getCompanionMood(7, false)).toBe("happy");
-    expect(getCompanionMood(6, false)).toBe("idle");
-    expect(getCompanionMood(3, false)).toBe("idle");
-    expect(getCompanionMood(2, false)).toBe("sad");
+  it("steps down through happy/idle/sad as today's completed count drops", () => {
+    expect(getCompanionMood(5, false)).toBe("happy");
+    expect(getCompanionMood(4, false)).toBe("idle");
+    expect(getCompanionMood(2, false)).toBe("idle");
+    expect(getCompanionMood(1, false)).toBe("sad");
+    expect(getCompanionMood(0, false)).toBe("sad");
   });
 });
 
