@@ -8,6 +8,7 @@ import {
   Grid3X3,
   Inbox as InboxIcon,
   LayoutDashboard,
+  MessageSquare,
   Settings as SettingsIcon,
   Sun,
   Swords,
@@ -35,6 +36,7 @@ export const NAV_SMART_VIEWS: NavItemBase[] = [
 ];
 
 export const NAV_MANAGE: NavItemBase[] = [
+  { href: "/notes", label: "Notes", icon: MessageSquare },
   { href: "/projects", label: "Projects", icon: Folder },
   { href: "/sprints", label: "Sprints", icon: Zap },
   { href: "/character", label: "Character", icon: Swords },

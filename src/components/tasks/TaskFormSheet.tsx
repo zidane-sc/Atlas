@@ -39,6 +39,7 @@ import { sortProjectsForPicker } from "@/lib/picker-sort";
 import { sortSprintsForPicker } from "@/lib/picker-sort";
 import { sortTasksForPicker } from "@/lib/picker-sort";
 import { updateDrawerLastSelectedAction } from "@/lib/actions/user";
+import { TaskNoteLinks } from "@/components/notes/TaskNoteLinks";
 import { STATUS_LABEL, TYPE_ICON } from "@/lib/mock-data";
 import type {
   AttachmentType,
@@ -764,7 +765,7 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
               </div>
             </Section>
 
-
+            <TaskNoteLinks taskId={task.id} />
 
             <Section title="History" shape="◫">
               <ul className="flex flex-col gap-1">
