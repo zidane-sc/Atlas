@@ -3,10 +3,12 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { createNoteAction, updateNoteAction, getNoteAction } from "@/lib/actions/notes";
 import { insertMarkdown } from "@/lib/markdown";
+import { useTasks } from "@/components/providers/TasksProvider";
 import { MarkdownToolbar } from "./MarkdownToolbar";
 import { MarkdownPreview } from "./MarkdownPreview";
 import { GamificationFooter } from "./GamificationFooter";
 import type { Note, NoteWithMeta } from "@/types/note";
+import type { Task } from "@/types/task";
 
 interface NoteEditorProps {
   noteId?: string;
@@ -16,11 +18,18 @@ interface NoteEditorProps {
 }
 
 export function NoteEditor({ noteId, initialData, onSave, onClose }: NoteEditorProps) {
+  const { tasks } = useTasks();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [title, setTitle] = useState(initialData?.note.title || "");
   const [content, setContent] = useState(initialData?.note.content || "");
   const [tags, setTags] = useState(initialData?.note.tags || []);
   const [tagInput, setTagInput] = useState("");
+  const [taskIds, setTaskIds] = useState<string[]>(initialData?.linkedTasks.map((t) => t.id) || []);
+  const [linkedTasks, setLinkedTasks] = useState<Array<{ id: string; title: string }>>(
+    initialData?.linkedTasks || []
+  );
+  const [taskSearch, setTaskSearch] = useState("");
+  const [showTaskPicker, setShowTaskPicker] = useState(false);
   const [saving, setSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<string | null>(null);
   const [tagError, setTagError] = useState<string | null>(null);
@@ -39,6 +48,7 @@ export function NoteEditor({ noteId, initialData, onSave, onClose }: NoteEditorP
             title,
             content,
             tags,
+            taskIds,
           })
         : noteCreatedRef.current
         ? await updateNoteAction({
@@ -46,11 +56,13 @@ export function NoteEditor({ noteId, initialData, onSave, onClose }: NoteEditorP
             title,
             content,
             tags,
+            taskIds,
           })
         : await createNoteAction({
             title,
             content,
             tags,
+            taskIds,
           });
 
       if (result.success) {
@@ -62,7 +74,7 @@ export function NoteEditor({ noteId, initialData, onSave, onClose }: NoteEditorP
     } finally {
       setSaving(false);
     }
-  }, [title, content, tags, noteId]);
+  }, [title, content, tags, taskIds, noteId]);
 
   const handleSave = useCallback(async () => {
     if (!title.trim() || !content.trim()) return;
@@ -75,11 +87,13 @@ export function NoteEditor({ noteId, initialData, onSave, onClose }: NoteEditorP
             title,
             content,
             tags,
+            taskIds,
           })
         : await createNoteAction({
             title,
             content,
             tags,
+            taskIds,
           });
 
       if (result.success) {
@@ -101,6 +115,8 @@ export function NoteEditor({ noteId, initialData, onSave, onClose }: NoteEditorP
       setTitle(initialData.note.title);
       setContent(initialData.note.content);
       setTags(initialData.note.tags);
+      setLinkedTasks(initialData.linkedTasks);
+      setTaskIds(initialData.linkedTasks.map((t) => t.id));
     }
   }, [initialData?.note.id]);
 
@@ -112,6 +128,8 @@ export function NoteEditor({ noteId, initialData, onSave, onClose }: NoteEditorP
           setTitle(result.data.note.title);
           setContent(result.data.note.content);
           setTags(result.data.note.tags);
+          setLinkedTasks(result.data.linkedTasks);
+          setTaskIds(result.data.linkedTasks.map((t) => t.id));
         }
       };
       fetchNote();
@@ -250,11 +268,12 @@ export function NoteEditor({ noteId, initialData, onSave, onClose }: NoteEditorP
       <div className="border-t-2" style={{ borderColor: "var(--color-primary-gold)" }}>
         <div className="px-3 py-2 border-b border-gray-600" style={{ backgroundColor: "var(--color-bg-panel-alt)" }}>
           <span className="text-xs font-display" style={{ color: "var(--color-primary-gold)" }}>
-            🏷️ TAGS & INFO
+            🏷️ TAGS & LINKS
           </span>
         </div>
-        <div className="flex items-center gap-3 p-4 text-xs text-muted-foreground">
-          <div className="flex-1">
+        <div className="p-4 text-xs text-muted-foreground space-y-3">
+          {/* Tags */}
+          <div>
             <div className="flex gap-2 flex-wrap mb-2">
               {tags.map((tag) => (
                 <span key={tag} className="px-2 py-1 bg-secondary text-secondary-foreground rounded">
@@ -301,6 +320,83 @@ export function NoteEditor({ noteId, initialData, onSave, onClose }: NoteEditorP
                 ⚠️ {tagError}
               </div>
             )}
+          </div>
+
+          {/* Linked Tasks */}
+          <div className="border-t border-gray-600 pt-3">
+            <div className="mb-2 flex justify-between items-center">
+              <span className="text-xs font-semibold">🔗 Linked Tasks ({linkedTasks.length})</span>
+            </div>
+            {linkedTasks.length > 0 && (
+              <div className="flex gap-1 flex-wrap mb-2">
+                {linkedTasks.map((task) => (
+                  <span key={task.id} className="px-2 py-1 bg-primary/10 text-primary rounded text-xs">
+                    {task.title}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const newTaskIds = taskIds.filter((id) => id !== task.id);
+                        setTaskIds(newTaskIds);
+                        setLinkedTasks(linkedTasks.filter((t) => t.id !== task.id));
+                        debouncedSave();
+                      }}
+                      className="ml-1 hover:text-destructive"
+                    >
+                      ✕
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
+            <div className="relative">
+              <input
+                type="text"
+                value={taskSearch}
+                onChange={(e) => setTaskSearch(e.target.value)}
+                onFocus={() => setShowTaskPicker(true)}
+                placeholder="Search tasks to link..."
+                className="px-2 py-1 border border-gray-500 rounded bg-panel text-xs w-full"
+                style={{ color: "var(--color-foreground)" }}
+              />
+              {showTaskPicker && (
+                <div
+                  className="absolute top-full left-0 right-0 mt-1 border border-gray-500 rounded bg-panel max-h-40 overflow-y-auto z-50"
+                  onMouseLeave={() => setShowTaskPicker(false)}
+                >
+                  {tasks
+                    .filter(
+                      (task) =>
+                        !taskIds.includes(task.id) &&
+                        task.title.toLowerCase().includes(taskSearch.toLowerCase())
+                    )
+                    .slice(0, 8)
+                    .map((task) => (
+                      <button
+                        key={task.id}
+                        type="button"
+                        onClick={() => {
+                          setTaskIds([...taskIds, task.id]);
+                          setLinkedTasks([...linkedTasks, { id: task.id, title: task.title }]);
+                          setTaskSearch("");
+                          setShowTaskPicker(false);
+                          debouncedSave();
+                        }}
+                        className="w-full text-left px-2 py-1 hover:bg-primary/10 text-xs border-b border-gray-600 last:border-b-0 transition-colors"
+                        style={{ color: "var(--color-foreground)" }}
+                      >
+                        {task.title}
+                      </button>
+                    ))}
+                  {tasks.filter(
+                    (task) =>
+                      !taskIds.includes(task.id) &&
+                      task.title.toLowerCase().includes(taskSearch.toLowerCase())
+                  ).length === 0 && (
+                    <div className="px-2 py-1 text-xs text-muted-foreground">No tasks found</div>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
         </div>
         <GamificationFooter wordCount={wordCount} hasStreak={false} />
