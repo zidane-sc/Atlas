@@ -12,6 +12,7 @@ export function MarkdownToolbar({ onInsert }: MarkdownToolbarProps) {
     <div className="flex gap-1 flex-wrap p-2 border-b border-gray-600 bg-panel">
       {/* Text Formatting */}
       <button
+        type="button"
         onClick={() => onInsert({ before: "**", after: "**" })}
         className={buttonClass}
         title="Bold"
@@ -19,6 +20,7 @@ export function MarkdownToolbar({ onInsert }: MarkdownToolbarProps) {
         B
       </button>
       <button
+        type="button"
         onClick={() => onInsert({ before: "*", after: "*" })}
         className={buttonClass}
         title="Italic"
@@ -26,6 +28,7 @@ export function MarkdownToolbar({ onInsert }: MarkdownToolbarProps) {
         I
       </button>
       <button
+        type="button"
         onClick={() => onInsert({ before: "~~", after: "~~" })}
         className={buttonClass}
         title="Strikethrough"
@@ -33,6 +36,7 @@ export function MarkdownToolbar({ onInsert }: MarkdownToolbarProps) {
         S
       </button>
       <button
+        type="button"
         onClick={() => onInsert({ before: "`", after: "`" })}
         className={buttonClass}
         title="Inline Code"
@@ -45,6 +49,7 @@ export function MarkdownToolbar({ onInsert }: MarkdownToolbarProps) {
 
       {/* Structure */}
       <button
+        type="button"
         onClick={() => onInsert({ before: "# ", after: "" }, true)}
         className={buttonClass}
         title="Heading 1"
@@ -52,6 +57,7 @@ export function MarkdownToolbar({ onInsert }: MarkdownToolbarProps) {
         H1
       </button>
       <button
+        type="button"
         onClick={() => onInsert({ before: "## ", after: "" }, true)}
         className={buttonClass}
         title="Heading 2"
@@ -59,6 +65,7 @@ export function MarkdownToolbar({ onInsert }: MarkdownToolbarProps) {
         H2
       </button>
       <button
+        type="button"
         onClick={() => onInsert({ before: "### ", after: "" }, true)}
         className={buttonClass}
         title="Heading 3"
@@ -66,6 +73,7 @@ export function MarkdownToolbar({ onInsert }: MarkdownToolbarProps) {
         H3
       </button>
       <button
+        type="button"
         onClick={() => onInsert({ before: "> ", after: "" }, true)}
         className={buttonClass}
         title="Quote"
@@ -78,6 +86,7 @@ export function MarkdownToolbar({ onInsert }: MarkdownToolbarProps) {
 
       {/* Lists & Checkboxes */}
       <button
+        type="button"
         onClick={() => onInsert({ before: "- ", after: "" }, true)}
         className={buttonClass}
         title="Bullet List"
@@ -85,6 +94,7 @@ export function MarkdownToolbar({ onInsert }: MarkdownToolbarProps) {
         •
       </button>
       <button
+        type="button"
         onClick={() => onInsert({ before: "1. ", after: "" }, true)}
         className={buttonClass}
         title="Numbered List"
@@ -92,6 +102,7 @@ export function MarkdownToolbar({ onInsert }: MarkdownToolbarProps) {
         1.
       </button>
       <button
+        type="button"
         onClick={() => onInsert({ before: "- [ ] ", after: "" }, true)}
         className={buttonClass}
         title="Checkbox"
@@ -104,6 +115,7 @@ export function MarkdownToolbar({ onInsert }: MarkdownToolbarProps) {
 
       {/* Advanced */}
       <button
+        type="button"
         onClick={() => onInsert({ before: "[", after: "](url)" })}
         className={buttonClass}
         title="Link"
@@ -111,6 +123,7 @@ export function MarkdownToolbar({ onInsert }: MarkdownToolbarProps) {
         🔗
       </button>
       <button
+        type="button"
         onClick={() =>
           onInsert({
             before: "| Col1 | Col2 |\n|------|------|\n| A    | B    |",
@@ -123,6 +136,7 @@ export function MarkdownToolbar({ onInsert }: MarkdownToolbarProps) {
         ▦
       </button>
       <button
+        type="button"
         onClick={() => onInsert("---")}
         className={buttonClass}
         title="Horizontal Line"
