@@ -23,7 +23,9 @@ export function NoteEditor({ noteId, initialData, onSave, onClose }: NoteEditorP
   const [tagInput, setTagInput] = useState("");
   const [saving, setSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<string | null>(null);
+  const [tagError, setTagError] = useState<string | null>(null);
   const saveTimeoutRef = useRef<NodeJS.Timeout>();
+  const errorTimeoutRef = useRef<NodeJS.Timeout>();
 
   const handleAutoSave = useCallback(async () => {
     if (!title.trim() || !content.trim()) return;
@@ -108,6 +110,7 @@ export function NoteEditor({ noteId, initialData, onSave, onClose }: NoteEditorP
   useEffect(() => {
     return () => {
       if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+      if (errorTimeoutRef.current) clearTimeout(errorTimeoutRef.current);
     };
   }, []);
 
@@ -153,6 +156,11 @@ export function NoteEditor({ noteId, initialData, onSave, onClose }: NoteEditorP
       setTags([...tags, newTag]);
       setTagInput("");
       debouncedSave();
+      setTagError(null);
+    } else {
+      setTagError(`Tag ${newTag} already exists`);
+      if (errorTimeoutRef.current) clearTimeout(errorTimeoutRef.current);
+      errorTimeoutRef.current = setTimeout(() => setTagError(null), 3000);
     }
   };
 
@@ -210,36 +218,52 @@ export function NoteEditor({ noteId, initialData, onSave, onClose }: NoteEditorP
       {/* Footer with Tags & Gamification */}
       <div className="border-t border-gray-600">
         <div className="flex items-center gap-3 p-3 text-xs text-muted-foreground">
-          <div className="flex gap-2 flex-wrap flex-1">
-            {tags.map((tag) => (
-              <span key={tag} className="px-2 py-1 bg-secondary text-secondary-foreground rounded">
-                {tag}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setTags(tags.filter((t) => t !== tag));
-                    debouncedSave();
-                  }}
-                  className="ml-1 hover:text-destructive"
-                >
-                  ✕
-                </button>
-              </span>
-            ))}
-            <input
-              type="text"
-              value={tagInput}
-              onChange={(e) => setTagInput(e.target.value)}
-              onKeyPress={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  handleAddTag();
-                }
-              }}
-              placeholder="Add tag..."
-              className="px-2 py-1 border border-gray-500 rounded bg-panel text-xs"
-              style={{ color: "var(--color-foreground)" }}
-            />
+          <div className="flex-1">
+            <div className="flex gap-2 flex-wrap mb-2">
+              {tags.map((tag) => (
+                <span key={tag} className="px-2 py-1 bg-secondary text-secondary-foreground rounded">
+                  {tag}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setTags(tags.filter((t) => t !== tag));
+                      debouncedSave();
+                    }}
+                    className="ml-1 hover:text-destructive"
+                  >
+                    ✕
+                  </button>
+                </span>
+              ))}
+            </div>
+            <div className="flex gap-1">
+              <input
+                type="text"
+                value={tagInput}
+                onChange={(e) => setTagInput(e.target.value)}
+                onKeyPress={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    handleAddTag();
+                  }
+                }}
+                placeholder="Add tag..."
+                className="px-2 py-1 border border-gray-500 rounded bg-panel text-xs flex-1"
+                style={{ color: "var(--color-foreground)" }}
+              />
+              <button
+                type="button"
+                onClick={handleAddTag}
+                className="px-2 py-1 border border-gray-500 rounded bg-panel text-foreground hover:bg-panel-alt text-xs"
+              >
+                Add
+              </button>
+            </div>
+            {tagError && (
+              <div className="text-xs text-red-500 mt-1">
+                {tagError}
+              </div>
+            )}
           </div>
         </div>
         <GamificationFooter wordCount={wordCount} hasStreak={false} />
