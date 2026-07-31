@@ -169,6 +169,8 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
     [task, tasks]
   );
 
+  const otherTasks = useMemo(() => tasks.filter((t) => t.id !== task?.id), [tasks, task?.id]);
+
   const projectOptions = useMemo(() => {
     return projectSearch
       ? projects.filter(p => p.name.toLowerCase().includes(projectSearch.toLowerCase()))
@@ -196,8 +198,6 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
     setTagInput("");
   };
   const removeTag = (tag: string) => set("tags", form.tags.filter((t) => t !== tag));
-
-  const otherTasks = tasks.filter((t) => t.id !== task?.id);
 
   const addRelation = () => {
     const target = otherTasks.find((t) => t.id === relationTargetId);
