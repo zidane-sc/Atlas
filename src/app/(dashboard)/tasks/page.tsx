@@ -62,12 +62,13 @@ export default function Page() {
             <button
               key={id}
               onClick={() => setTab(id)}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-sm whitespace-nowrap transition-all"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-sm whitespace-nowrap transition-all font-medium"
               style={{
                 color: active ? "var(--color-primary-gold)" : "var(--color-text-muted)",
                 backgroundColor: active ? "var(--color-bg-panel)" : "transparent",
-                borderBottom: active ? "2px solid var(--color-primary-gold)" : "2px solid transparent",
-                marginBottom: active ? "-2px" : "0",
+                borderBottom: active ? "3px solid var(--color-primary-gold)" : "3px solid transparent",
+                marginBottom: active ? "-3px" : "0",
+                boxShadow: active ? "0 2px 0 0 rgba(0,0,0,0.1) inset" : "none",
               }}
             >
               <span style={{ color: active ? "var(--color-primary-gold)" : "var(--color-dim)" }}>{shape}</span>

@@ -54,7 +54,8 @@ export function TaskCard({
               onClick={(e) => e.stopPropagation()}
               onKeyDown={(e) => e.stopPropagation()}
               onChange={(e) => onMoveStatus(task, e.target.value as TaskStatus)}
-              className="border border-border bg-card px-0.5 py-0 text-sm text-muted-foreground outline-none focus:border-primary focus:text-foreground"
+              className="border-2 border-border bg-secondary px-2 py-1 text-xs text-foreground outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:border-primary font-medium transition-colors cursor-pointer hover:bg-secondary/80"
+              style={{ color: `var(${STATUS_COLOR_VAR[task.status]})` }}
             >
               {KANBAN_COLUMNS.map((s) => (
                 <option key={s} value={s}>{STATUS_SHAPE[s]} {STATUS_LABEL[s]}</option>

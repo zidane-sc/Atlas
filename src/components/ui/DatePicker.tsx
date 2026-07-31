@@ -74,7 +74,7 @@ export function DatePicker({ value, onChange }: { value?: string; onChange: (dat
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full border-2 border-border bg-secondary px-3 py-1.5 text-sm text-foreground text-left hover:bg-secondary/80 transition-colors flex items-center justify-between"
+        className="w-full border-2 border-border bg-secondary px-3 py-1.5 text-sm text-foreground text-left hover:bg-secondary/80 transition-colors flex items-center justify-between focus-visible:ring-2 focus-visible:ring-primary focus-visible:border-primary"
       >
         <span>{value ? formatDate(value) : "Select date..."}</span>
         {value && (
@@ -139,8 +139,10 @@ export function DatePicker({ value, onChange }: { value?: string; onChange: (dat
                   key={day}
                   type="button"
                   onClick={() => handleDateClick(day)}
-                  className={`w-7 h-7 text-xs border border-border hover:bg-primary/30 transition-colors flex items-center justify-center ${
-                    isSelected ? "border-primary bg-primary/20 font-bold" : ""
+                  className={`w-7 h-7 text-xs border-2 hover:bg-primary/30 transition-colors flex items-center justify-center font-medium ${
+                    isSelected
+                      ? "border-primary bg-primary/40 font-bold text-foreground shadow-inner"
+                      : "border-border text-muted-foreground"
                   }`}
                 >
                   {day}
