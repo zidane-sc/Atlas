@@ -17,10 +17,8 @@ export function TaskNoteLinks({ taskId, onAddNote }: TaskNoteLinksProps) {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (open) {
-      loadNotes();
-    }
-  }, [open]);
+    loadNotes();
+  }, [taskId]);
 
   const loadNotes = async () => {
     setLoading(true);
