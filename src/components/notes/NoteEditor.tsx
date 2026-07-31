@@ -192,7 +192,7 @@ export function NoteEditor({ noteId, initialData, onSave, onClose }: NoteEditorP
               setContent(e.target.value);
               debouncedSave();
             }}
-            onBlur={handleSave}
+            onBlur={handleAutoSave}
             placeholder="Write markdown..."
             className="flex-1 p-4 font-mono text-sm bg-panel text-foreground border-none outline-none resize-none"
           />
