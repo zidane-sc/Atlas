@@ -20,6 +20,7 @@ interface NoteEditorProps {
 export function NoteEditor({ noteId, initialData, onSave, onClose }: NoteEditorProps) {
   const { tasks } = useTasks();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const taskSearchRef = useRef<HTMLInputElement>(null);
   const [title, setTitle] = useState(initialData?.note.title || "");
   const [content, setContent] = useState(initialData?.note.content || "");
   const [tags, setTags] = useState(initialData?.note.tags || []);
@@ -401,11 +402,12 @@ export function NoteEditor({ noteId, initialData, onSave, onClose }: NoteEditorP
             {/* Task Search Input */}
             <div className="relative">
               <input
+                ref={taskSearchRef}
                 type="text"
                 value={taskSearch}
                 onChange={(e) => setTaskSearch(e.target.value)}
                 onFocus={() => setShowTaskPicker(true)}
-                onBlur={() => setTimeout(() => setShowTaskPicker(false), 100)}
+                onBlur={() => setTimeout(() => setShowTaskPicker(false), 150)}
                 placeholder="quest"
                 className="w-full px-1.5 py-0.25 border border-gray-500 rounded bg-panel text-xs transition-all"
                 style={{
@@ -461,8 +463,8 @@ export function NoteEditor({ noteId, initialData, onSave, onClose }: NoteEditorP
                               setTaskIds([...taskIds, task.id]);
                               setLinkedTasks([...linkedTasks, { id: task.id, title: task.title }]);
                               setTaskSearch("");
-                              setShowTaskPicker(false);
                               debouncedSave();
+                              setTimeout(() => taskSearchRef.current?.focus(), 0);
                             }}
                             className="w-full text-left px-1.5 py-1 transition-all text-xs hover:bg-primary/20 flex items-center gap-1.5"
                             style={{
