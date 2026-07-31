@@ -439,6 +439,15 @@ export function NoteEditor({ noteId, initialData, onSave, onClose }: NoteEditorP
                               ? "--color-priority-p1"
                               : "--color-primary-gold";
 
+                        const statusEmoji =
+                          task.status === "done"
+                            ? "✓"
+                            : task.status === "in_progress"
+                              ? "▶"
+                              : task.status === "blocked"
+                                ? "⊘"
+                                : "○";
+
                         return (
                           <button
                             key={task.id}
@@ -451,7 +460,7 @@ export function NoteEditor({ noteId, initialData, onSave, onClose }: NoteEditorP
                               setShowTaskPicker(false);
                               debouncedSave();
                             }}
-                            className="w-full text-left px-1.5 py-0.5 transition-all text-xs hover:bg-primary/20"
+                            className="w-full text-left px-1.5 py-0.5 transition-all text-xs hover:bg-primary/20 space-y-0.5"
                             style={{
                               borderBottom:
                                 idx < arr.length - 1
@@ -460,10 +469,11 @@ export function NoteEditor({ noteId, initialData, onSave, onClose }: NoteEditorP
                               color: "var(--color-foreground)",
                             }}
                           >
-                            <div className="truncate">
-                              {task.title}
+                            <div className="flex items-center gap-1">
+                              <span className="text-xs">{statusEmoji}</span>
+                              <span className="truncate flex-1 font-semibold">{task.title}</span>
                               <span
-                                className="ml-1 px-0.5 rounded text-xs"
+                                className="px-0.5 rounded text-xs flex-shrink-0"
                                 style={{
                                   backgroundColor: `var(${priorityColor})/20`,
                                   color: `var(${priorityColor})`,
@@ -471,6 +481,17 @@ export function NoteEditor({ noteId, initialData, onSave, onClose }: NoteEditorP
                               >
                                 {task.priority.toUpperCase()}
                               </span>
+                            </div>
+                            <div className="text-xs text-muted-foreground flex gap-2">
+                              {task.project && <span>{task.project}</span>}
+                              {task.dueDate && (
+                                <span>
+                                  📅 {new Date(task.dueDate).toLocaleDateString("en-US", {
+                                    month: "short",
+                                    day: "numeric",
+                                  })}
+                                </span>
+                              )}
                             </div>
                           </button>
                         );
