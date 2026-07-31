@@ -271,12 +271,12 @@ export function NoteEditor({ noteId, initialData, onSave, onClose }: NoteEditorP
             🏷️ TAGS & LINKS
           </span>
         </div>
-        <div className="p-4 text-xs text-muted-foreground space-y-3">
-          {/* Tags */}
+        <div className="p-3 text-xs text-muted-foreground grid grid-cols-2 gap-3">
+          {/* Tags Column */}
           <div>
-            <div className="flex gap-2 flex-wrap mb-2">
-              {tags.map((tag) => (
-                <span key={tag} className="px-2 py-1 bg-secondary text-secondary-foreground rounded">
+            <div className="flex gap-1 flex-wrap mb-2 min-h-6">
+              {tags.slice(0, 2).map((tag) => (
+                <span key={tag} className="px-2 py-0.5 bg-secondary text-secondary-foreground rounded text-xs">
                   {tag}
                   <button
                     type="button"
@@ -290,6 +290,9 @@ export function NoteEditor({ noteId, initialData, onSave, onClose }: NoteEditorP
                   </button>
                 </span>
               ))}
+              {tags.length > 2 && (
+                <span className="text-muted-foreground text-xs">+{tags.length - 2}</span>
+              )}
             </div>
             <div className="flex gap-1">
               <input
@@ -302,73 +305,67 @@ export function NoteEditor({ noteId, initialData, onSave, onClose }: NoteEditorP
                     handleAddTag();
                   }
                 }}
-                placeholder="Add tag..."
-                className="px-2 py-1 border border-gray-500 rounded bg-panel text-xs flex-1"
+                placeholder="tag..."
+                className="px-2 py-0.5 border border-gray-500 rounded bg-panel text-xs flex-1"
                 style={{ color: "var(--color-foreground)" }}
               />
               <button
                 type="button"
                 onClick={handleAddTag}
-                className="px-3 py-1 border-2 rounded bg-panel text-foreground hover:bg-panel-alt text-xs font-display transition-all active:scale-95"
+                className="px-2 py-0.5 border-2 rounded bg-panel text-foreground hover:bg-panel-alt text-xs font-display transition-all active:scale-95"
                 style={{ borderColor: "var(--color-primary-gold)", color: "var(--color-primary-gold)" }}
               >
-                Add
+                +
               </button>
             </div>
             {tagError && (
-              <div className="text-xs mt-1 px-2 py-1 rounded" style={{ backgroundColor: "rgba(239, 68, 68, 0.1)", color: "#ef4444", border: "1px solid #ef4444" }}>
+              <div className="text-xs mt-1 px-1 py-0.5 rounded" style={{ backgroundColor: "rgba(239, 68, 68, 0.1)", color: "#ef4444", border: "1px solid #ef4444" }}>
                 ⚠️ {tagError}
               </div>
             )}
           </div>
 
-          {/* Linked Tasks */}
-          <div className="border-t border-gray-600 pt-3">
-            <div className="mb-3 flex justify-between items-center">
-              <span className="text-xs font-semibold tracking-widest" style={{ color: "var(--color-primary-gold)" }}>
-                🔗 LINKED QUESTS ({linkedTasks.length})
-              </span>
-            </div>
-
-            {/* Linked Task Pills */}
-            {linkedTasks.length > 0 && (
-              <div className="flex gap-2 flex-wrap mb-3 pb-2 border-b border-gray-600">
-                {linkedTasks.map((task) => {
-                  const linkedTask = tasks.find((t) => t.id === task.id);
-                  const priorityColor =
-                    linkedTask?.priority === "p0"
-                      ? "--color-priority-p0"
-                      : linkedTask?.priority === "p1"
-                        ? "--color-priority-p1"
-                        : "--color-primary-gold";
-                  return (
-                    <div
-                      key={task.id}
-                      className="px-2 py-1 border-2 rounded flex items-center gap-1 text-xs font-display transition-all hover:scale-105"
-                      style={{
-                        borderColor: `var(${priorityColor})`,
-                        backgroundColor: `var(${priorityColor})/10`,
-                        color: `var(${priorityColor})`,
+          {/* Linked Tasks Column */}
+          <div>
+            <div className="flex gap-1 flex-wrap mb-2 min-h-6">
+              {linkedTasks.slice(0, 2).map((task) => {
+                const linkedTask = tasks.find((t) => t.id === task.id);
+                const priorityColor =
+                  linkedTask?.priority === "p0"
+                    ? "--color-priority-p0"
+                    : linkedTask?.priority === "p1"
+                      ? "--color-priority-p1"
+                      : "--color-primary-gold";
+                return (
+                  <div
+                    key={task.id}
+                    className="px-1.5 py-0.5 border rounded flex items-center gap-0.5 text-xs font-display transition-all hover:scale-105"
+                    style={{
+                      borderColor: `var(${priorityColor})`,
+                      backgroundColor: `var(${priorityColor})/10`,
+                      color: `var(${priorityColor})`,
+                    }}
+                  >
+                    <span className="truncate max-w-[60px] text-xs">{task.title}</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const newTaskIds = taskIds.filter((id) => id !== task.id);
+                        setTaskIds(newTaskIds);
+                        setLinkedTasks(linkedTasks.filter((t) => t.id !== task.id));
+                        debouncedSave();
                       }}
+                      className="hover:opacity-60 transition-opacity flex-shrink-0"
                     >
-                      <span className="line-clamp-1">{task.title}</span>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const newTaskIds = taskIds.filter((id) => id !== task.id);
-                          setTaskIds(newTaskIds);
-                          setLinkedTasks(linkedTasks.filter((t) => t.id !== task.id));
-                          debouncedSave();
-                        }}
-                        className="ml-1 hover:opacity-60 transition-opacity flex-shrink-0"
-                      >
-                        ✕
-                      </button>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
+                      ✕
+                    </button>
+                  </div>
+                );
+              })}
+              {linkedTasks.length > 2 && (
+                <span className="text-muted-foreground text-xs">+{linkedTasks.length - 2}</span>
+              )}
+            </div>
 
             {/* Task Search Input */}
             <div className="relative">
@@ -378,8 +375,8 @@ export function NoteEditor({ noteId, initialData, onSave, onClose }: NoteEditorP
                 onChange={(e) => setTaskSearch(e.target.value)}
                 onFocus={() => setShowTaskPicker(true)}
                 onBlur={() => setTimeout(() => setShowTaskPicker(false), 100)}
-                placeholder="Search quests to link..."
-                className="w-full px-2 py-1 border-2 rounded bg-panel text-xs font-display transition-all"
+                placeholder="quest..."
+                className="w-full px-2 py-0.5 border border-gray-500 rounded bg-panel text-xs font-display transition-all"
                 style={{
                   borderColor: showTaskPicker ? "var(--color-primary-gold)" : "var(--color-border)",
                   color: "var(--color-foreground)",
@@ -389,11 +386,11 @@ export function NoteEditor({ noteId, initialData, onSave, onClose }: NoteEditorP
               {/* Task Picker Dropdown */}
               {showTaskPicker && (
                 <div
-                  className="absolute top-full left-0 right-0 mt-1 border-2 rounded bg-panel overflow-hidden z-50 shadow-lg"
+                  className="absolute top-full left-0 right-0 mt-1 border border-gray-500 rounded bg-panel overflow-hidden z-50 shadow-lg"
                   style={{ borderColor: "var(--color-primary-gold)" }}
                 >
                   <div
-                    className="max-h-48 overflow-y-auto"
+                    className="max-h-32 overflow-y-auto"
                     style={{ backgroundColor: "var(--color-bg-panel)" }}
                   >
                     {tasks
@@ -402,7 +399,7 @@ export function NoteEditor({ noteId, initialData, onSave, onClose }: NoteEditorP
                           !taskIds.includes(task.id) &&
                           task.title.toLowerCase().includes(taskSearch.toLowerCase())
                       )
-                      .slice(0, 10)
+                      .slice(0, 6)
                       .map((task, idx, arr) => {
                         const priorityColor =
                           task.priority === "p0"
@@ -410,14 +407,6 @@ export function NoteEditor({ noteId, initialData, onSave, onClose }: NoteEditorP
                             : task.priority === "p1"
                               ? "--color-priority-p1"
                               : "--color-primary-gold";
-                        const statusEmoji =
-                          task.status === "done"
-                            ? "✓"
-                            : task.status === "in_progress"
-                              ? "▶"
-                              : task.status === "blocked"
-                                ? "⊘"
-                                : "○";
 
                         return (
                           <button
@@ -431,46 +420,26 @@ export function NoteEditor({ noteId, initialData, onSave, onClose }: NoteEditorP
                               setShowTaskPicker(false);
                               debouncedSave();
                             }}
-                            className="w-full text-left px-3 py-2 transition-all flex items-start gap-2 hover:bg-primary/20"
+                            className="w-full text-left px-2 py-1 transition-all text-xs hover:bg-primary/20"
                             style={{
                               borderBottom:
                                 idx < arr.length - 1
                                   ? "1px solid var(--color-border)"
                                   : "none",
+                              color: "var(--color-foreground)",
                             }}
                           >
-                            <span
-                              className="flex-shrink-0 text-xs font-bold w-4 text-center"
-                              style={{ color: `var(${priorityColor})` }}
-                            >
-                              {statusEmoji}
-                            </span>
-                            <div className="flex-1 min-w-0">
-                              <div
-                                className="text-xs font-semibold truncate line-clamp-1"
+                            <div className="truncate">
+                              {task.title}
+                              <span
+                                className="ml-1 px-1 rounded text-xs font-display"
                                 style={{
-                                  color: "var(--color-foreground)",
+                                  backgroundColor: `var(${priorityColor})/20`,
+                                  color: `var(${priorityColor})`,
                                 }}
                               >
-                                {task.title}
-                              </div>
-                              <div
-                                className="text-xs truncate"
-                                style={{
-                                  color: "var(--color-text-muted)",
-                                }}
-                              >
-                                {task.project || "No project"}
-                              </div>
-                            </div>
-                            <div
-                              className="flex-shrink-0 px-1 py-0.5 rounded text-xs font-display"
-                              style={{
-                                backgroundColor: `var(${priorityColor})/20`,
-                                color: `var(${priorityColor})`,
-                              }}
-                            >
-                              {task.priority.toUpperCase()}
+                                {task.priority.toUpperCase()}
+                              </span>
                             </div>
                           </button>
                         );
@@ -481,12 +450,10 @@ export function NoteEditor({ noteId, initialData, onSave, onClose }: NoteEditorP
                         task.title.toLowerCase().includes(taskSearch.toLowerCase())
                     ).length === 0 && (
                       <div
-                        className="px-3 py-2 text-xs text-center font-display"
+                        className="px-2 py-1 text-xs text-center font-display"
                         style={{ color: "var(--color-text-muted)" }}
                       >
-                        {taskSearch
-                          ? "No quests found matching your search"
-                          : "No more quests to link"}
+                        {taskSearch ? "No results" : "No quests"}
                       </div>
                     )}
                   </div>
