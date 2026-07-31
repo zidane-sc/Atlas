@@ -167,9 +167,9 @@ export function NoteEditor({ noteId, initialData, onSave, onClose }: NoteEditorP
   const wordCount = content.split(/\s+/).filter(Boolean).length;
 
   return (
-    <div className="flex h-full flex-col border-2 border-gray-600" style={{ backgroundColor: "var(--color-bg-panel)" }}>
+    <div className="flex h-full flex-col border-2 border-gray-600 shadow-lg" style={{ backgroundColor: "var(--color-bg-panel)" }}>
       {/* Header */}
-      <div className="flex justify-between items-center p-3 border-b border-gray-600">
+      <div className="flex justify-between items-center p-4 border-b-2" style={{ borderColor: "var(--color-primary-gold)" }}>
         <input
           type="text"
           value={title}
@@ -185,7 +185,11 @@ export function NoteEditor({ noteId, initialData, onSave, onClose }: NoteEditorP
           {saving ? "Saving..." : lastSaved ? `Saved ${lastSaved}` : ""}
         </div>
         {onClose && (
-          <button onClick={onClose} className="ml-4 text-muted-foreground hover:text-foreground">
+          <button
+            onClick={onClose}
+            className="ml-4 px-2 py-1 border border-gray-500 rounded hover:border-primary-gold transition-all"
+            style={{ color: "var(--color-primary-gold)" }}
+          >
             ✕
           </button>
         )}
@@ -194,7 +198,12 @@ export function NoteEditor({ noteId, initialData, onSave, onClose }: NoteEditorP
       {/* Split Pane */}
       <div className="flex flex-1 overflow-hidden">
         {/* Editor Left */}
-        <div className="flex flex-col flex-1 border-r border-gray-600">
+        <div className="flex flex-col flex-1 border-r-2" style={{ borderColor: "var(--color-primary-gold)" }}>
+          <div className="px-3 py-2 border-b border-gray-600" style={{ backgroundColor: "var(--color-bg-panel-alt)" }}>
+            <span className="text-xs font-display" style={{ color: "var(--color-primary-gold)" }}>
+              📝 EDITOR
+            </span>
+          </div>
           <MarkdownToolbar onInsert={handleInsertMarkdown} />
           <textarea
             ref={textareaRef}
@@ -210,14 +219,24 @@ export function NoteEditor({ noteId, initialData, onSave, onClose }: NoteEditorP
         </div>
 
         {/* Preview Right */}
-        <div className="flex-1 border-l border-gray-600 overflow-hidden">
+        <div className="flex-1 border-l-2 overflow-hidden" style={{ borderColor: "var(--color-primary-gold)" }}>
+          <div className="px-3 py-2 border-b border-gray-600" style={{ backgroundColor: "var(--color-bg-panel-alt)" }}>
+            <span className="text-xs font-display" style={{ color: "var(--color-primary-gold)" }}>
+              👁️ PREVIEW
+            </span>
+          </div>
           <MarkdownPreview content={content} />
         </div>
       </div>
 
       {/* Footer with Tags & Gamification */}
-      <div className="border-t border-gray-600">
-        <div className="flex items-center gap-3 p-3 text-xs text-muted-foreground">
+      <div className="border-t-2" style={{ borderColor: "var(--color-primary-gold)" }}>
+        <div className="px-3 py-2 border-b border-gray-600" style={{ backgroundColor: "var(--color-bg-panel-alt)" }}>
+          <span className="text-xs font-display" style={{ color: "var(--color-primary-gold)" }}>
+            🏷️ TAGS & INFO
+          </span>
+        </div>
+        <div className="flex items-center gap-3 p-4 text-xs text-muted-foreground">
           <div className="flex-1">
             <div className="flex gap-2 flex-wrap mb-2">
               {tags.map((tag) => (
@@ -254,14 +273,15 @@ export function NoteEditor({ noteId, initialData, onSave, onClose }: NoteEditorP
               <button
                 type="button"
                 onClick={handleAddTag}
-                className="px-2 py-1 border border-gray-500 rounded bg-panel text-foreground hover:bg-panel-alt text-xs"
+                className="px-3 py-1 border-2 rounded bg-panel text-foreground hover:bg-panel-alt text-xs font-display transition-all active:scale-95"
+                style={{ borderColor: "var(--color-primary-gold)", color: "var(--color-primary-gold)" }}
               >
                 Add
               </button>
             </div>
             {tagError && (
-              <div className="text-xs text-red-500 mt-1">
-                {tagError}
+              <div className="text-xs mt-1 px-2 py-1 rounded" style={{ backgroundColor: "rgba(239, 68, 68, 0.1)", color: "#ef4444", border: "1px solid #ef4444" }}>
+                ⚠️ {tagError}
               </div>
             )}
           </div>
