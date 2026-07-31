@@ -89,12 +89,10 @@ export function Companion({
   level,
   todayCompleted,
   justCompleted = false,
-  compact = false,
 }: {
   level: number;
   todayCompleted: number;
   justCompleted?: boolean;
-  compact?: boolean;
 }) {
   const [tip, setTip] = useState(false);
   const [msgIdx] = useState(() => Math.floor(Math.random() * 4));
@@ -105,7 +103,7 @@ export function Companion({
   return (
     <div
       className="relative px-3 pt-2.5 pb-1.5"
-      style={{ ...(compact ? {} : { borderTop: "1px solid var(--color-border)" }) }}
+      style={{ borderTop: "1px solid var(--color-border)" }}
       onMouseEnter={() => setTip(true)}
       onMouseLeave={() => setTip(false)}
     >
@@ -208,22 +206,17 @@ export function Companion({
             <Mouth mood={mood} />
           </div>
 
+          {/* feet */}
+          <div className="mt-0 flex justify-around">
+            <div style={{ width: 12, height: 6, backgroundColor: `var(${colorVar})`, border: "2px solid rgba(0,0,0,0.3)", borderTop: "none" }} />
+            <div style={{ width: 12, height: 6, backgroundColor: `var(${colorVar})`, border: "2px solid rgba(0,0,0,0.3)", borderTop: "none" }} />
+          </div>
         </div>
 
-        {!compact && (
-          <>
-            {/* feet */}
-            <div className="mt-0 flex justify-around">
-              <div style={{ width: 12, height: 6, backgroundColor: `var(${colorVar})`, border: "2px solid rgba(0,0,0,0.3)", borderTop: "none" }} />
-              <div style={{ width: 12, height: 6, backgroundColor: `var(${colorVar})`, border: "2px solid rgba(0,0,0,0.3)", borderTop: "none" }} />
-            </div>
-
-            <div className="mt-1.5 text-center">
-              <div className="font-display text-[7px]" style={{ color: `var(${colorVar})` }}>PIP</div>
-              <div className="text-xs" style={{ color: "var(--color-dim)" }}>companion lv.{compLv}</div>
-            </div>
-          </>
-        )}
+        <div className="mt-1.5 text-center">
+          <div className="font-display text-[7px]" style={{ color: `var(${colorVar})` }}>PIP</div>
+          <div className="text-xs" style={{ color: "var(--color-dim)" }}>companion lv.{compLv}</div>
+        </div>
       </div>
     </div>
   );

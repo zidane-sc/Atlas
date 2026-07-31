@@ -3,12 +3,12 @@
 import { useMemo } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LogOut, Plus, Search } from "lucide-react";
-import { signOut } from "next-auth/react";
+import { Plus, Search } from "lucide-react";
 import { Companion } from "@/components/gamification/Companion";
+import { XpBar } from "@/components/gamification/XpBar";
 import { useTasks } from "@/components/providers/TasksProvider";
 import { useCommandPalette } from "@/components/providers/CommandPaletteProvider";
-import { computeCharacterSheet, completedAt, formatLocalDate } from "@/lib/gamification";
+import { computeCharacterSheet, getNextStreakMilestone, calculateStreak, completedAt, formatLocalDate } from "@/lib/gamification";
 import { MOCK_NOW } from "@/lib/mock-data";
 import { NAV_CORE, NAV_MANAGE, NAV_SMART_VIEWS, NAV_TASKS, type NavItemBase } from "@/lib/nav-items";
 import { isOverdue } from "@/lib/task-utils";
@@ -34,8 +34,6 @@ const SMART_VIEW_COUNT: Record<string, (tasks: Task[]) => number> = {
   "/tasks/waiting": (tasks) => tasks.filter((t) => t.status === "waiting_external").length,
   "/tasks/focus": (tasks) => tasks.filter((t) => t.status === "ready" && (t.priority === "p0" || t.priority === "p1")).length,
 };
-
-const NAV_QUEST_LABEL = "New Quest";
 
 function NavLink({ href, label, icon: Icon, count, badgeColorVar }: NavItem) {
   const pathname = usePathname();
@@ -80,6 +78,15 @@ export function Sidebar() {
   const { tasks, openCreateForm, justCompleted, bonusXp, bonusCoins } = useTasks();
   const { setOpen: setCommandPaletteOpen } = useCommandPalette();
   const sheet = useMemo(() => computeCharacterSheet(tasks, bonusXp, bonusCoins), [tasks, bonusXp, bonusCoins]);
+  const streakDays = useMemo(() => {
+    const s = calculateStreak(tasks);
+
+    tasks.forEach(t => {
+      const at = completedAt(t);
+      const local = at ? formatLocalDate(at) : null;
+    });
+    return s;
+  }, [tasks]);
   const todayCompletedCount = useMemo(() => {
     const today = new Date();
     const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
@@ -89,6 +96,7 @@ export function Sidebar() {
       return doneAt ? formatLocalDate(doneAt) === todayStr : false;
     }).length;
   }, [tasks]);
+  const milestone = getNextStreakMilestone(streakDays);
   const pathname = usePathname();
 
   const smartViews: NavItem[] = NAV_SMART_VIEWS.map((item) => ({
@@ -113,8 +121,38 @@ export function Sidebar() {
         </div>
       </div>
 
-      <div style={{ borderBottom: "1px solid var(--color-border)" }}>
-        <Companion level={sheet.globalLevel} todayCompleted={todayCompletedCount} justCompleted={justCompleted} compact />
+      {/* Compact XP strip — docs/03-design.md §10 ("compact" XpBar variant) */}
+      <div className="flex flex-col gap-1.5 px-4 py-3" style={{ borderBottom: "1px solid var(--color-border)" }}>
+        <XpBar level={sheet.globalLevel} xpIntoLevel={sheet.xpIntoLevel} xpForNextLevel={sheet.xpForNextLevel} compact />
+        <div className="flex items-center gap-3 text-sm">
+          <span
+            title={todayCompletedCount === 0 ? "You need to complete a task today to fire the streak!" : "Streak active!"}
+            style={{
+              color: todayCompletedCount === 0 ? "var(--color-dim)" : "var(--color-streak-flame)",
+              cursor: "help",
+            }}
+          >
+            <span style={{ filter: todayCompletedCount === 0 ? "grayscale(1) opacity(0.5)" : "none", display: "inline-block" }}>🔥</span> {streakDays}d
+          </span>
+          <span style={{ color: "var(--color-coin)" }}>🪙 {sheet.totalCoins}</span>
+        </div>
+        {milestone && (
+          <div className="mt-2 pt-2" style={{ borderTop: "1px solid var(--color-border)" }}>
+            <div className="mb-1 flex justify-between text-sm" style={{ color: "var(--color-dim)" }}>
+              <span style={{ color: "var(--color-text-muted)" }}>Next: {milestone.label}</span>
+              <span style={{ color: "var(--color-streak-flame)" }}>{milestone.daysLeft}d</span>
+            </div>
+            <div className="flex gap-[2px]">
+              {Array.from({ length: milestone.target }).map((_, i) => (
+                <div
+                  key={i}
+                  className="h-1 flex-1"
+                  style={{ backgroundColor: i < streakDays ? "var(--color-streak-flame)" : "var(--color-border)" }}
+                />
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="px-3 py-2" style={{ borderBottom: "1px solid var(--color-border)" }}>
@@ -172,29 +210,16 @@ export function Sidebar() {
         {NAV_MANAGE.map((item) => (
           <NavLink key={item.href} {...item} />
         ))}
-        <button
-          type="button"
-          onClick={openCreateForm}
-          className="flex w-full items-center gap-2 px-3 py-1 text-sm transition-all"
-          style={{
-            backgroundColor: "transparent",
-            color: "var(--color-primary-gold)",
-            borderLeft: "2px solid var(--color-primary-gold)",
-          }}
-        >
-          <Plus size={12} />
-          <span className="flex-1">{NAV_QUEST_LABEL}</span>
-        </button>
       </nav>
 
+      <Companion level={sheet.globalLevel} todayCompleted={todayCompletedCount} justCompleted={justCompleted} />
       <div className="p-3">
         <button
           type="button"
-          onClick={() => signOut()}
-          className="pixel-button flex w-full items-center justify-center gap-1.5 border-2 border-border bg-transparent px-3 py-1.5 text-sm"
-          style={{ color: "var(--color-text-muted)" }}
+          onClick={openCreateForm}
+          className="pixel-button flex w-full items-center justify-center gap-1.5 border-2 border-primary bg-primary px-3 py-1.5 text-sm text-primary-foreground"
         >
-          <LogOut size={12} /> Logout
+          <Plus size={12} /> New Quest
         </button>
       </div>
     </aside>
