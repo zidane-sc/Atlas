@@ -199,6 +199,9 @@ export function NoteEditor({ noteId, initialData, onSave, onClose }: NoteEditorP
           <button
             onClick={() => {
               if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+              if (title.trim() && content.trim()) {
+                onSave?.({ id: noteId || noteCreatedRef.current || "", title, content, tags, userId: "", createdAt: "", updatedAt: "" });
+              }
               onClose();
             }}
             className="ml-4 px-2 py-1 border border-gray-500 rounded hover:border-primary-gold transition-all"
