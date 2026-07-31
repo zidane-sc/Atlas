@@ -423,7 +423,7 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
                         ? projects.filter(p => p.name.toLowerCase().includes(projectSearch.toLowerCase()))
                         : sortProjectsForPicker(projects).slice(0, 5)
                       ).map((p) => (
-                        <li key={p.id} className="px-2 py-1 cursor-pointer hover:bg-primary/10 border-b border-border last:border-b-0" onClick={() => { set("project", p.name); setProjectSearch(""); projectInputRef.current?.blur(); }}>
+                        <li key={p.id} className="px-2 py-1 cursor-pointer hover:bg-primary/10 border-b border-border last:border-b-0" onMouseDown={(e) => e.preventDefault()} onClick={() => { set("project", p.name); setProjectSearch(""); projectInputRef.current?.blur(); }}>
                           {p.emoji} {p.name}
                         </li>
                       ))}
