@@ -80,13 +80,10 @@ export function Sidebar() {
   const sheet = useMemo(() => computeCharacterSheet(tasks, bonusXp, bonusCoins), [tasks, bonusXp, bonusCoins]);
   const streakDays = useMemo(() => {
     const s = calculateStreak(tasks);
-    console.log("== STREAK DEBUG ==");
-    console.log("Total Tasks count:", tasks.length);
-    console.log("Calculated Streak output:", s);
+
     tasks.forEach(t => {
       const at = completedAt(t);
       const local = at ? formatLocalDate(at) : null;
-      console.log(`Task "${t.title}" (status: ${t.status}) -> completedAt: ${at} -> localDate: ${local} -> history:`, t.statusHistory);
     });
     return s;
   }, [tasks]);
