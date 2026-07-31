@@ -115,7 +115,7 @@ export function NoteEditor({ noteId, initialData, onSave, onClose }: NoteEditorP
       textarea.setSelectionRange(result.newCursorPos, result.newCursorPos);
       textarea.focus();
     }, 0);
-    debouncedSave();
+    if (!noteId) debouncedSave();
   };
 
   const handleAddTag = () => {
@@ -123,7 +123,7 @@ export function NoteEditor({ noteId, initialData, onSave, onClose }: NoteEditorP
       const newTag = tagInput.trim().startsWith("#") ? tagInput.trim() : `#${tagInput.trim()}`;
       setTags([...tags, newTag]);
       setTagInput("");
-      debouncedSave();
+      if (!noteId) debouncedSave();
     }
   };
 
@@ -138,7 +138,7 @@ export function NoteEditor({ noteId, initialData, onSave, onClose }: NoteEditorP
           value={title}
           onChange={(e) => {
             setTitle(e.target.value);
-            debouncedSave();
+            if (!noteId) debouncedSave();
           }}
           placeholder="Note title..."
           className="flex-1 font-display text-lg bg-transparent border-none outline-none"
@@ -164,7 +164,7 @@ export function NoteEditor({ noteId, initialData, onSave, onClose }: NoteEditorP
             value={content}
             onChange={(e) => {
               setContent(e.target.value);
-              debouncedSave();
+              if (!noteId) debouncedSave();
             }}
             onBlur={handleSave}
             placeholder="Write markdown..."
@@ -186,9 +186,10 @@ export function NoteEditor({ noteId, initialData, onSave, onClose }: NoteEditorP
               <span key={tag} className="px-2 py-1 bg-secondary text-secondary-foreground rounded">
                 {tag}
                 <button
+                  type="button"
                   onClick={() => {
                     setTags(tags.filter((t) => t !== tag));
-                    debouncedSave();
+                    if (!noteId) debouncedSave();
                   }}
                   className="ml-1 hover:text-destructive"
                 >
