@@ -24,11 +24,14 @@ export function NotificationQueue({
 }) {
   const settings = useSettings();
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const lastPlayedIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (notifications.length === 0) return;
 
     const latest = notifications[0];
+    if (latest.id === lastPlayedIdRef.current) return;
+
     const soundEnabled = typeof settings === 'object' && 'soundEnabled' in settings ? settings.soundEnabled : true;
     if (shouldPlaySound(latest.event) && soundEnabled) {
       try {
@@ -37,6 +40,7 @@ export function NotificationQueue({
           audioRef.current.play().catch(() => {
             // Silent fail if audio fails
           });
+          lastPlayedIdRef.current = latest.id;
         }
       } catch (err) {
         // Silent fail
