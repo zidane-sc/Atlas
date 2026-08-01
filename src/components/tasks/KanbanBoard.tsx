@@ -6,7 +6,6 @@ import { KANBAN_COLUMNS, STATUS_COLOR_VAR, STATUS_LABEL, STATUS_SHAPE } from "@/
 import type { Task, TaskStatus } from "@/types/task";
 import { TaskCard } from "./TaskCard";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { VirtualList } from "@/components/ui/VirtualList";
 
 export function KanbanBoard({ tasks }: { tasks: Task[] }) {
   const { openEditForm, updateTask } = useTasks();
@@ -63,32 +62,14 @@ export function KanbanBoard({ tasks }: { tasks: Task[] }) {
                 }}
                 onDragLeave={() => setDragOverStatus((s) => (s === status ? null : s))}
                 onDrop={(e) => onDrop(e, status)}
-                className="flex-1 overflow-hidden border-2"
+                className="flex-1 space-y-2 overflow-y-auto border-2 p-1"
                 style={{ borderColor: isDragOver ? "var(--color-primary-gold)" : "transparent" }}
               >
-                {columnTasks.length === 0 ? (
-                  <div className="flex items-center justify-center h-full p-2">
-                    <EmptyState icon="─" message={STATUS_LABEL[status]} variant="dashed" />
-                  </div>
-                ) : columnTasks.length > 30 ? (
-                  <VirtualList
-                    items={columnTasks}
-                    itemHeight={140}
-                    containerHeight={600}
-                    renderItem={(task) => (
-                      <div className="px-1 py-1">
-                        <TaskCard key={task.id} task={task} onSelect={openEditForm} onMoveStatus={moveTask} />
-                      </div>
-                    )}
-                    overscan={2}
-                    className="h-full"
-                  />
-                ) : (
-                  <div className="space-y-2 overflow-y-auto p-1 h-full">
-                    {columnTasks.map((task) => (
-                      <TaskCard key={task.id} task={task} onSelect={openEditForm} onMoveStatus={moveTask} />
-                    ))}
-                  </div>
+                {columnTasks.map((task) => (
+                  <TaskCard key={task.id} task={task} onSelect={openEditForm} onMoveStatus={moveTask} />
+                ))}
+                {columnTasks.length === 0 && (
+                  <EmptyState icon="─" message={STATUS_LABEL[status]} variant="dashed" />
                 )}
               </div>
             </div>
