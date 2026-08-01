@@ -47,7 +47,7 @@ export function TaskCard({
         borderStyle: dragging ? "dashed" : "solid",
         boxShadow: dragging ? "0 4px 12px rgba(0,0,0,0.2) inset" : "none",
       }}
-      className="pixel-panel flex w-full cursor-pointer flex-col gap-2 border-2 p-3 text-left transition-all hover:brightness-110 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+      className="pixel-panel flex w-full cursor-pointer flex-col gap-2 border-2 p-3 text-left transition-all duration-200 hover:brightness-110 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 animate-in fade-in zoom-in-95"
     >
       <div className="flex items-center justify-between gap-2">
         <span aria-hidden className="text-base leading-none">{TYPE_ICON[task.type]}</span>

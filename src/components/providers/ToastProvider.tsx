@@ -28,6 +28,13 @@ const styles = `
   .toast-exit {
     animation: toastFadeOut 0.3s cubic-bezier(0.7, 0, 0.84, 0) forwards;
   }
+
+  .scroll-shadow {
+    background:
+      linear-gradient(to bottom, var(--color-bg-deep), transparent) 0% 0% / 100% 8px no-repeat,
+      linear-gradient(to top, var(--color-bg-deep), transparent) 0% 100% / 100% 8px no-repeat;
+    background-attachment: local, local;
+  }
 `;
 
 type ToastKind = "success" | "error";

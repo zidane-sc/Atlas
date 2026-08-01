@@ -60,7 +60,7 @@ import type {
 function Section({ title, shape, defaultOpen = false, children }: { title: string; shape: string; defaultOpen?: boolean; children: React.ReactNode }) {
   return (
     <Collapsible defaultOpen={defaultOpen} className="border-2 border-border">
-      <CollapsibleTrigger className="group flex w-full items-center justify-between px-3 py-2.5 text-left text-sm tracking-widest text-muted-foreground hover:bg-[var(--color-bg-panel-alt)]">
+      <CollapsibleTrigger className="group flex w-full items-center justify-between px-3 py-2.5 text-left text-sm font-semibold tracking-widest text-foreground hover:bg-[var(--color-bg-panel-alt)] transition-colors">
         <span className="flex items-center gap-2">
           <span style={{ color: "var(--color-primary-gold)" }}>{shape}</span>
           <span>{title}</span>
@@ -352,7 +352,7 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
         />
       )}
 
-      <div className="flex flex-1 flex-col gap-3 overflow-y-auto p-4 pt-3">
+      <div className="flex flex-1 flex-col gap-3 overflow-y-auto p-4 pt-3 scroll-shadow">
         <Section title="Core" shape="■" defaultOpen>
           <div className="flex flex-col gap-3">
             <div className="grid grid-cols-2 gap-3">
