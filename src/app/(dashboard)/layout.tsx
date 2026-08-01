@@ -66,11 +66,14 @@ export default async function DashboardLayout({
       where: { actorId: owner.id },
       orderBy: { createdAt: "desc" },
       take: 10,
-      include: {
-        task: true,
-        project: true,
-        sprint: true,
-        actor: true,
+      select: {
+        id: true,
+        action: true,
+        createdAt: true,
+        task: { select: { title: true } },
+        project: { select: { emoji: true, name: true } },
+        sprint: { select: { name: true } },
+        actor: { select: { name: true, email: true } },
       },
     }),
   ]);

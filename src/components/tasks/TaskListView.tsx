@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import { useTasks } from "@/components/providers/TasksProvider";
 import type { Task } from "@/types/task";
 import { TaskCard } from "./TaskCard";
@@ -9,7 +10,7 @@ import { StatusBadge } from "./StatusBadge";
 import { EmptyState } from "@/components/ui/EmptyState";
 
 /** Generic task list, reused across Dashboard/Today/Waiting/Focus/List views. */
-export function TaskListView({
+function TaskListViewComponent({
   tasks,
   empty,
   variant = "card",
@@ -64,3 +65,5 @@ export function TaskListView({
     </div>
   );
 }
+
+export const TaskListView = memo(TaskListViewComponent);

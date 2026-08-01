@@ -1,13 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, memo } from "react";
 import { KANBAN_COLUMNS, STATUS_COLOR_VAR, STATUS_LABEL, STATUS_SHAPE, TYPE_ICON, MOCK_NOW } from "@/lib/mock-data";
 import { formatDueDate, isOverdue } from "@/lib/task-utils";
 import type { Task, TaskStatus } from "@/types/task";
 import { PriorityMark } from "./PriorityMark";
 import { TagPill } from "./TagPill";
 
-export function TaskCard({
+function TaskCardComponent({
   task,
   onSelect,
   onMoveStatus,
@@ -97,3 +97,5 @@ export function TaskCard({
     </div>
   );
 }
+
+export const TaskCard = memo(TaskCardComponent);

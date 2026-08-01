@@ -164,6 +164,9 @@ model Task {
   @@index([projectId])
   @@index([dueDate])
   @@index([parentId])
+  @@index([ownerId])
+  @@index([ownerId, status])
+  @@index([ownerId, deletedAt])
   @@map("tasks")
 }
 
@@ -268,6 +271,7 @@ model ActivityLog {
   details   Json?
   createdAt DateTime @default(now()) @map("created_at")
 
+  @@index([actorId])
   @@map("activity_logs")
 }
 
