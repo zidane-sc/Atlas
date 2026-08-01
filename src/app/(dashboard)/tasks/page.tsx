@@ -424,7 +424,7 @@ function CalendarTab({ tasks, onSelect }: { tasks: Task[]; onSelect: (t: Task) =
               const taskColorVar = (t: Task) =>
                 isOverdue(t.dueDate, MOCK_NOW) && t.status !== "done" ? "--color-status-blocked" : PRIORITY_COLOR_VAR[t.priority];
               return (
-                <Droppable key={day} droppableId={`date-${dateStr}`} type="TASK">
+                <Droppable key={day} droppableId={`date-${dateStr}`} type="TASK" isDropDisabled={false}>
                   {(provided, snapshot) => (
                     <div
                       ref={provided.innerRef}
