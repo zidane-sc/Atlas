@@ -18,6 +18,7 @@ import type { Project } from "@/types/gamification";
 
 const EMPTY_FORM: ProjectFormValues = {
   name: "",
+  code: "",
   emoji: "🚀",
   category: "Side Project",
   colorVar: PROJECT_COLOR_OPTIONS[2].colorVar,
@@ -46,6 +47,7 @@ function ProjectFormBody({ mode, project }: { mode: "create" | "edit"; project: 
     mode === "edit" && project
       ? {
           name: project.name,
+          code: project.code || "",
           emoji: project.emoji,
           category: project.category as ProjectFormValues["category"],
           colorVar: project.colorVar,
@@ -118,6 +120,19 @@ function ProjectFormBody({ mode, project }: { mode: "create" | "edit"; project: 
             autoFocus
           />
           {error && <p className="mt-1 text-xs" style={{ color: "var(--color-status-blocked)" }}>{error}</p>}
+        </div>
+
+        <div>
+          <label className={LC}>Project Code (Optional)</label>
+          <input
+            aria-label="Project Code"
+            className={FIELD}
+            value={form.code || ""}
+            onChange={(e) => set("code", e.target.value.toUpperCase())}
+            placeholder="e.g. ATS, THX, CLI"
+            maxLength={4}
+          />
+          <p className="mt-1 text-xs text-muted-foreground">2-4 uppercase letters/numbers. Used to prefix task codes.</p>
         </div>
 
         <div className="grid grid-cols-2 gap-3">

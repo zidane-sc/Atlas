@@ -14,6 +14,7 @@ export interface Achievement {
 export interface Project {
   id: string;
   name: string;
+  code?: string;
   colorVar: string;
   customColor?: string;
   emoji: string;

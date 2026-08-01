@@ -16,6 +16,7 @@ export const PROJECT_STATUSES = ["active", "on_hold", "completed"] as const;
 
 export const projectFormSchema = z.object({
   name: z.string().trim().min(1, "Project name is required"),
+  code: z.string().trim().toUpperCase().min(2).max(4, "Code must be 2-4 chars").regex(/^[A-Z0-9]+$/, "Code must be uppercase letters/numbers only").optional(),
   emoji: z.string().trim().min(1).max(4),
   category: z.enum(PROJECT_CATEGORIES),
   colorVar: z.string().min(1),
@@ -28,6 +29,7 @@ export type ProjectFormValues = z.infer<typeof projectFormSchema>;
 
 export const createProjectSchema = z.object({
   name: z.string().trim().min(1, "Project name is required"),
+  code: z.string().trim().toUpperCase().min(2).max(4, "Code must be 2-4 chars").regex(/^[A-Z0-9]+$/, "Code must be uppercase letters/numbers only").optional(),
   emoji: z.string().trim().min(1).max(4),
   category: z.enum(PROJECT_CATEGORIES),
   colorVar: z.string().min(1),
@@ -40,6 +42,7 @@ export type CreateProjectInput = z.input<typeof createProjectSchema>;
 
 export const updateProjectSchema = z.object({
   name: z.string().trim().min(1, "Project name is required").optional(),
+  code: z.string().trim().toUpperCase().min(2).max(4, "Code must be 2-4 chars").regex(/^[A-Z0-9]+$/, "Code must be uppercase letters/numbers only").nullable().optional(),
   emoji: z.string().trim().min(1).max(4).optional(),
   category: z.enum(PROJECT_CATEGORIES).optional(),
   colorVar: z.string().min(1).optional(),

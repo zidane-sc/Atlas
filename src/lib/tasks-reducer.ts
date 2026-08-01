@@ -215,6 +215,7 @@ export function mapDbProjectToClient(dbProject: DbProject): Project {
   return {
     id: dbProject.id,
     name: dbProject.name,
+    code: dbProject.code ?? undefined,
     colorVar: dbProject.colorVar,
     customColor: dbProject.customColor ?? undefined,
     emoji: dbProject.emoji,
