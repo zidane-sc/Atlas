@@ -165,6 +165,7 @@ export function tasksReducer(tasks: Task[], action: TasksAction): Task[] {
           priority: action.values.priority,
           effort: action.values.effort,
           storyPoint: action.values.storyPoint,
+          startDate: action.values.startDate,
           dueDate: action.values.dueDate,
           waitingOn: action.values.waitingOn,
           sprint: action.values.sprint,
