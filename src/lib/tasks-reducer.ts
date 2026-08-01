@@ -106,6 +106,7 @@ export type TasksAction =
   | { type: "delete"; id: string }
   | { type: "replaceId"; tempId: string; realId: string }
   | { type: "restore"; task: Task }
+  | { type: "updateCode"; id: string; code: string }
   | { type: "addTime"; id: string; seconds: number }
   | { type: "reset"; tasks: Task[] }
   | { type: "togglePin"; id: string; pinned: boolean }
@@ -186,6 +187,9 @@ export function tasksReducer(tasks: Task[], action: TasksAction): Task[] {
     }
     case "replaceId": {
       return tasks.map((t) => (t.id === action.tempId ? { ...t, id: action.realId } : t));
+    }
+    case "updateCode": {
+      return tasks.map((t) => (t.id === action.id ? { ...t, code: action.code } : t));
     }
     case "restore": {
       if (tasks.some((t) => t.id === action.task.id)) return tasks;

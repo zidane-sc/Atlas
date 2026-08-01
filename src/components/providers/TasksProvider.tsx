@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import type { TaskFormValues } from "@/lib/schemas/task";
-import { buildTaskFromValues, tasksReducer, mapDbTaskToClient } from "@/lib/tasks-reducer";
+import { buildTaskFromValues, tasksReducer } from "@/lib/tasks-reducer";
 import type { Task, ActivityLogClient } from "@/types/task";
 import { createComment as apiCreateComment } from "@/lib/actions/comments";
 import { updateUserStats as apiUpdateUserStats, claimDailyQuestAction as apiClaimDailyQuest } from "@/lib/actions/user";
@@ -206,14 +206,10 @@ export function TasksProvider({
           toast(result.error.message, "error");
           dispatch({ type: "delete", id: tempId });
         } else {
-          // Map DB task to client format with real code from server
-          const clientTask = mapDbTaskToClient(result.data, projects.map(p => ({
-            id: p.id,
-            name: p.name,
-            code: p.code,
-          })) as any);
-          dispatch({ type: "delete", id: tempId });
-          dispatch({ type: "restore", task: clientTask });
+          dispatch({ type: "replaceId", tempId, realId: result.data.id });
+          if (result.data.code) {
+            dispatch({ type: "updateCode", id: result.data.id, code: result.data.code });
+          }
         }
       },
       updateTask: async (id, values) => {
