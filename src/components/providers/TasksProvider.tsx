@@ -326,6 +326,11 @@ export function TasksProvider({
           dispatch({ type: "update", id, changedAt: new Date().toISOString(), values: oldValues });
           return false;
         }
+        // Sync response to client state
+        const dbProjects = projects as any[];
+        const dbSprints = sprints as any[];
+        const syncedTask = mapDbTaskToClient(result.data, dbProjects, dbSprints);
+        dispatch({ type: "restore", task: syncedTask });
         return true;
       },
       deleteTask: async (id) => {
