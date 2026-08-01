@@ -325,7 +325,7 @@ function CalendarTab({ tasks, onSelect }: { tasks: Task[]; onSelect: (t: Task) =
       });
     }
 
-    await updateTask(task.id, {
+    const success = await updateTask(task.id, {
       title: task.title,
       description: task.description,
       project: task.project,
@@ -344,12 +344,14 @@ function CalendarTab({ tasks, onSelect }: { tasks: Task[]; onSelect: (t: Task) =
       deliverables: task.deliverables,
     } as any);
 
-    emitNotification({
-      type: "task:rescheduled",
-      taskId: task.id,
-      title: task.title,
-      newDate: dateStr,
-    });
+    if (success) {
+      emitNotification({
+        type: "task:rescheduled",
+        taskId: task.id,
+        title: task.title,
+        newDate: dateStr,
+      });
+    }
   };
 
   const byDate: Record<string, Task[]> = {};

@@ -88,7 +88,7 @@ interface TasksContextValue {
   tasks: Task[];
   activityLogs: ActivityLogClient[];
   createTask: (values: TaskFormValues) => void;
-  updateTask: (id: string, values: TaskFormValues) => void;
+  updateTask: (id: string, values: TaskFormValues) => Promise<boolean>;
   deleteTask: (id: string) => void;
   duplicateTask: (id: string) => void;
   addComment: (taskId: string, content: string) => Promise<void>;
@@ -216,7 +216,7 @@ export function TasksProvider({
       },
       updateTask: async (id, values) => {
         const prev = tasks.find((t) => t.id === id);
-        if (!prev) return;
+        if (!prev) return false;
 
         const oldTask = { ...prev };
 
@@ -311,6 +311,7 @@ export function TasksProvider({
             priority: oldTask.priority,
             effort: oldTask.effort,
             storyPoint: oldTask.storyPoint ?? undefined,
+            startDate: oldTask.startDate ?? undefined,
             dueDate: oldTask.dueDate ?? undefined,
             sprint: oldTask.sprint,
             waitingOn: oldTask.waitingOn,
@@ -321,7 +322,9 @@ export function TasksProvider({
             deliverables: oldTask.deliverables,
           };
           dispatch({ type: "update", id, changedAt: new Date().toISOString(), values: oldValues });
+          return false;
         }
+        return true;
       },
       deleteTask: async (id) => {
         const prev = tasks.find((t) => t.id === id);
