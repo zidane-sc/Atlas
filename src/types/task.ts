@@ -97,6 +97,7 @@ export interface Task {
   priority: Priority;
   effort?: Effort;
   storyPoint?: number;
+  startDate?: string;
   dueDate?: string;
   waitingOn?: string;
   sprint?: string;

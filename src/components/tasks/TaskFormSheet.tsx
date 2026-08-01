@@ -82,6 +82,7 @@ const EMPTY_FORM: Omit<TaskFormValues, "project"> = {
   relations: [],
   attachments: [],
   deliverables: [],
+  startDate: undefined,
 };
 
 const LC = "mb-1 block text-sm tracking-widest text-muted-foreground uppercase";
@@ -126,6 +127,7 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
           priority: task.priority,
           effort: task.effort,
           storyPoint: task.storyPoint,
+          startDate: task.startDate,
           dueDate: task.dueDate,
           waitingOn: task.waitingOn,
           sprint: task.sprint,
@@ -502,12 +504,21 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
                 </div>
                 {errors.project && <p className="mt-1 text-sm" style={{ color: "var(--color-status-blocked)" }}>{errors.project}</p>}
               </div>
-              <div>
-                <label className={LC}>Due Date</label>
-                <DatePicker
-                  value={form.dueDate}
-                  onChange={(date) => set("dueDate", date)}
-                />
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className={LC}>Start Date</label>
+                  <DatePicker
+                    value={form.startDate}
+                    onChange={(date) => set("startDate", date)}
+                  />
+                </div>
+                <div>
+                  <label className={LC}>Due Date</label>
+                  <DatePicker
+                    value={form.dueDate}
+                    onChange={(date) => set("dueDate", date)}
+                  />
+                </div>
               </div>
             </div>
 

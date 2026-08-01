@@ -143,6 +143,7 @@ export const taskFormSchema = z.object({
     .number()
     .refine((v) => (SP_OPTIONS as readonly number[]).includes(v), "Invalid story point")
     .optional(),
+  startDate: z.string().regex(DATE_RE, "Use YYYY-MM-DD").optional(),
   dueDate: z.string().regex(DATE_RE, "Use YYYY-MM-DD").optional(),
   waitingOn: z.string().trim().optional(),
   sprint: z.string().trim().optional(),
