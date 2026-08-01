@@ -296,34 +296,36 @@ function CalendarTab({ tasks, onSelect }: { tasks: Task[]; onSelect: (t: Task) =
       timeoutId,
     };
 
-    setLastReschedule(undoStateData);
-    if (setUndoState) {
-      setUndoState(undoStateData);
-    }
+    setTimeout(() => {
+      setLastReschedule(undoStateData);
+      if (setUndoState) {
+        setUndoState(undoStateData);
+      }
 
-    // Register undo callback to restore previous date when undo is clicked
-    if (setUndoCallback) {
-      setUndoCallback(() => {
-        updateTask(task.id, {
-          title: task.title,
-          description: task.description,
-          project: task.project,
-          status: task.status,
-          type: task.type,
-          priority: task.priority,
-          effort: task.effort,
-          storyPoint: task.storyPoint,
-          ...{ [calendarView === "due-date" ? "dueDate" : "startDate"]: previousDate || '' },
-          waitingOn: task.waitingOn,
-          sprint: task.sprint,
-          reporter: task.reporter,
-          tags: task.tags,
-          relations: task.relations,
-          attachments: task.attachments,
-          deliverables: task.deliverables,
-        } as any);
-      });
-    }
+      // Register undo callback to restore previous date when undo is clicked
+      if (setUndoCallback) {
+        setUndoCallback(() => {
+          updateTask(task.id, {
+            title: task.title,
+            description: task.description,
+            project: task.project,
+            status: task.status,
+            type: task.type,
+            priority: task.priority,
+            effort: task.effort,
+            storyPoint: task.storyPoint,
+            ...{ [calendarView === "due-date" ? "dueDate" : "startDate"]: previousDate || '' },
+            waitingOn: task.waitingOn,
+            sprint: task.sprint,
+            reporter: task.reporter,
+            tags: task.tags,
+            relations: task.relations,
+            attachments: task.attachments,
+            deliverables: task.deliverables,
+          } as any);
+        });
+      }
+    }, 0);
 
     const updatePayload = {
       title: task.title,
