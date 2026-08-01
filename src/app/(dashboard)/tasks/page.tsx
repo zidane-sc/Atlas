@@ -301,7 +301,7 @@ function CalendarTab({ tasks, onSelect }: { tasks: Task[]; onSelect: (t: Task) =
                     className="mb-0.5 cursor-pointer truncate px-1 text-sm"
                     style={{ color: `var(${taskColorVar(t)})`, borderLeft: `2px solid var(${taskColorVar(t)})` }}
                   >
-                    {isOverdue(t.dueDate, MOCK_NOW) && t.status !== "done" && "⚠ "}{TYPE_ICON[t.type]} {t.title}
+                    {isOverdue(t.dueDate, MOCK_NOW) && t.status !== "done" && "⚠ "}{TYPE_ICON[t.type]} <span style={{ fontSize: "11px", fontWeight: "bold", color: "var(--color-primary-gold)" }}>{t.code}</span> {t.title}
                   </div>
                 ))}
                 {dayTasks.length > 2 && (
@@ -329,7 +329,7 @@ function CalendarTab({ tasks, onSelect }: { tasks: Task[]; onSelect: (t: Task) =
                             className="cursor-pointer truncate px-1 py-0.5 text-sm hover:bg-secondary"
                             style={{ color: `var(${taskColorVar(t)})`, borderLeft: `2px solid var(${taskColorVar(t)})` }}
                           >
-                            {isOverdue(t.dueDate, MOCK_NOW) && t.status !== "done" && "⚠ "}{TYPE_ICON[t.type]} {t.title}
+                            {isOverdue(t.dueDate, MOCK_NOW) && t.status !== "done" && "⚠ "}{TYPE_ICON[t.type]} <span style={{ fontSize: "11px", fontWeight: "bold", color: "var(--color-primary-gold)", marginLeft: "2px" }}>{t.code}</span> <span style={{ fontSize: "11px", fontWeight: "bold", color: "var(--color-primary-gold)" }}>{t.code}</span> {t.title}
                           </div>
                         ))}
                       </div>
@@ -398,9 +398,12 @@ function TimelineTab({ tasks, projects, onSelect }: { tasks: Task[]; projects: P
                     className="absolute top-1 h-5 max-w-[140px] min-w-[90px] cursor-pointer overflow-hidden px-1.5 transition-opacity hover:opacity-70"
                     style={{ left: `${pct}%`, backgroundColor: `var(--color-priority-${t.priority})`, border: `1px solid var(${STATUS_COLOR_VAR[t.status]})` }}
                   >
-                    <span className="block truncate text-sm font-bold" style={{ color: `var(${PRIORITY_BAR_TEXT_VAR[t.priority]})` }}>
-                      {t.title}
-                    </span>
+                    <div style={{ display: "flex", flexDirection: "column", gap: "2px", fontSize: "10px" }}>
+                      <span style={{ fontWeight: "bold", textTransform: "uppercase" }}>{t.code}</span>
+                      <span className="block truncate text-sm font-bold" style={{ color: `var(${PRIORITY_BAR_TEXT_VAR[t.priority]})` }}>
+                        {t.title}
+                      </span>
+                    </div>
                   </button>
                 );
               })}

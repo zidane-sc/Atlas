@@ -296,9 +296,16 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
         className="flex-row items-center justify-between gap-2 space-y-0 border-b border-border py-3"
         style={{ backgroundColor: "var(--color-bg-panel-alt)" }}
       >
-        <SheetTitle className="font-display" style={{ fontSize: "9px", color: "var(--color-primary-gold)" }}>
-          {mode === "edit" ? "◈ QUEST DETAIL" : "+ NEW QUEST"}
-        </SheetTitle>
+        <div className="flex items-center gap-2">
+          <SheetTitle className="font-display" style={{ fontSize: "9px", color: "var(--color-primary-gold)" }}>
+            {mode === "edit" ? "◈ QUEST DETAIL" : "+ NEW QUEST"}
+          </SheetTitle>
+          {mode === "edit" && currentTask && (
+            <span className="text-xs font-mono font-bold" style={{ color: "var(--color-primary-gold)", minWidth: "50px" }}>
+              {currentTask.code}
+            </span>
+          )}
+        </div>
         <SheetDescription className="sr-only">{mode === "edit" ? "Edit this quest." : "What needs to be done?"}</SheetDescription>
         {mode === "edit" && currentTask && (
           <div className="mr-8 flex gap-1.5">
