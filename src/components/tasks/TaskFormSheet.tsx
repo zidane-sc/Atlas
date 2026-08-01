@@ -414,6 +414,23 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
 
             <div className="grid grid-cols-2 gap-3">
               <div>
+                <label className={LC}>Start Date</label>
+                <DatePicker
+                  value={form.startDate}
+                  onChange={(date) => set("startDate", date)}
+                />
+              </div>
+              <div>
+                <label className={LC}>Due Date</label>
+                <DatePicker
+                  value={form.dueDate}
+                  onChange={(date) => set("dueDate", date)}
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
                 <label className={LC}>Reporter</label>
                 <select
                   aria-label="Reporter"
