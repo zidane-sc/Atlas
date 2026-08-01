@@ -81,6 +81,7 @@ export async function updateProject(id: string, input: unknown): Promise<ActionR
         where: { id },
         data: {
           name: parsed.data.name,
+          code: parsed.data.code === null ? null : parsed.data.code,
           emoji: parsed.data.emoji,
           colorVar: parsed.data.colorVar,
           customColor: parsed.data.customColor === null ? null : parsed.data.customColor,

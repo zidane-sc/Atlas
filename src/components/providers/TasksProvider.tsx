@@ -199,11 +199,9 @@ export function TasksProvider({
         if (!result.success) {
           toast(result.error.message, "error");
         } else {
-          console.log("Server response:", result.data);
           const dbProjects = projects as any[];
           const dbSprints = sprints as any[];
           const clientTask = mapDbTaskToClient(result.data, dbProjects, dbSprints);
-          console.log("Mapped client task:", clientTask);
           dispatch({ type: "restore", task: clientTask });
         }
       },
