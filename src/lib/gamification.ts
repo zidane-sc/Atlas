@@ -1,5 +1,6 @@
 import type { Priority, Task, TaskType } from "@/types/task";
 import type { Project, Sprint } from "@/types/gamification";
+import { notificationEmitter } from "@/hooks/useNotifications";
 
 /** Priority base XP and coin bonus — docs/03-design.md §11.1, §11.5 */
 export const PRIORITY_XP_BASE: Record<Priority, number> = {
@@ -450,4 +451,77 @@ export function checkNoteAchievements(
   }
 
   return unlocked;
+}
+
+/**
+ * Check if user leveled up and emit notification if so.
+ * Compare old XP level to new XP level.
+ */
+export function checkAndEmitLevelUp(oldXp: number, newXp: number): void {
+  const oldLevel = getLevelInfo(oldXp).level;
+  const newLevel = getLevelInfo(newXp).level;
+
+  if (newLevel > oldLevel) {
+    notificationEmitter.emit({
+      type: 'gamification:level-up',
+      newLevel,
+      xp: newXp,
+    });
+  }
+}
+
+/**
+ * Check if achievements were unlocked and emit notifications.
+ * Compare old achievement states to new achievement states.
+ */
+export function checkAndEmitAchievementUnlocks(
+  oldAchievements: Record<string, { unlocked: boolean; unlockedAt: string | null }>,
+  newAchievements: Record<string, { unlocked: boolean; unlockedAt: string | null }>
+): void {
+  const ACHIEVEMENT_NAMES: Record<string, string> = {
+    a1: "First Blood",
+    a2: "Task Slayer",
+    a3: "Speed Runner",
+    a4: "Bug Hunter",
+    a5: "Sprint Hero",
+    a6: "100 Quests",
+    a7: "Night Owl",
+    a8: "Morning Hero",
+    a9: "Code Warrior",
+    a10: "Scholar",
+    a11: "Guild Master",
+    a12: "Perfect Week",
+  };
+
+  for (const achievementId of ACHIEVEMENT_IDS) {
+    const wasUnlocked = oldAchievements[achievementId]?.unlocked ?? false;
+    const isNowUnlocked = newAchievements[achievementId]?.unlocked ?? false;
+
+    if (!wasUnlocked && isNowUnlocked) {
+      notificationEmitter.emit({
+        type: 'gamification:achievement-unlocked',
+        achievementId,
+        name: ACHIEVEMENT_NAMES[achievementId] || achievementId,
+      });
+    }
+  }
+}
+
+/**
+ * Check if streak reached a milestone (7, 14, or 30 days) and emit notification.
+ */
+export function checkAndEmitStreakMilestone(oldStreak: number, newStreak: number): void {
+  const milestones = [7, 14, 30];
+
+  for (const milestone of milestones) {
+    // Check if streak just reached this milestone
+    if (oldStreak < milestone && newStreak >= milestone) {
+      const vibe = getStreakVibe(newStreak).label;
+      notificationEmitter.emit({
+        type: 'gamification:streak-milestone',
+        days: newStreak,
+        vibe,
+      });
+    }
+  }
 }

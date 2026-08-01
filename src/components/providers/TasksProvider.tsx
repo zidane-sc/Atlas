@@ -21,7 +21,15 @@ import {
 } from "@/lib/actions/tasks";
 import { togglePin as apiTogglePin } from "@/lib/actions/pinned";
 import { loadMoreTasks as apiLoadMoreTasks } from "@/lib/actions/tasks-load-more";
-import { calcTaskXP, calculateStreak } from "@/lib/gamification";
+import {
+  calcTaskXP,
+  calculateStreak,
+  computeCharacterSheet,
+  computeUnlockedAchievements,
+  checkAndEmitLevelUp,
+  checkAndEmitAchievementUnlocks,
+  checkAndEmitStreakMilestone,
+} from "@/lib/gamification";
 import { purchaseDecoration as apiPurchaseDecoration, placeDecoration as apiPlaceDecoration } from "@/lib/actions/decorations";
 import type { TaskFilters } from "@/lib/task-filters";
 import type { SavedFilterClient } from "@/lib/actions/filters";
@@ -244,6 +252,21 @@ export function TasksProvider({
           const newStreak = calculateStreak(updatedTasks);
           const streakExtended = newStreak > oldStreak;
 
+          // Calculate old and new character sheets to detect level-up
+          const oldSheet = computeCharacterSheet(tasks, bonusXp);
+          const newSheet = computeCharacterSheet(updatedTasks, bonusXp);
+          checkAndEmitLevelUp(oldSheet.globalXP, newSheet.globalXP);
+
+          // Calculate old and new achievements to detect unlocks
+          const dbProjects = projects as any[];
+          const dbSprints = sprints as any[];
+          const oldAchievements = computeUnlockedAchievements(tasks, dbProjects, dbSprints);
+          const newAchievements = computeUnlockedAchievements(updatedTasks, dbProjects, dbSprints);
+          checkAndEmitAchievementUnlocks(oldAchievements, newAchievements);
+
+          // Emit streak milestone notification
+          checkAndEmitStreakMilestone(oldStreak, newStreak);
+
           setCompletions((c) => [...c, { id: cid, xp, title: values.title, streak: streakExtended ? newStreak : undefined }]);
           if (soundEnabled) {
             playChime();
@@ -382,6 +405,18 @@ export function TasksProvider({
       claimDailyQuest: async (dateStr, xp, coins) => {
         const res = await apiClaimDailyQuest({ dateStr, xp, coins });
         if (res.success) {
+          // Check for level-up before updating bonusXp state
+          const dbProjects = projects as any[];
+          const dbSprints = sprints as any[];
+          const oldSheet = computeCharacterSheet(tasks, bonusXp);
+          const newSheet = computeCharacterSheet(tasks, res.data.bonusXp);
+          checkAndEmitLevelUp(oldSheet.globalXP, newSheet.globalXP);
+
+          // Check for achievement unlocks
+          const oldAchievements = computeUnlockedAchievements(tasks, dbProjects, dbSprints);
+          const newAchievements = computeUnlockedAchievements(tasks, dbProjects, dbSprints);
+          checkAndEmitAchievementUnlocks(oldAchievements, newAchievements);
+
           setBonusXp(res.data.bonusXp);
           setBonusCoins(res.data.bonusCoins);
           setLastQuestClaimedAt(res.data.lastQuestClaimedAt);
