@@ -236,6 +236,9 @@ function TableTab({ tasks, onSelect }: { tasks: Task[]; onSelect: (t: Task) => v
 }
 
 function CalendarTab({ tasks, onSelect }: { tasks: Task[]; onSelect: (t: Task) => void }) {
+  const { updateTask } = useTasks();
+  const { emit: emitNotification } = useNotifications();
+  const { toast } = useToast();
   const [viewDate, setViewDate] = useState(new Date(MOCK_NOW));
   const [openDay, setOpenDay] = useState<string | null>(null);
   const [calendarView, setCalendarView] = useState<'due-date' | 'start-date'>('due-date');
@@ -253,6 +256,54 @@ function CalendarTab({ tasks, onSelect }: { tasks: Task[]; onSelect: (t: Task) =
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [openDay]);
+
+  const handleDragEnd = async (result: DropResult) => {
+    const { draggableId, destination } = result;
+    if (!destination) return;
+
+    const task = tasks.find((t) => t.id === draggableId);
+    if (!task) return;
+
+    const dateStr = destination.droppableId.replace("date-", "");
+    const dropDate = new Date(dateStr);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    if (dropDate < today) {
+      toast("Cannot reschedule to past date", "error");
+      return;
+    }
+
+    const updateData = calendarView === "due-date"
+      ? { dueDate: dateStr }
+      : { startDate: dateStr };
+
+    await updateTask(task.id, {
+      title: task.title,
+      description: task.description,
+      project: task.project,
+      status: task.status,
+      type: task.type,
+      priority: task.priority,
+      effort: task.effort,
+      storyPoint: task.storyPoint,
+      ...updateData,
+      waitingOn: task.waitingOn,
+      sprint: task.sprint,
+      reporter: task.reporter,
+      tags: task.tags,
+      relations: task.relations,
+      attachments: task.attachments,
+      deliverables: task.deliverables,
+    } as any);
+
+    emitNotification({
+      type: "task:rescheduled",
+      taskId: task.id,
+      title: task.title,
+      newDate: dateStr,
+    });
+  };
 
   const byDate: Record<string, Task[]> = {};
   for (const t of tasks) {
@@ -303,95 +354,89 @@ function CalendarTab({ tasks, onSelect }: { tasks: Task[]; onSelect: (t: Task) =
             <div key={d} className="py-1 text-center text-sm tracking-widest text-muted-foreground">{d}</div>
           ))}
         </div>
-        <div className="grid grid-cols-7 gap-1">
-          {Array.from({ length: firstWeekday }).map((_, i) => <div key={`e${i}`} />)}
-          {Array.from({ length: daysInMonth }).map((_, i) => {
-            const day = i + 1;
-            const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-            const dayTasks = byDate[dateStr] ?? [];
-            const isToday = dateStr === MOCK_NOW;
-            const colIndex = (firstWeekday + i) % 7;
-            const rowIndex = Math.floor((firstWeekday + i) / 7);
-            const openRight = colIndex >= 5;
-            const openUpward = rowIndex >= totalRows - 1;
-            const taskColorVar = (t: Task) =>
-              isOverdue(t.dueDate, MOCK_NOW) && t.status !== "done" ? "--color-status-blocked" : PRIORITY_COLOR_VAR[t.priority];
-            return (
-              <div
-                key={day}
-                className="relative min-h-[68px] bg-card p-1.5"
-                style={{ border: `1px solid ${isToday ? "var(--color-primary-gold)" : "var(--color-border)"}` }}
-                onDragOver={(e) => {
-                  e.preventDefault();
-                  e.dataTransfer.dropEffect = "move";
-                }}
-                onDrop={(e) => {
-                  e.preventDefault();
-                  const taskId = e.dataTransfer.getData("text/plain");
-                  handleDragEnd(dateStr, taskId);
-                }}
-              >
-                <div className="mb-1 text-sm" style={{ color: isToday ? "var(--color-primary-gold)" : "var(--color-text-muted)" }}>{day}</div>
-                {dayTasks.slice(0, 2).map((t) => (
-                  <div
-                    key={t.id}
-                    draggable
-                    onDragStart={(e) => {
-                      e.dataTransfer.setData("text/plain", t.id);
-                      e.dataTransfer.effectAllowed = "move";
-                      setDraggingTaskId(t.id);
-                    }}
-                    onDragEnd={() => setDraggingTaskId(null)}
-                    onClick={() => onSelect(t)}
-                    className={`mb-0.5 cursor-grab truncate px-1 text-sm transition-opacity ${draggingTaskId === t.id ? 'opacity-50' : ''}`}
-                    style={{ color: `var(${taskColorVar(t)})`, borderLeft: `2px solid var(${taskColorVar(t)})` }}
-                  >
-                    {isOverdue(t.dueDate, MOCK_NOW) && t.status !== "done" && "⚠ "}{TYPE_ICON[t.type]} <span style={{ fontSize: "11px", fontWeight: "bold", color: "var(--color-primary-gold)" }}>{t.code}</span> {t.title}
-                  </div>
-                ))}
-                {dayTasks.length > 2 && (
-                  <button
-                    type="button"
-                    onClick={() => setOpenDay((d) => (d === dateStr ? null : dateStr))}
-                    className="text-sm text-muted-foreground hover:text-foreground"
-                  >
-                    +{dayTasks.length - 2}
-                  </button>
-                )}
-                {openDay === dateStr && (
-                  <>
-                    <div className="fixed inset-0 z-40" onClick={() => setOpenDay(null)} />
+        <DragDropContext onDragEnd={handleDragEnd}>
+          <div className="grid grid-cols-7 gap-1">
+            {Array.from({ length: firstWeekday }).map((_, i) => <div key={`e${i}`} />)}
+            {Array.from({ length: daysInMonth }).map((_, i) => {
+              const day = i + 1;
+              const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+              const dayTasks = byDate[dateStr] ?? [];
+              const isToday = dateStr === MOCK_NOW;
+              const colIndex = (firstWeekday + i) % 7;
+              const rowIndex = Math.floor((firstWeekday + i) / 7);
+              const openRight = colIndex >= 5;
+              const openUpward = rowIndex >= totalRows - 1;
+              const taskColorVar = (t: Task) =>
+                isOverdue(t.dueDate, MOCK_NOW) && t.status !== "done" ? "--color-status-blocked" : PRIORITY_COLOR_VAR[t.priority];
+              return (
+                <Droppable key={day} droppableId={`date-${dateStr}`} type="TASK">
+                  {(provided, snapshot) => (
                     <div
-                      className={`absolute z-50 w-56 border-2 border-primary bg-card p-2 ${openUpward ? "bottom-full mb-1" : "top-full mt-1"} ${openRight ? "right-0" : "left-0"}`}
-                      style={{ boxShadow: "4px 4px 0 var(--color-bg-deep)" }}
+                      ref={provided.innerRef}
+                      {...provided.droppableProps}
+                      className="relative min-h-[68px] bg-card p-1.5"
+                      style={{
+                        border: `1px solid ${isToday ? "var(--color-primary-gold)" : "var(--color-border)"}`,
+                        backgroundColor: snapshot.isDraggingOver ? "var(--color-bg-panel-alt)" : undefined,
+                      }}
                     >
-                      <div className="mb-1.5 text-sm text-muted-foreground">{formatDueDate(dateStr)} · {dayTasks.length} quests</div>
-                      <div className="flex flex-col gap-0.5">
-                        {dayTasks.map((t) => (
+                      <div className="mb-1 text-sm" style={{ color: isToday ? "var(--color-primary-gold)" : "var(--color-text-muted)" }}>{day}</div>
+                      {dayTasks.slice(0, 2).map((t, index) => (
+                        <Draggable key={t.id} draggableId={t.id} index={index}>
+                          {(provided, snapshot) => (
+                            <div
+                              ref={provided.innerRef}
+                              {...provided.draggableProps}
+                              {...provided.dragHandleProps}
+                              onClick={() => onSelect(t)}
+                              className={`mb-0.5 cursor-grab truncate px-1 text-sm ${snapshot.isDragging ? 'opacity-50' : ''}`}
+                              style={{ color: `var(${taskColorVar(t)})`, borderLeft: `2px solid var(${taskColorVar(t)})`, ...provided.draggableProps.style }}
+                            >
+                              {isOverdue(t.dueDate, MOCK_NOW) && t.status !== "done" && "⚠ "}{TYPE_ICON[t.type]} <span style={{ fontSize: "11px", fontWeight: "bold", color: "var(--color-primary-gold)" }}>{t.code}</span> {t.title}
+                            </div>
+                          )}
+                        </Draggable>
+                      ))}
+                      {provided.placeholder}
+                      {dayTasks.length > 2 && (
+                        <button
+                          type="button"
+                          onClick={() => setOpenDay((d) => (d === dateStr ? null : dateStr))}
+                          className="text-sm text-muted-foreground hover:text-foreground"
+                        >
+                          +{dayTasks.length - 2}
+                        </button>
+                      )}
+                      {openDay === dateStr && (
+                        <>
+                          <div className="fixed inset-0 z-40" onClick={() => setOpenDay(null)} />
                           <div
-                            key={t.id}
-                            draggable
-                            onDragStart={(e) => {
-                              e.dataTransfer.setData("text/plain", t.id);
-                              e.dataTransfer.effectAllowed = "move";
-                              setDraggingTaskId(t.id);
-                            }}
-                            onDragEnd={() => setDraggingTaskId(null)}
-                            onClick={() => { onSelect(t); setOpenDay(null); }}
-                            className={`cursor-grab truncate px-1 py-0.5 text-sm hover:bg-secondary transition-opacity ${draggingTaskId === t.id ? 'opacity-50' : ''}`}
-                            style={{ color: `var(${taskColorVar(t)})`, borderLeft: `2px solid var(${taskColorVar(t)})` }}
+                            className={`absolute z-50 w-56 border-2 border-primary bg-card p-2 ${openUpward ? "bottom-full mb-1" : "top-full mt-1"} ${openRight ? "right-0" : "left-0"}`}
+                            style={{ boxShadow: "4px 4px 0 var(--color-bg-deep)" }}
                           >
-                            {isOverdue(t.dueDate, MOCK_NOW) && t.status !== "done" && "⚠ "}{TYPE_ICON[t.type]} <span style={{ fontSize: "11px", fontWeight: "bold", color: "var(--color-primary-gold)", marginLeft: "2px" }}>{t.code}</span> <span style={{ fontSize: "11px", fontWeight: "bold", color: "var(--color-primary-gold)" }}>{t.code}</span> {t.title}
+                            <div className="mb-1.5 text-sm text-muted-foreground">{formatDueDate(dateStr)} · {dayTasks.length} quests</div>
+                            <div className="flex flex-col gap-0.5">
+                              {dayTasks.map((t) => (
+                                <div
+                                  key={t.id}
+                                  onClick={() => { onSelect(t); setOpenDay(null); }}
+                                  className="cursor-pointer truncate px-1 py-0.5 text-sm hover:bg-secondary"
+                                  style={{ color: `var(${taskColorVar(t)})`, borderLeft: `2px solid var(${taskColorVar(t)})` }}
+                                >
+                                  {isOverdue(t.dueDate, MOCK_NOW) && t.status !== "done" && "⚠ "}{TYPE_ICON[t.type]} <span style={{ fontSize: "11px", fontWeight: "bold", color: "var(--color-primary-gold)", marginLeft: "2px" }}>{t.code}</span> <span style={{ fontSize: "11px", fontWeight: "bold", color: "var(--color-primary-gold)" }}>{t.code}</span> {t.title}
+                                </div>
+                              ))}
+                            </div>
                           </div>
-                        ))}
-                      </div>
+                        </>
+                      )}
                     </div>
-                  </>
-                )}
-              </div>
-            );
-          })}
-        </div>
+                  )}
+                </Droppable>
+              );
+            })}
+          </div>
+        </DragDropContext>
       </div>
     </div>
   );
