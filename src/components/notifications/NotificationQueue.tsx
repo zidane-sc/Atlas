@@ -9,9 +9,18 @@ import { useSettings } from '@/components/providers/SettingsProvider';
 export function NotificationQueue({
   notifications,
   onDismiss,
+  lastReschedule,
+  onUndo,
 }: {
   notifications: NotificationPayload[];
   onDismiss: (id: string) => void;
+  lastReschedule?: {
+    taskId: string;
+    previousDate: string;
+    newDate: string;
+    timeoutId: NodeJS.Timeout;
+  } | null;
+  onUndo?: () => void;
 }) {
   const settings = useSettings();
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -41,6 +50,8 @@ export function NotificationQueue({
       <div className="fixed top-4 right-4 z-50 flex flex-col gap-2 max-w-sm pointer-events-none">
         {notifications.map((notification) => {
           const { icon, text } = getNotificationMessage(notification.event);
+          const isRescheduledEvent = notification.event.type === 'task:rescheduled';
+          const showUndoButton = isRescheduledEvent && lastReschedule && onUndo;
           return (
             <div
               key={notification.id}
@@ -51,6 +62,15 @@ export function NotificationQueue({
             >
               <span className="text-base flex-shrink-0">{icon}</span>
               <span className="flex-1 truncate">{text}</span>
+              {showUndoButton && (
+                <button
+                  onClick={onUndo}
+                  className="ml-2 px-2 py-1 border border-current hover:bg-white/10 text-xs flex-shrink-0"
+                  aria-label="Undo reschedule"
+                >
+                  Undo
+                </button>
+              )}
               <button
                 onClick={() => onDismiss(notification.id)}
                 className="ml-2 hover:opacity-70 flex-shrink-0"

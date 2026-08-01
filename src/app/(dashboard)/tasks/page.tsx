@@ -237,11 +237,17 @@ function TableTab({ tasks, onSelect }: { tasks: Task[]; onSelect: (t: Task) => v
 
 function CalendarTab({ tasks, onSelect }: { tasks: Task[]; onSelect: (t: Task) => void }) {
   const { updateTask } = useTasks();
-  const { emit: emitNotification } = useNotifications();
+  const { emit: emitNotification, setUndoState, setUndoCallback } = useNotifications();
   const { toast } = useToast();
   const [viewDate, setViewDate] = useState(new Date(MOCK_NOW));
   const [openDay, setOpenDay] = useState<string | null>(null);
   const [calendarView, setCalendarView] = useState<'due-date' | 'start-date'>('due-date');
+  const [lastReschedule, setLastReschedule] = useState<{
+    taskId: string;
+    previousDate: string;
+    newDate: string;
+    timeoutId: NodeJS.Timeout;
+  } | null>(null);
   const year = viewDate.getFullYear();
   const month = viewDate.getMonth();
   const firstWeekday = new Date(year, month, 1).getDay();

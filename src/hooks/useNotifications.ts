@@ -3,8 +3,18 @@
 import { useContext, useCallback } from 'react';
 import type { NotificationEvent } from '@/lib/notification-events';
 
+export interface UndoState {
+  taskId: string;
+  previousDate: string;
+  newDate: string;
+  timeoutId: NodeJS.Timeout;
+}
+
 export interface NotificationContextValue {
   notifications: Array<{ id: string; event: NotificationEvent; timestamp: number }>;
+  undoState?: UndoState | null;
+  setUndoState?: (state: UndoState | null) => void;
+  setUndoCallback?: (callback: (() => void) | null) => void;
 }
 
 let notificationListeners: Array<(event: NotificationEvent) => void> = [];
@@ -26,9 +36,14 @@ import { createContext } from 'react';
 export const NotificationContext = createContext<NotificationContextValue | null>(null);
 
 export function useNotifications() {
+  const context = useContext(NotificationContext);
   const emit = useCallback((event: NotificationEvent) => {
     notificationEmitter.emit(event);
   }, []);
 
-  return { emit };
+  return {
+    emit,
+    setUndoState: context?.setUndoState,
+    setUndoCallback: context?.setUndoCallback,
+  };
 }
