@@ -8,6 +8,7 @@ import { TaskRow } from "./TaskRow";
 import { PriorityMark } from "./PriorityMark";
 import { StatusBadge } from "./StatusBadge";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { VirtualList } from "@/components/ui/VirtualList";
 
 /** Generic task list, reused across Dashboard/Today/Waiting/Focus/List views. */
 function TaskListViewComponent({
@@ -50,6 +51,23 @@ function TaskListViewComponent({
           </div>
         ))}
       </div>
+    );
+  }
+
+  if (variant === "card" && tasks.length > 50) {
+    return (
+      <VirtualList
+        items={tasks}
+        itemHeight={140}
+        containerHeight={600}
+        renderItem={(task) => (
+          <div className="px-2">
+            <TaskCard task={task} onSelect={openEditForm} />
+          </div>
+        )}
+        overscan={3}
+        className="flex-1"
+      />
     );
   }
 
