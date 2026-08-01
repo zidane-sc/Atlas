@@ -105,6 +105,8 @@ interface TasksContextValue {
   loadTasks: (tasks: Task[], bonusXp: number, bonusCoins: number, savedFilters?: SavedFilterClient[]) => void;
   loadMore: (lastTaskId: string) => Promise<void>;
   hasMore: boolean;
+  lazySearchLoadMore: () => Promise<void>;
+  isSearchLoadingMore: boolean;
   purchasedDecorations: string[];
   placedDecorations: Record<string, string | null>;
   purchaseDecoration: (itemId: string) => Promise<boolean>;
@@ -147,6 +149,7 @@ export function TasksProvider({
   const initialTasksRef = useRef(initialTasks);
   const [tasks, dispatch] = useReducer(tasksReducer, initialTasks);
   const [hasMore, setHasMore] = useState(initialTasks.length >= 200);
+  const [isSearchLoadingMore, setIsSearchLoadingMore] = useState(false);
   const [activityLogs, setActivityLogs] = useState<ActivityLogClient[]>(initialActivityLogs);
   const [savedFilters, setSavedFilters] = useState<SavedFilterClient[]>(initialSavedFilters);
   const [lastQuestClaimedAt, setLastQuestClaimedAt] = useState<string | null>(initialLastQuestClaimedAt);
@@ -535,7 +538,21 @@ export function TasksProvider({
           setHasMore(result.data.length >= 100);
         }
       },
+      lazySearchLoadMore: async () => {
+        if (!hasMore) return;
+        setIsSearchLoadingMore(true);
+        const lastTask = tasks[tasks.length - 1];
+        if (lastTask) {
+          const result = await apiLoadMoreTasks({ cursor: lastTask.id, limit: 100 });
+          if (result.success && result.data) {
+            dispatch({ type: "reset", tasks: [...tasks, ...result.data] });
+            setHasMore(result.data.length >= 100);
+          }
+        }
+        setIsSearchLoadingMore(false);
+      },
       hasMore,
+      isSearchLoadingMore,
       purchasedDecorations,
       placedDecorations,
       purchaseDecoration: async (itemId) => {
