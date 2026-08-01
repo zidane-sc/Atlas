@@ -170,6 +170,7 @@ export function TasksProvider({
   const [placedDecorations, setPlacedDecorations] = useState<Record<string, string | null>>(initialPlacedDecorations);
   const [activeTimer, setActiveTimer] = useState<ActiveTimer | null>(initialActiveTimer);
   const [completions, setCompletions] = useState<CompletionOverlay[]>([]);
+  const lastSyncTimeRef = useRef<Record<string, number>>({});
   const { toast } = useToast();
   const { projects } = useProjects();
   const { sprints } = useSprints();
@@ -219,6 +220,8 @@ export function TasksProvider({
         if (!prev) return false;
 
         const oldTask = { ...prev };
+        const requestTime = Date.now();
+        lastSyncTimeRef.current[id] = requestTime;
 
         if (activeTimer && activeTimer.taskId === id && values.status !== "in_progress") {
           const seconds = Math.max(1, Math.round((Date.now() - activeTimer.startedAt) / 1000));
@@ -326,11 +329,13 @@ export function TasksProvider({
           dispatch({ type: "update", id, changedAt: new Date().toISOString(), values: oldValues });
           return false;
         }
-        // Sync response to client state
-        const dbProjects = projects as any[];
-        const dbSprints = sprints as any[];
-        const syncedTask = mapDbTaskToClient(result.data, dbProjects, dbSprints);
-        dispatch({ type: "restore", task: syncedTask });
+        // Sync response to client state — only if this is the latest request for this task
+        if (lastSyncTimeRef.current[id] === requestTime) {
+          const dbProjects = projects as any[];
+          const dbSprints = sprints as any[];
+          const syncedTask = mapDbTaskToClient(result.data, dbProjects, dbSprints);
+          dispatch({ type: "sync", task: syncedTask });
+        }
         return true;
       },
       deleteTask: async (id) => {
