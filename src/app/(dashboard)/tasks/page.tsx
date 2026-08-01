@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { List as ListIcon, Plus, Table2, ChevronLeft, ChevronRight } from "lucide-react";
+import { DragDropContext, Droppable, Draggable, type DropResult } from "react-beautiful-dnd";
 import { Button } from "@/components/ui/button";
 import { KanbanBoard } from "@/components/tasks/KanbanBoard";
 import { PriorityMark } from "@/components/tasks/PriorityMark";
@@ -12,6 +13,8 @@ import { TaskRow } from "@/components/tasks/TaskRow";
 import { PixBar } from "@/components/ui/PixBar";
 import { useTasks } from "@/components/providers/TasksProvider";
 import { useProjects } from "@/components/providers/ProjectsProvider";
+import { useNotifications } from "@/hooks/useNotifications";
+import { useToast } from "@/components/providers/ToastProvider";
 import { calcTaskXP, completedAt, isTaskOnTime } from "@/lib/gamification";
 import { formatDueDate, isOverdue } from "@/lib/task-utils";
 import { applyTaskFilters, EMPTY_TASK_FILTERS, type TaskFilters } from "@/lib/task-filters";
@@ -318,13 +321,29 @@ function CalendarTab({ tasks, onSelect }: { tasks: Task[]; onSelect: (t: Task) =
                 key={day}
                 className="relative min-h-[68px] bg-card p-1.5"
                 style={{ border: `1px solid ${isToday ? "var(--color-primary-gold)" : "var(--color-border)"}` }}
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  e.dataTransfer.dropEffect = "move";
+                }}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  const taskId = e.dataTransfer.getData("text/plain");
+                  handleDragEnd(dateStr, taskId);
+                }}
               >
                 <div className="mb-1 text-sm" style={{ color: isToday ? "var(--color-primary-gold)" : "var(--color-text-muted)" }}>{day}</div>
                 {dayTasks.slice(0, 2).map((t) => (
                   <div
                     key={t.id}
+                    draggable
+                    onDragStart={(e) => {
+                      e.dataTransfer.setData("text/plain", t.id);
+                      e.dataTransfer.effectAllowed = "move";
+                      setDraggingTaskId(t.id);
+                    }}
+                    onDragEnd={() => setDraggingTaskId(null)}
                     onClick={() => onSelect(t)}
-                    className="mb-0.5 cursor-pointer truncate px-1 text-sm"
+                    className={`mb-0.5 cursor-grab truncate px-1 text-sm transition-opacity ${draggingTaskId === t.id ? 'opacity-50' : ''}`}
                     style={{ color: `var(${taskColorVar(t)})`, borderLeft: `2px solid var(${taskColorVar(t)})` }}
                   >
                     {isOverdue(t.dueDate, MOCK_NOW) && t.status !== "done" && "⚠ "}{TYPE_ICON[t.type]} <span style={{ fontSize: "11px", fontWeight: "bold", color: "var(--color-primary-gold)" }}>{t.code}</span> {t.title}
@@ -351,8 +370,15 @@ function CalendarTab({ tasks, onSelect }: { tasks: Task[]; onSelect: (t: Task) =
                         {dayTasks.map((t) => (
                           <div
                             key={t.id}
+                            draggable
+                            onDragStart={(e) => {
+                              e.dataTransfer.setData("text/plain", t.id);
+                              e.dataTransfer.effectAllowed = "move";
+                              setDraggingTaskId(t.id);
+                            }}
+                            onDragEnd={() => setDraggingTaskId(null)}
                             onClick={() => { onSelect(t); setOpenDay(null); }}
-                            className="cursor-pointer truncate px-1 py-0.5 text-sm hover:bg-secondary"
+                            className={`cursor-grab truncate px-1 py-0.5 text-sm hover:bg-secondary transition-opacity ${draggingTaskId === t.id ? 'opacity-50' : ''}`}
                             style={{ color: `var(${taskColorVar(t)})`, borderLeft: `2px solid var(${taskColorVar(t)})` }}
                           >
                             {isOverdue(t.dueDate, MOCK_NOW) && t.status !== "done" && "⚠ "}{TYPE_ICON[t.type]} <span style={{ fontSize: "11px", fontWeight: "bold", color: "var(--color-primary-gold)", marginLeft: "2px" }}>{t.code}</span> <span style={{ fontSize: "11px", fontWeight: "bold", color: "var(--color-primary-gold)" }}>{t.code}</span> {t.title}
