@@ -7,6 +7,7 @@ import { createTaskSchema, updateTaskSchema } from "@/lib/schemas/task";
 import { Prisma, type Task } from "@/generated/prisma/client";
 import type { ActionResult } from "@/lib/actions/types";
 import { calcTaskXP, isTaskOnTime } from "@/lib/gamification";
+import { generateTaskCode, getNextTaskCodeNumber } from "@/lib/task-code";
 
 function toDate(value: string | null | undefined) {
   if (value === undefined) return undefined;
@@ -42,9 +43,22 @@ export async function createTask(input: unknown): Promise<ActionResult<Task>> {
 
   try {
     const task = await db.$transaction(async (tx) => {
+      // Get project to find its code
+      const project = rest.projectId
+        ? await tx.project.findUnique({ where: { id: rest.projectId }, select: { code: true } })
+        : null;
+
+      // Generate task code if project exists and has a code
+      let taskCode = null;
+      if (project?.code) {
+        const nextNumber = await getNextTaskCodeNumber(tx, owner.id);
+        taskCode = generateTaskCode(project.code, nextNumber);
+      }
+
       const created = await tx.task.create({
         data: {
           ...rest,
+          code: taskCode,
           ownerId: owner.id,
           startDate: startDate ? new Date(startDate) : undefined,
           dueDate: dueDate ? new Date(dueDate) : undefined,
