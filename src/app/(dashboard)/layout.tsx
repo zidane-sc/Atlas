@@ -161,6 +161,7 @@ export default async function DashboardLayout({
   return (
     <NotificationProvider>
       <ToastProvider>
+        <NotificationProvider>
       <SettingsProvider initialSettings={owner.settings as unknown as UserSetting[]}>
         <DefaultViewRedirect />
         <ProjectsProvider initialProjects={projects}>
@@ -190,6 +191,7 @@ export default async function DashboardLayout({
           </SprintsProvider>
         </ProjectsProvider>
       </SettingsProvider>
+        </NotificationProvider>
     </ToastProvider>
     </NotificationProvider>
   );
