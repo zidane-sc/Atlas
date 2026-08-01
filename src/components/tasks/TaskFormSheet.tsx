@@ -504,22 +504,7 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
                 </div>
                 {errors.project && <p className="mt-1 text-sm" style={{ color: "var(--color-status-blocked)" }}>{errors.project}</p>}
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className={LC}>Start Date</label>
-                  <DatePicker
-                    value={form.startDate}
-                    onChange={(date) => set("startDate", date)}
-                  />
-                </div>
-                <div>
-                  <label className={LC}>Due Date</label>
-                  <DatePicker
-                    value={form.dueDate}
-                    onChange={(date) => set("dueDate", date)}
-                  />
-                </div>
-              </div>
+
             </div>
 
             <div>
