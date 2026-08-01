@@ -197,6 +197,7 @@ function TableTab({ tasks, onSelect }: { tasks: Task[]; onSelect: (t: Task) => v
         <thead className="sticky top-0" style={{ backgroundColor: "var(--color-bg-deep)", borderBottom: "2px solid var(--color-border)" }}>
           <tr>
             <SortableCol col="priority" ch="PRIORITY" {...sortHeaderProps} />
+            <th className="px-3 py-2 text-left text-sm font-mono font-bold" style={{ color: "var(--color-primary-gold)" }}>CODE</th>
             <SortableCol col="status" ch="STATUS" {...sortHeaderProps} />
             <th className="px-3 py-2 text-left text-sm text-muted-foreground">TYPE</th>
             <SortableCol col="title" ch="TITLE" {...sortHeaderProps} />
@@ -215,6 +216,7 @@ function TableTab({ tasks, onSelect }: { tasks: Task[]; onSelect: (t: Task) => v
                 className="cursor-pointer border-b border-border transition-colors hover:bg-[var(--color-bg-panel-alt)]"
               >
                 <td className="px-3 py-2"><PriorityMark priority={t.priority} withLabel /></td>
+                <td className="px-3 py-2 text-xs font-mono font-bold" style={{ color: "var(--color-primary-gold)" }}>{t.code}</td>
                 <td className="px-3 py-2"><StatusBadge status={t.status} /></td>
                 <td className="px-3 py-2 text-sm">{TYPE_ICON[t.type]}</td>
                 <td className="max-w-xs truncate px-3 py-2 text-sm text-foreground">{t.title}</td>

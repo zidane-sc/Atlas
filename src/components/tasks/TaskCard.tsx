@@ -50,7 +50,10 @@ function TaskCardComponent({
       className="pixel-panel flex w-full cursor-pointer flex-col gap-2 border-2 p-3 text-left transition-all duration-200 hover:brightness-110 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 animate-in fade-in zoom-in-95"
     >
       <div className="flex items-center justify-between gap-2">
-        <span aria-hidden className="text-base leading-none">{TYPE_ICON[task.type]}</span>
+        <div className="flex items-center gap-1">
+          <span aria-hidden className="text-base leading-none">{TYPE_ICON[task.type]}</span>
+          <span className="text-xs font-mono font-bold" style={{ color: "var(--color-primary-gold)" }}>{task.code}</span>
+        </div>
         <div className="flex items-center gap-1.5">
           <PriorityMark priority={task.priority} />
           {onMoveStatus && (
