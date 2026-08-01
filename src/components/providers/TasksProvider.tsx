@@ -10,6 +10,7 @@ import { useToast } from "@/components/providers/ToastProvider";
 import { useProjects } from "@/components/providers/ProjectsProvider";
 import { useSprints } from "@/components/providers/SprintsProvider";
 import { useSettings } from "@/components/providers/SettingsProvider";
+import { useNotifications } from "@/hooks/useNotifications";
 import {
   createTask as apiCreateTask,
   updateTask as apiUpdateTask,
