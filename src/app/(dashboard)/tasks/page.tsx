@@ -271,13 +271,16 @@ function CalendarTab({ tasks, onSelect }: { tasks: Task[]; onSelect: (t: Task) =
     if (!task) return;
 
     const dateStr = destination.droppableId.replace("date-", "");
-    const dropDate = new Date(dateStr);
     const updateData = calendarView === "due-date"
       ? { dueDate: dateStr }
       : { startDate: dateStr };
 
     // Store previous date for undo
     const previousDate = calendarView === "due-date" ? task.dueDate : task.startDate;
+
+    // Dropped on the same date it already has — no-op, don't fire an update.
+    if (previousDate === dateStr) return;
+
     if (lastReschedule?.timeoutId) {
       clearTimeout(lastReschedule.timeoutId);
     }
@@ -302,9 +305,13 @@ function CalendarTab({ tasks, onSelect }: { tasks: Task[]; onSelect: (t: Task) =
         setUndoState(undoStateData);
       }
 
-      // Register undo callback to restore previous date when undo is clicked
+      // Register undo callback to restore previous date when undo is clicked.
+      // Must be `() => () => ...` — useState setters treat a plain function
+      // argument as a functional updater and invoke it immediately, which
+      // would fire the revert update right after the drop instead of storing
+      // it for later.
       if (setUndoCallback) {
-        setUndoCallback(() => {
+        setUndoCallback(() => () => {
           updateTask(task.id, {
             title: task.title,
             description: task.description,
@@ -346,9 +353,7 @@ function CalendarTab({ tasks, onSelect }: { tasks: Task[]; onSelect: (t: Task) =
       deliverables: task.deliverables,
     } as any;
 
-    console.log("Drag-drop update payload:", updatePayload);
     const success = await updateTask(task.id, updatePayload);
-    console.log("Drag-drop update result:", success);
 
     if (success) {
       emitNotification({
