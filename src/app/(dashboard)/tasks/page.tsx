@@ -325,7 +325,7 @@ function CalendarTab({ tasks, onSelect }: { tasks: Task[]; onSelect: (t: Task) =
       });
     }
 
-    const success = await updateTask(task.id, {
+    const updatePayload = {
       title: task.title,
       description: task.description,
       project: task.project,
@@ -342,7 +342,11 @@ function CalendarTab({ tasks, onSelect }: { tasks: Task[]; onSelect: (t: Task) =
       relations: task.relations,
       attachments: task.attachments,
       deliverables: task.deliverables,
-    } as any);
+    } as any;
+
+    console.log("Drag-drop update payload:", updatePayload);
+    const success = await updateTask(task.id, updatePayload);
+    console.log("Drag-drop update result:", success);
 
     if (success) {
       emitNotification({

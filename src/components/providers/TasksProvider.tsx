@@ -298,7 +298,9 @@ export function TasksProvider({
           deliverables: values.deliverables,
         };
 
+        console.log("updateTask server call input:", input);
         const result = await apiUpdateTask(id, input);
+        console.log("updateTask server call result:", result);
         if (!result.success) {
           toast(result.error.message, "error");
           // Rollback
