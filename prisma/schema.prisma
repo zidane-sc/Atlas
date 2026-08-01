@@ -110,6 +110,7 @@ enum TaskReporter {
 // docs/02-architecture.md §4.4 — the core table.
 model Task {
   id          String  @id @default(uuid()) @db.Uuid
+  code        String? @map("code")
   title       String
   description String?
 
@@ -160,6 +161,7 @@ model Task {
   workSessions  WorkSession[]
   noteLinks     NoteTaskLink[]
 
+  @@unique([ownerId, code])
   @@index([status])
   @@index([projectId])
   @@index([dueDate])
@@ -191,6 +193,7 @@ enum ProjectStatus {
 
 model Project {
   id          String          @id @default(uuid()) @db.Uuid
+  code        String?         @unique @map("code")
   name        String
   category    ProjectCategory
   colorVar    String          @map("color_var")
