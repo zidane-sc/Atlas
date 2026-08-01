@@ -290,6 +290,7 @@ export function TasksProvider({
           effort: values.effort,
           storyPoint: values.storyPoint,
           reporter: values.reporter || "self",
+          startDate: values.startDate || undefined,
           dueDate: values.dueDate || undefined,
           tags: values.tags,
           relations: values.relations,
