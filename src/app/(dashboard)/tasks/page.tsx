@@ -278,6 +278,55 @@ function CalendarTab({ tasks, onSelect }: { tasks: Task[]; onSelect: (t: Task) =
       ? { dueDate: dateStr }
       : { startDate: dateStr };
 
+    // Store previous date for undo
+    const previousDate = calendarView === "due-date" ? task.dueDate : task.startDate;
+    if (lastReschedule?.timeoutId) {
+      clearTimeout(lastReschedule.timeoutId);
+    }
+
+    const timeoutId = setTimeout(() => {
+      setLastReschedule(null);
+      if (setUndoState) {
+        setUndoState(null);
+      }
+    }, 5000);
+
+    const undoStateData = {
+      taskId: task.id,
+      previousDate: previousDate || '',
+      newDate: dateStr,
+      timeoutId,
+    };
+
+    setLastReschedule(undoStateData);
+    if (setUndoState) {
+      setUndoState(undoStateData);
+    }
+
+    // Register undo callback to restore previous date when undo is clicked
+    if (setUndoCallback) {
+      setUndoCallback(() => {
+        updateTask(task.id, {
+          title: task.title,
+          description: task.description,
+          project: task.project,
+          status: task.status,
+          type: task.type,
+          priority: task.priority,
+          effort: task.effort,
+          storyPoint: task.storyPoint,
+          ...{ [calendarView === "due-date" ? "dueDate" : "startDate"]: previousDate || '' },
+          waitingOn: task.waitingOn,
+          sprint: task.sprint,
+          reporter: task.reporter,
+          tags: task.tags,
+          relations: task.relations,
+          attachments: task.attachments,
+          deliverables: task.deliverables,
+        } as any);
+      });
+    }
+
     await updateTask(task.id, {
       title: task.title,
       description: task.description,
