@@ -16,6 +16,7 @@ export function TaskRow({ task, onSelect }: { task: Task; onSelect: (task: Task)
     >
       <PriorityMark priority={task.priority} withLabel />
       <StatusBadge status={task.status} />
+      <span className="text-xs font-mono font-bold" style={{ color: "var(--color-primary-gold)", minWidth: "60px" }}>{task.code}</span>
       <span className="flex-1 truncate text-sm text-foreground">{task.title}</span>
       <span className="mr-1 text-sm" aria-hidden>{TYPE_ICON[task.type]}</span>
       <span className="hidden max-w-[100px] truncate text-sm text-muted-foreground md:block">{task.project}</span>

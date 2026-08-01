@@ -468,6 +468,7 @@ function ArchiveTab({ tasks, onSelect }: { tasks: Task[]; onSelect: (t: Task) =>
               >
                 <span style={{ color: "var(--color-status-done)" }}>✓</span>
                 <span className="text-sm">{TYPE_ICON[task.type]}</span>
+                <span className="text-xs font-mono font-bold" style={{ color: "var(--color-primary-gold)" }}>{task.code}</span>
                 <span className="flex-1 truncate text-sm text-muted-foreground line-through">{task.title}</span>
                 <span className="text-sm text-muted-foreground">{task.project}</span>
                 <span className="text-sm font-bold" style={{ color: "var(--color-xp-gold)" }}>+{xp} XP</span>
