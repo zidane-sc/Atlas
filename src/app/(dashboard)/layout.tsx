@@ -44,6 +44,7 @@ export default async function DashboardLayout({
           orderBy: {
             changedAt: "asc",
           },
+          take: 50,
         },
         comments: {
           orderBy: {
@@ -52,6 +53,7 @@ export default async function DashboardLayout({
           include: {
             author: true,
           },
+          take: 20,
         },
       },
     }),
