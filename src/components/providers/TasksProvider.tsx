@@ -18,6 +18,7 @@ import {
   startFocusTimerAction as apiStartFocusTimer,
   stopFocusTimerAction as apiStopFocusTimer,
 } from "@/lib/actions/tasks";
+import { togglePin as apiTogglePin } from "@/lib/actions/pinned";
 import { calcTaskXP, calculateStreak } from "@/lib/gamification";
 import { purchaseDecoration as apiPurchaseDecoration, placeDecoration as apiPlaceDecoration } from "@/lib/actions/decorations";
 import type { TaskFilters } from "@/lib/task-filters";
@@ -412,7 +413,6 @@ export function TasksProvider({
       togglePin: async (taskId, pinned) => {
         dispatch({ type: "togglePin", id: taskId, pinned });
 
-        const { togglePin: apiTogglePin } = await import("@/lib/actions/pinned");
         const result = await apiTogglePin(taskId, pinned);
         if (result.success) {
           toast(pinned ? "📌 Task pinned!" : "Pinned removed", "success");

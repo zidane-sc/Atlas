@@ -303,6 +303,8 @@ model Note {
   updatedAt DateTime @updatedAt @map("updated_at")
 
   @@index([userId])
+  @@index([userId, createdAt])
+  @@index([userId, pinned])
   @@index([createdAt])
   @@map("notes")
 }
