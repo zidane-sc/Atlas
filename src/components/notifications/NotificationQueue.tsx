@@ -13,14 +13,15 @@ export function NotificationQueue({
   notifications: NotificationPayload[];
   onDismiss: (id: string) => void;
 }) {
-  const { settings } = useSettings();
+  const settings = useSettings();
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
     if (notifications.length === 0) return;
 
     const latest = notifications[0];
-    if (shouldPlaySound(latest.event) && settings.soundEnabled) {
+    const soundEnabled = typeof settings === 'object' && 'soundEnabled' in settings ? settings.soundEnabled : true;
+    if (shouldPlaySound(latest.event) && soundEnabled) {
       try {
         if (audioRef.current) {
           audioRef.current.currentTime = 0;
@@ -32,7 +33,7 @@ export function NotificationQueue({
         // Silent fail
       }
     }
-  }, [notifications, settings.soundEnabled]);
+  }, [notifications, settings]);
 
   return (
     <>
