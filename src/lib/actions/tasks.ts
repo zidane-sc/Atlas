@@ -12,6 +12,7 @@ import { generateTaskCode, getNextTaskCodeNumber } from "@/lib/task-code";
 function toDate(value: string | null | undefined) {
   if (value === undefined) return undefined;
   if (value === null) return null;
+  if (value === "") return undefined;
   return new Date(value);
 }
 
