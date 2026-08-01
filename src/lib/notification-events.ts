@@ -36,5 +36,6 @@ export function getNotificationMessage(event: NotificationEvent): { icon: string
 export function shouldPlaySound(event: NotificationEvent): boolean {
   return event.type === 'gamification:level-up'
     || event.type === 'gamification:achievement-unlocked'
-    || event.type === 'gamification:streak-milestone';
+    || event.type === 'gamification:streak-milestone'
+    || event.type === 'task:rescheduled';
 }
