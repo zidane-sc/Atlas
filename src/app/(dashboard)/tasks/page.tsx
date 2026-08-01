@@ -235,6 +235,7 @@ function TableTab({ tasks, onSelect }: { tasks: Task[]; onSelect: (t: Task) => v
 function CalendarTab({ tasks, onSelect }: { tasks: Task[]; onSelect: (t: Task) => void }) {
   const [viewDate, setViewDate] = useState(new Date(MOCK_NOW));
   const [openDay, setOpenDay] = useState<string | null>(null);
+  const [calendarView, setCalendarView] = useState<'due-date' | 'start-date'>('due-date');
   const year = viewDate.getFullYear();
   const month = viewDate.getMonth();
   const firstWeekday = new Date(year, month, 1).getDay();
@@ -252,8 +253,9 @@ function CalendarTab({ tasks, onSelect }: { tasks: Task[]; onSelect: (t: Task) =
 
   const byDate: Record<string, Task[]> = {};
   for (const t of tasks) {
-    if (!t.dueDate) continue;
-    (byDate[t.dueDate] ??= []).push(t);
+    const dateField = calendarView === 'due-date' ? t.dueDate : t.startDate;
+    if (!dateField) continue;
+    (byDate[dateField] ??= []).push(t);
   }
   const WEEKDAYS = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
 
@@ -267,6 +269,30 @@ function CalendarTab({ tasks, onSelect }: { tasks: Task[]; onSelect: (t: Task) =
           </span>
           <Button variant="secondary" size="sm" onClick={() => setViewDate(new Date(year, month + 1, 1))}><ChevronRight size={11} /></Button>
         </div>
+      </div>
+      <div className="flex gap-2 px-6 py-2" style={{ backgroundColor: "var(--color-bg-panel-alt)", borderBottom: "1px solid var(--color-border)" }}>
+        <button
+          onClick={() => setCalendarView('due-date')}
+          className="px-3 py-1 border-2 font-mono text-sm"
+          style={{
+            borderColor: calendarView === 'due-date' ? 'var(--color-primary-gold)' : 'var(--color-border)',
+            backgroundColor: calendarView === 'due-date' ? 'var(--color-primary-gold)' : 'transparent',
+            color: calendarView === 'due-date' ? 'black' : 'var(--color-foreground)'
+          }}
+        >
+          Due Date
+        </button>
+        <button
+          onClick={() => setCalendarView('start-date')}
+          className="px-3 py-1 border-2 font-mono text-sm"
+          style={{
+            borderColor: calendarView === 'start-date' ? 'var(--color-primary-gold)' : 'var(--color-border)',
+            backgroundColor: calendarView === 'start-date' ? 'var(--color-primary-gold)' : 'transparent',
+            color: calendarView === 'start-date' ? 'black' : 'var(--color-foreground)'
+          }}
+        >
+          Start Date
+        </button>
       </div>
       <div className="flex-1 overflow-y-auto p-4">
         <div className="mb-2 grid grid-cols-7 gap-1">
