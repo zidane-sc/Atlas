@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import type { TaskFormValues } from "@/lib/schemas/task";
-import { buildTaskFromValues, tasksReducer } from "@/lib/tasks-reducer";
+import { buildTaskFromValues, tasksReducer, mapDbTaskToClient } from "@/lib/tasks-reducer";
 import type { Task, ActivityLogClient } from "@/types/task";
 import { createComment as apiCreateComment } from "@/lib/actions/comments";
 import { updateUserStats as apiUpdateUserStats, claimDailyQuestAction as apiClaimDailyQuest } from "@/lib/actions/user";
@@ -176,12 +176,6 @@ export function TasksProvider({
     () => ({
       tasks,
       createTask: async (values) => {
-        const tempId = crypto.randomUUID();
-        const changedAt = new Date().toISOString();
-
-        // Optimistic insert
-        dispatch({ type: "create", id: tempId, changedAt, values });
-
         const input = {
           title: values.title,
           description: values.description || undefined,
@@ -204,12 +198,11 @@ export function TasksProvider({
         const result = await apiCreateTask(input);
         if (!result.success) {
           toast(result.error.message, "error");
-          dispatch({ type: "delete", id: tempId });
         } else {
-          dispatch({ type: "replaceId", tempId, realId: result.data.id });
-          if (result.data.code) {
-            dispatch({ type: "updateCode", id: result.data.id, code: result.data.code });
-          }
+          const dbProjects = projects as any[];
+          const dbSprints = sprints as any[];
+          const clientTask = mapDbTaskToClient(result.data, dbProjects, dbSprints);
+          dispatch({ type: "restore", task: clientTask });
         }
       },
       updateTask: async (id, values) => {
