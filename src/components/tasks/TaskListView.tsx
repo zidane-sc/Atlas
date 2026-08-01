@@ -42,6 +42,7 @@ function TaskListViewComponent({
           >
             <PriorityMark priority={task.priority} />
             {showStatus && <StatusBadge status={task.status} />}
+            <span className="text-xs font-mono font-bold" style={{ color: "var(--color-primary-gold)", minWidth: "50px" }}>{task.code}</span>
             <span className="flex-1 truncate text-sm">{task.title}</span>
             {!showStatus && task.waitingOn && (
               <span className="max-w-[80px] truncate text-sm" style={{ color: "var(--color-status-waiting-external)" }}>
