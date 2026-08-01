@@ -124,6 +124,7 @@ export function buildTaskFromValues(id: string, changedAt: string, values: TaskF
     priority: values.priority,
     effort: values.effort,
     storyPoint: values.storyPoint,
+    startDate: values.startDate,
     dueDate: values.dueDate,
     waitingOn: values.waitingOn,
     sprint: values.sprint,

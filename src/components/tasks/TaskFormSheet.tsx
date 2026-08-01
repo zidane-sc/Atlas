@@ -233,6 +233,7 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
     const result = taskFormSchema.safeParse({
       ...form,
       description: form.description?.trim() || undefined,
+      startDate: form.startDate || undefined,
       dueDate: form.dueDate || undefined,
       waitingOn: form.waitingOn?.trim() || undefined,
       sprint: form.sprint?.trim() || undefined,
