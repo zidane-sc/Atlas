@@ -1,17 +1,15 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useSession } from "next-auth/react";
 import { useTasks } from "@/components/providers/TasksProvider";
 import { computeCharacterSheet, SKILL_META, STATS, calculateStreak, completedAt } from "@/lib/gamification";
 import { TYPE_ICON } from "@/lib/mock-data";
 import { updateUserProfileAction } from "@/lib/actions/user";
 
 export default function Page() {
-  const { data: session } = useSession();
   const { tasks, bonusXp, bonusCoins } = useTasks();
   const [isEditing, setIsEditing] = useState(false);
-  const [formName, setFormName] = useState(session?.user?.name ?? "");
+  const [formName, setFormName] = useState("");
   const [formGuild, setFormGuild] = useState("");
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ type: string; text: string } | null>(null);
@@ -114,7 +112,7 @@ export default function Page() {
               ) : (
                 <>
                   <div className="mb-1 font-display text-base text-foreground flex justify-between items-center">
-                    {session?.user?.name ?? "Aric Stormcloak"}
+                    {formName || "Aric Stormcloak"}
                     <button
                       onClick={() => setIsEditing(true)}
                       className="text-xs px-2 py-1 border border-border rounded hover:bg-primary/10"
