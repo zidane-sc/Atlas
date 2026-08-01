@@ -11,6 +11,7 @@ import { SprintsProvider } from "@/components/providers/SprintsProvider";
 import { CommandPaletteProvider } from "@/components/providers/CommandPaletteProvider";
 import { SettingsProvider } from "@/components/providers/SettingsProvider";
 import { ToastProvider } from "@/components/providers/ToastProvider";
+import { NotificationProvider } from "@/components/providers/NotificationProvider";
 import { mockProjects, mockSprints } from "@/lib/mock-data";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
@@ -158,7 +159,8 @@ export default async function DashboardLayout({
     : null;
 
   return (
-    <ToastProvider>
+    <NotificationProvider>
+      <ToastProvider>
       <SettingsProvider initialSettings={owner.settings as unknown as UserSetting[]}>
         <DefaultViewRedirect />
         <ProjectsProvider initialProjects={projects}>
@@ -189,5 +191,6 @@ export default async function DashboardLayout({
         </ProjectsProvider>
       </SettingsProvider>
     </ToastProvider>
+    </NotificationProvider>
   );
 }
