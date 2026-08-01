@@ -5,7 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { listNotesAction, deleteNoteAction, updateNoteAction } from "@/lib/actions/notes";
 import { useToast } from "@/components/providers/ToastProvider";
 import { NoteList } from "@/components/notes/NoteList";
-import { NoteEditor } from "@/components/notes/NoteEditor";
+import { NoteEditorLazy } from "@/components/notes/NoteEditorLazy";
 import { DeleteConfirmModal } from "@/components/notes/DeleteConfirmModal";
 import type { NotePreview } from "@/types/note";
 
@@ -87,7 +87,7 @@ export default function NotesPage() {
 
   if (editingNoteId || isCreating) {
     return (
-      <NoteEditor
+      <NoteEditorLazy
         noteId={editingNoteId || undefined}
         onSave={handleSaveNote}
         onClose={() => {
