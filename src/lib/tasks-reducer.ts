@@ -54,6 +54,7 @@ export function mapDbTaskToClient(dbTask: DbTaskWithLogs, dbProjects?: DbProject
     storyPoint: dbTask.storyPoint ?? undefined,
     timeSpentSeconds: dbTask.timeSpentSeconds,
     pinned: dbTask.pinned,
+    startDate: dbTask.startDate ? dbTask.startDate.toISOString().split("T")[0] : undefined,
     dueDate: dbTask.dueDate ? dbTask.dueDate.toISOString().split("T")[0] : undefined,
     completedAt: dbTask.completedAt ? dbTask.completedAt.toISOString() : undefined,
     sprint: sprint ? sprint.name : (dbTask.sprintId ? (SPRINT_REV_MAP[dbTask.sprintId] ?? undefined) : undefined),
