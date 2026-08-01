@@ -48,12 +48,10 @@ export async function createTask(input: unknown): Promise<ActionResult<Task>> {
         ? await tx.project.findUnique({ where: { id: rest.projectId }, select: { code: true } })
         : null;
 
-      // Generate task code if project exists and has a code
-      let taskCode = null;
-      if (project?.code) {
-        const nextNumber = await getNextTaskCodeNumber(tx, owner.id);
-        taskCode = generateTaskCode(project.code, nextNumber);
-      }
+      // Generate task code with project code or default TASK prefix
+      const nextNumber = await getNextTaskCodeNumber(tx, owner.id);
+      const codePrefix = project?.code || "TASK";
+      const taskCode = generateTaskCode(codePrefix, nextNumber);
 
       const created = await tx.task.create({
         data: {
