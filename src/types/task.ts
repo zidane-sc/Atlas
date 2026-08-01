@@ -88,6 +88,7 @@ export interface TaskStatusLogEntry {
 
 export interface Task {
   id: string;
+  code: string;
   title: string;
   description?: string;
   project: string;

@@ -43,6 +43,7 @@ export function mapDbTaskToClient(dbTask: DbTaskWithLogs, dbProjects?: DbProject
   const sprint = dbSprints?.find((s) => s.id === dbTask.sprintId);
   return {
     id: dbTask.id,
+    code: dbTask.code || `TEMP-${dbTask.id.slice(0, 8)}`,
     title: dbTask.title,
     description: dbTask.description ?? undefined,
     project: project ? project.name : (dbTask.projectId ? (PROJECT_REV_MAP[dbTask.projectId] ?? "Atlas") : "Atlas"),
