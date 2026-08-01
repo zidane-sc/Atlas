@@ -115,6 +115,7 @@ export type TasksAction =
 export function buildTaskFromValues(id: string, changedAt: string, values: TaskFormValues): Task {
   return {
     id,
+    code: `TEMP-${id.slice(0, 8)}`,
     title: values.title,
     description: values.description,
     project: values.project,
