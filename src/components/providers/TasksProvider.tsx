@@ -19,6 +19,7 @@ import {
   stopFocusTimerAction as apiStopFocusTimer,
 } from "@/lib/actions/tasks";
 import { togglePin as apiTogglePin } from "@/lib/actions/pinned";
+import { loadMoreTasks as apiLoadMoreTasks } from "@/lib/actions/tasks-load-more";
 import { calcTaskXP, calculateStreak } from "@/lib/gamification";
 import { purchaseDecoration as apiPurchaseDecoration, placeDecoration as apiPlaceDecoration } from "@/lib/actions/decorations";
 import type { TaskFilters } from "@/lib/task-filters";
@@ -102,6 +103,8 @@ interface TasksContextValue {
   reset: () => void;
   /** Settings → Import Data — replaces tasks + bonus XP/coins with an imported snapshot. */
   loadTasks: (tasks: Task[], bonusXp: number, bonusCoins: number, savedFilters?: SavedFilterClient[]) => void;
+  loadMore: (lastTaskId: string) => Promise<void>;
+  hasMore: boolean;
   purchasedDecorations: string[];
   placedDecorations: Record<string, string | null>;
   purchaseDecoration: (itemId: string) => Promise<boolean>;
@@ -143,6 +146,7 @@ export function TasksProvider({
 }) {
   const initialTasksRef = useRef(initialTasks);
   const [tasks, dispatch] = useReducer(tasksReducer, initialTasks);
+  const [hasMore, setHasMore] = useState(initialTasks.length >= 200);
   const [activityLogs, setActivityLogs] = useState<ActivityLogClient[]>(initialActivityLogs);
   const [savedFilters, setSavedFilters] = useState<SavedFilterClient[]>(initialSavedFilters);
   const [lastQuestClaimedAt, setLastQuestClaimedAt] = useState<string | null>(initialLastQuestClaimedAt);
@@ -524,6 +528,14 @@ export function TasksProvider({
         setActiveTimer(null);
         await apiUpdateUserStats({ bonusXp: loadedBonusXp, bonusCoins: loadedBonusCoins });
       },
+      loadMore: async (lastTaskId) => {
+        const result = await apiLoadMoreTasks({ cursor: lastTaskId, limit: 100 });
+        if (result.success && result.data) {
+          dispatch({ type: "reset", tasks: [...tasks, ...result.data] });
+          setHasMore(result.data.length >= 100);
+        }
+      },
+      hasMore,
       purchasedDecorations,
       placedDecorations,
       purchaseDecoration: async (itemId) => {

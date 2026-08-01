@@ -39,12 +39,13 @@ export default async function DashboardLayout({
     db.task.findMany({
       where: { ownerId: owner.id, deletedAt: null },
       orderBy: { createdAt: "desc" },
+      take: 200,
       include: {
         statusHistory: {
           orderBy: {
             changedAt: "asc",
           },
-          take: 50,
+          take: 20,
         },
         comments: {
           orderBy: {
@@ -53,7 +54,7 @@ export default async function DashboardLayout({
           include: {
             author: true,
           },
-          take: 20,
+          take: 10,
         },
       },
     }),
