@@ -272,14 +272,6 @@ function CalendarTab({ tasks, onSelect }: { tasks: Task[]; onSelect: (t: Task) =
 
     const dateStr = destination.droppableId.replace("date-", "");
     const dropDate = new Date(dateStr);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    if (dropDate < today) {
-      toast("Cannot reschedule to past date", "error");
-      return;
-    }
-
     const updateData = calendarView === "due-date"
       ? { dueDate: dateStr }
       : { startDate: dateStr };
