@@ -84,3 +84,97 @@ export function stepSimulation(
     return { ...n, x: n.x + vx, y: n.y + vy, vx, vy };
   });
 }
+
+/** BFS outward from `centerId` up to `maxHops` edges. Returns noteId -> hop distance (0 = center). */
+export function getNeighborhood(centerId: string, edges: GraphEdge[], maxHops: number): Map<string, number> {
+  const adjacency = new Map<string, Set<string>>();
+  for (const e of edges) {
+    if (!adjacency.has(e.source)) adjacency.set(e.source, new Set());
+    if (!adjacency.has(e.target)) adjacency.set(e.target, new Set());
+    adjacency.get(e.source)!.add(e.target);
+    adjacency.get(e.target)!.add(e.source);
+  }
+
+  const distances = new Map<string, number>();
+  distances.set(centerId, 0);
+  let frontier = [centerId];
+  for (let hop = 1; hop <= maxHops; hop++) {
+    const next: string[] = [];
+    for (const id of frontier) {
+      const neighbors = adjacency.get(id);
+      if (!neighbors) continue;
+      for (const n of neighbors) {
+        if (!distances.has(n)) {
+          distances.set(n, hop);
+          next.push(n);
+        }
+      }
+    }
+    frontier = next;
+  }
+  return distances;
+}
+
+export interface RadialPosition {
+  x: number;
+  y: number;
+}
+
+const HOP1_RADIUS = 150;
+const HOP2_RADIUS = 280;
+
+/** Deterministic Focus Mode layout: center at origin, hop-1 ring, hop-2 ring grouped near their hop-1 parent. */
+export function layoutRadial(
+  centerId: string,
+  neighborhood: Map<string, number>,
+  edges: GraphEdge[],
+  bounds: { width: number; height: number }
+): Map<string, RadialPosition> {
+  const cx = bounds.width / 2;
+  const cy = bounds.height / 2;
+  const positions = new Map<string, RadialPosition>();
+  positions.set(centerId, { x: cx, y: cy });
+
+  const hop1 = Array.from(neighborhood.entries())
+    .filter(([, hop]) => hop === 1)
+    .map(([id]) => id);
+  const hop2 = Array.from(neighborhood.entries())
+    .filter(([, hop]) => hop === 2)
+    .map(([id]) => id);
+
+  const hop1Angle = new Map<string, number>();
+  hop1.forEach((id, i) => {
+    const angle = (2 * Math.PI * i) / Math.max(hop1.length, 1);
+    hop1Angle.set(id, angle);
+    positions.set(id, { x: cx + HOP1_RADIUS * Math.cos(angle), y: cy + HOP1_RADIUS * Math.sin(angle) });
+  });
+
+  const parentOfHop2 = new Map<string, string>();
+  for (const id of hop2) {
+    const parentEdge = edges.find(
+      (e) => (e.source === id && hop1.includes(e.target)) || (e.target === id && hop1.includes(e.source))
+    );
+    if (parentEdge) {
+      parentOfHop2.set(id, parentEdge.source === id ? parentEdge.target : parentEdge.source);
+    }
+  }
+
+  const hop2ByParent = new Map<string, string[]>();
+  for (const id of hop2) {
+    const key = parentOfHop2.get(id) ?? "__orphan__";
+    if (!hop2ByParent.has(key)) hop2ByParent.set(key, []);
+    hop2ByParent.get(key)!.push(id);
+  }
+
+  for (const [parentId, children] of hop2ByParent) {
+    const baseAngle = hop1Angle.get(parentId) ?? 0;
+    const spread = Math.PI / 6;
+    children.forEach((id, i) => {
+      const offset = children.length > 1 ? spread * (i / (children.length - 1) - 0.5) * 2 : 0;
+      const angle = baseAngle + offset;
+      positions.set(id, { x: cx + HOP2_RADIUS * Math.cos(angle), y: cy + HOP2_RADIUS * Math.sin(angle) });
+    });
+  }
+
+  return positions;
+}
