@@ -40,6 +40,13 @@ export function KnowledgeMap({ selectedTags, onOpenNote }: KnowledgeMapProps) {
   const [breadcrumbPath, setBreadcrumbPath] = useState<{ id: string; title: string }[]>([]);
   const focusTransitionRef = useRef<number | undefined>(undefined);
   const [searchQuery, setSearchQuery] = useState("");
+  // JSX only needs to mount the node/edge elements once (this app decided against saved-layout
+  // persistence — the map recomputes each time it's opened). Reading nodesRef.current directly
+  // in the render body would violate React's rules (refs shouldn't drive render); these two
+  // state snapshots exist purely so the initial mount has something safe to map over, while the
+  // physics/focus loops keep mutating nodesRef/edgesRef imperatively without triggering re-renders.
+  const [renderNodes, setRenderNodes] = useState<MapNode[]>([]);
+  const [renderEdges, setRenderEdges] = useState<GraphEdge[]>([]);
 
   const isDimmed = (node: MapNode): boolean => {
     const passesTagFilter = selectedTags.length === 0 || selectedTags.some((t) => node.tags.includes(t));
@@ -79,6 +86,8 @@ export function KnowledgeMap({ selectedTags, onOpenNote }: KnowledgeMapProps) {
         vy: 0,
       }));
       edgesRef.current = result.data.edges;
+      setRenderNodes(nodesRef.current);
+      setRenderEdges(edgesRef.current);
       setStatus("ready");
     })();
     return () => {
@@ -230,7 +239,6 @@ export function KnowledgeMap({ selectedTags, onOpenNote }: KnowledgeMapProps) {
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [focusedNoteId]);
 
   // The organic tick loop stops once the layout settles (no more animation frames), and the
@@ -252,9 +260,9 @@ export function KnowledgeMap({ selectedTags, onOpenNote }: KnowledgeMapProps) {
     return <div className="flex h-full items-center justify-center text-sm text-muted-foreground">Loading knowledge map…</div>;
   }
   if (status === "error") {
-    return <div className="flex h-full items-center justify-center text-sm text-muted-foreground">Couldn't load the knowledge map.</div>;
+    return <div className="flex h-full items-center justify-center text-sm text-muted-foreground">Could not load the knowledge map.</div>;
   }
-  if (nodesRef.current.length === 0) {
+  if (renderNodes.length === 0) {
     return <div className="flex h-full items-center justify-center text-sm text-muted-foreground">No notes yet.</div>;
   }
 
@@ -306,7 +314,7 @@ export function KnowledgeMap({ selectedTags, onOpenNote }: KnowledgeMapProps) {
         style={{ cursor: "grab" }}
       >
         <g transform={`translate(${transform.x}, ${transform.y}) scale(${transform.scale})`}>
-          {edgesRef.current.map((edge, i) => (
+          {renderEdges.map((edge, i) => (
             <line
               key={i}
               ref={(el) => {
@@ -317,7 +325,7 @@ export function KnowledgeMap({ selectedTags, onOpenNote }: KnowledgeMapProps) {
               opacity={0.6}
             />
           ))}
-          {nodesRef.current.map((node) => (
+          {renderNodes.map((node) => (
             <g
               key={node.id}
               ref={(el) => {
@@ -365,7 +373,7 @@ export function KnowledgeMap({ selectedTags, onOpenNote }: KnowledgeMapProps) {
             }}
             style={{ cursor: "pointer" }}
           >
-            {nodesRef.current.map((node) => (
+            {renderNodes.map((node) => (
               <circle key={node.id} cx={node.x} cy={node.y} r={4} fill="var(--color-text-muted)" />
             ))}
             <rect
