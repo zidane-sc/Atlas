@@ -11,16 +11,16 @@ import { TaskListView } from "@/components/tasks/TaskListView";
 import { useTasks } from "@/components/providers/TasksProvider";
 import { useSettings } from "@/components/providers/SettingsProvider";
 import { useSprints } from "@/components/providers/SprintsProvider";
-import { calcTaskCoins, calcTaskXP, completedAt, computeCharacterSheet, isTaskOnTime, calculateStreak } from "@/lib/gamification";
+import { calcTaskCoins, calcTaskXP, completedAt, isTaskOnTime, calculateStreak } from "@/lib/gamification";
 import { formatDueDate, isDueToday, isOverdue } from "@/lib/task-utils";
 import { MOCK_NOW, TYPE_ICON, todaysDailyQuest } from "@/lib/mock-data";
 
 export default function Page() {
   const { settings } = useSettings();
   const compactView = settings.find((s) => s.key === "compactView")?.value ?? false;
-  const { tasks, allTimeTasks, activityLogs, bonusXp, bonusCoins, lastQuestClaimedAt, claimDailyQuest } = useTasks();
+  const { tasks, characterSheet, activityLogs, lastQuestClaimedAt, claimDailyQuest } = useTasks();
   const { sprints } = useSprints();
-  const sheet = useMemo(() => computeCharacterSheet(allTimeTasks, bonusXp, bonusCoins), [allTimeTasks, bonusXp, bonusCoins]);
+  const sheet = characterSheet;
   const streakDays = useMemo(() => calculateStreak(tasks), [tasks]);
   const { classTitle } = sheet;
   const dailyQuestClaimed = lastQuestClaimedAt != null && lastQuestClaimedAt.slice(0, 10) === MOCK_NOW;

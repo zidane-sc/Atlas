@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { useTasks } from "@/components/providers/TasksProvider";
 import { DECORATIONS_CATALOG, type DecorationItem } from "@/lib/decorations-catalog";
-import { computeCharacterSheet } from "@/lib/gamification";
 
 const CATEGORIES = [
   { id: "desk", label: "Desks" },
@@ -38,9 +37,7 @@ const FLOOR_STYLES: Record<string, string> = {
 
 export function RoomDecoration() {
   const {
-    allTimeTasks,
-    bonusXp,
-    bonusCoins,
+    characterSheet,
     purchasedDecorations,
     placedDecorations,
     purchaseDecoration,
@@ -51,8 +48,7 @@ export function RoomDecoration() {
   const [buyingId, setBuyingId] = useState<string | null>(null);
   const [placingId, setPlacingId] = useState<string | null>(null);
 
-  // Compute live character sheet to get exact current coins total
-  const sheet = computeCharacterSheet(allTimeTasks, bonusXp, bonusCoins);
+  const sheet = characterSheet;
   const currentCoins = sheet.totalCoins;
 
   // Resolve placed items (with defaults if empty)

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState, useCallback } from "react";
+import { useRef, useState, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { ConfirmButton } from "@/components/ui/ConfirmButton";
@@ -9,7 +9,6 @@ import { useProjects } from "@/components/providers/ProjectsProvider";
 import { useSprints } from "@/components/providers/SprintsProvider";
 import { useSettings } from "@/components/providers/SettingsProvider";
 import { useNotifications } from "@/hooks/useNotifications";
-import { computeCharacterSheet } from "@/lib/gamification";
 import { updateUserProfileAction } from "@/lib/actions/user";
 import { getWorkspaceHistoryForExport, getTasksForExport, importWorkspaceData, type ActivityLogExport, type WorkSessionExport } from "@/lib/actions/import";
 import type { Project, Sprint } from "@/types/gamification";
@@ -84,12 +83,12 @@ function Toggle({
 
 export default function Page() {
   const { data: session, update: updateSession } = useSession();
-  const { allTimeTasks, bonusXp, bonusCoins, reset: resetTasks } = useTasks();
+  const { characterSheet, bonusXp, bonusCoins, reset: resetTasks } = useTasks();
   const { projects, reset: resetProjects } = useProjects();
   const { sprints, reset: resetSprints } = useSprints();
   const { settings, updateSetting, reduceMotion, setReduceMotion } = useSettings();
   const { notify } = useNotifications();
-  const sheet = useMemo(() => computeCharacterSheet(allTimeTasks, bonusXp, bonusCoins), [allTimeTasks, bonusXp, bonusCoins]);
+  const sheet = characterSheet;
   const importInputRef = useRef<HTMLInputElement>(null);
   const [isEditingName, setIsEditingName] = useState(false);
   const [nameInput, setNameInput] = useState(session?.user?.name ?? "");

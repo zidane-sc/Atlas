@@ -4,13 +4,13 @@ import { useMemo, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useTasks } from "@/components/providers/TasksProvider";
 import { useNotifications } from "@/hooks/useNotifications";
-import { computeCharacterSheet, SKILL_META, STATS, calculateStreak, completedAt } from "@/lib/gamification";
+import { SKILL_META, STATS, calculateStreak, completedAt } from "@/lib/gamification";
 import { TYPE_ICON } from "@/lib/mock-data";
 import { updateUserProfileAction } from "@/lib/actions/user";
 
 export default function CharacterContent() {
   const { data: session, update: updateSession } = useSession();
-  const { tasks, allTimeTasks, bonusXp, bonusCoins } = useTasks();
+  const { tasks, characterSheet } = useTasks();
   const { notify } = useNotifications();
   const [isEditing, setIsEditing] = useState(false);
   const [formName, setFormName] = useState("");
@@ -32,7 +32,7 @@ export default function CharacterContent() {
     }
     setSaving(false);
   };
-  const sheet = useMemo(() => computeCharacterSheet(allTimeTasks, bonusXp, bonusCoins), [allTimeTasks, bonusXp, bonusCoins]);
+  const sheet = characterSheet;
   const streakDays = useMemo(() => calculateStreak(tasks), [tasks]);
   const taskXp = sheet.globalXP;
 

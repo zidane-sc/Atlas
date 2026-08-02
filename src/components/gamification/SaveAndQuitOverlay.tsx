@@ -7,7 +7,6 @@ import {
   calcTaskXP,
   calculateStreak,
   completedAt,
-  computeCharacterSheet,
   formatLocalDate,
   getFarewell,
   isTaskOnTime,
@@ -56,24 +55,12 @@ function StatCard({
 }
 
 export function SaveAndQuitOverlay({ onClose }: { onClose: () => void }) {
-  const { tasks, allTimeTasks } = useTasks();
+  const { tasks, characterSheet } = useTasks();
   const [saving, setSaving] = useState(false);
-  const [serverStats, setServerStats] = useState<{ bonusXp: number; bonusCoins: number } | null>(null);
   const savingRef = useRef(false);
   const timeoutRef = useRef<number | null>(null);
   const quitRef = useRef<HTMLButtonElement>(null);
   const today = useMemo(() => todayStr(), []);
-
-  useEffect(() => {
-    const fetchStats = async () => {
-      const { getUserStatsAction } = await import("@/lib/actions/user");
-      const result = await getUserStatsAction();
-      if (result.success) {
-        setServerStats(result.data);
-      }
-    };
-    void fetchStats();
-  }, []);
 
   const todayCompletedCount = useMemo(
     () =>
@@ -97,13 +84,7 @@ export function SaveAndQuitOverlay({ onClose }: { onClose: () => void }) {
   );
 
   const streakDays = useMemo(() => calculateStreak(tasks), [tasks]);
-  const totalCoins = useMemo(
-    () => {
-      if (!serverStats) return 0;
-      return computeCharacterSheet(allTimeTasks, serverStats.bonusXp, serverStats.bonusCoins).totalCoins;
-    },
-    [allTimeTasks, serverStats]
-  );
+  const totalCoins = characterSheet.totalCoins;
 
   const farewell = getFarewell(todayCompletedCount, streakDays);
   const colorVar = MOOD_COLOR_VAR[farewell.mood];

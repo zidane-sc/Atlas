@@ -10,7 +10,7 @@ import { XpBar } from "@/components/gamification/XpBar";
 import { useTasks } from "@/components/providers/TasksProvider";
 import { useCommandPalette } from "@/components/providers/CommandPaletteProvider";
 import { useNotifications } from "@/hooks/useNotifications";
-import { computeCharacterSheet, getNextStreakMilestone, calculateStreak, completedAt, formatLocalDate } from "@/lib/gamification";
+import { getNextStreakMilestone, calculateStreak, completedAt, formatLocalDate } from "@/lib/gamification";
 import { updateTask as updateTaskAction } from "@/lib/actions/tasks";
 import { updateNoteAction } from "@/lib/actions/notes";
 import { listNotesAction } from "@/lib/actions/notes";
@@ -83,7 +83,7 @@ function GroupLabel({ children }: { children: React.ReactNode }) {
 
 export function Sidebar() {
   const router = useRouter();
-  const { tasks, allTimeTasks, openCreateForm, openEditForm, justCompleted, bonusXp, bonusCoins, updateTask } = useTasks();
+  const { tasks, characterSheet, openCreateForm, openEditForm, justCompleted, updateTask } = useTasks();
   const { notify } = useNotifications();
   const [showQuit, setShowQuit] = useState(false);
   const [pinnedNotes, setPinnedNotes] = useState<NotePreview[]>([]);
@@ -101,7 +101,7 @@ export function Sidebar() {
     fetchPinnedNotes();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  const sheet = useMemo(() => computeCharacterSheet(allTimeTasks, bonusXp, bonusCoins), [allTimeTasks, bonusXp, bonusCoins]);
+  const sheet = characterSheet;
   const streakDays = useMemo(() => {
     const s = calculateStreak(tasks);
 
