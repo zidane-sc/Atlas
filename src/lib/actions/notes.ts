@@ -510,3 +510,49 @@ export async function unlinkNotesAction(noteId: string, targetNoteId: string): P
     return { success: false, error: { code: "INTERNAL", message: "Failed to unlink notes." } };
   }
 }
+
+export async function getNoteGraphAction(): Promise<
+  ActionResult<{
+    nodes: { id: string; title: string; pinned: boolean; linkCount: number }[];
+    edges: { source: string; target: string }[];
+  }>
+> {
+  const session = await auth();
+  if (!session?.user?.email) {
+    return { success: false, error: { code: "UNAUTHORIZED", message: "Sign in required." } };
+  }
+
+  try {
+    const user = await db.user.findUnique({ where: { email: session.user.email }, select: { id: true } });
+    if (!user) {
+      return { success: false, error: { code: "NOT_FOUND", message: "User not found." } };
+    }
+
+    const [notes, links] = await Promise.all([
+      db.note.findMany({ where: { userId: user.id }, select: { id: true, title: true, pinned: true } }),
+      db.noteLink.findMany({ where: { noteA: { userId: user.id } }, select: { noteAId: true, noteBId: true } }),
+    ]);
+
+    const linkCounts = new Map<string, number>();
+    for (const link of links) {
+      linkCounts.set(link.noteAId, (linkCounts.get(link.noteAId) ?? 0) + 1);
+      linkCounts.set(link.noteBId, (linkCounts.get(link.noteBId) ?? 0) + 1);
+    }
+
+    return {
+      success: true,
+      data: {
+        nodes: notes.map((n) => ({
+          id: n.id,
+          title: n.title,
+          pinned: n.pinned,
+          linkCount: linkCounts.get(n.id) ?? 0,
+        })),
+        edges: links.map((l) => ({ source: l.noteAId, target: l.noteBId })),
+      },
+    };
+  } catch (error) {
+    console.error("Failed to fetch note graph:", error);
+    return { success: false, error: { code: "INTERNAL", message: "Failed to fetch note graph." } };
+  }
+}
