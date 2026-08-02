@@ -16,6 +16,7 @@ import { mockProjects, mockSprints } from "@/lib/mock-data";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { mapDbTaskToClient, mapDbProjectToClient, mapDbSprintToClient } from "@/lib/tasks-reducer";
+import { getCharacterSheetData } from "@/lib/character-sheet-data";
 import { ProjectCategory, ProjectStatus, SprintStatus } from "@/generated/prisma/client";
 import { toDbProjectCategory } from "@/lib/schemas/project";
 import type { SavedFilterClient } from "@/lib/actions/filters";
@@ -36,7 +37,7 @@ export default async function DashboardLayout({
     create: { email: session.user.email, name: session.user.name ?? session.user.email },
   });
 
-  const [dbTasks, rawDbAllDoneTasks, rawDbProjects, rawDbSprints, rawDbActivityLogs] = await Promise.all([
+  const [dbTasks, rawDbAllDoneTasks, rawDbProjects, rawDbSprints, rawDbActivityLogs, characterSheetData] = await Promise.all([
     // No nested `statusHistory`/`comments` here — both are now on-demand only, fetched by
     // `getTaskDetails` when TaskFormSheet opens a specific task. `createdAt`/`completedAt` are
     // direct scalar columns (see Task.createdAt, types/task.ts), so nothing in the bulk views
@@ -75,6 +76,7 @@ export default async function DashboardLayout({
         actor: { select: { name: true, email: true } },
       },
     }),
+    getCharacterSheetData(owner.id),
   ]);
 
   let dbProjects = rawDbProjects;
@@ -167,6 +169,8 @@ export default async function DashboardLayout({
               initialActivityLogs={activityLogs}
               initialBonusXp={owner.bonusXp}
               initialBonusCoins={owner.bonusCoins}
+              initialCharacterSheet={characterSheetData.characterSheet}
+              initialUnlockedAchievements={characterSheetData.unlockedAchievements}
               initialPurchasedDecorations={owner.purchasedDecorations}
               initialPlacedDecorations={owner.placedDecorations as Record<string, string | null>}
               initialSavedFilters={owner.savedFilters as unknown as SavedFilterClient[]}
