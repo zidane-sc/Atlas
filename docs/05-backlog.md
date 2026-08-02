@@ -47,12 +47,12 @@ Rather than the original "notes/journal first" brainstorm, this reflects what yo
 | EPIC-10 | Task Relations | v0.2 | Done — Parent/Child/Blocked-By added as relation types 2026-08-02 (no separate `parentId` column, see §6) |
 | EPIC-11 | Search & Filters | v0.2 | Done — search now covers projects/attachments; filters got comparators, a Tag facet, and a global AND/OR toggle 2026-08-02 (see §6) |
 | EPIC-12 | Views II — Table, Calendar | v0.2 | Done |
-| EPIC-13 | Comments, Activity Log & Dashboard v1 | v0.2 | Done |
+| EPIC-13 | Comments, Activity Log & Dashboard v1 | v0.2 | Done (gap: Dashboard is missing "this week: completed vs. estimated vs. actual story points" from §9.4 — see §6) |
 | EPIC-14 | XP & Leveling | v0.3 | Done (derived calculations, sidebar XP bar) |
 | EPIC-15 | Achievements | v0.3 | Done — "Perfect Week" now a real 7-day-streak check, 500/1000 Quests tiers added 2026-08-02 (see §6) |
 | EPIC-16 | Streaks | v0.3 | Done (current streak + longest-ever streak, both dynamically calculated from task completion dates) |
 | EPIC-17 | Coins & Room Decoration | v0.3 | Done (Coins persisted in DB, Room Decoration built as JRPG panel and fully persisted) |
-| EPIC-18 | Sound & Motion Settings | v0.3 | Done (sound/motion options added to DB, global settings provider wired, chime checks setting) |
+| EPIC-18 | Sound & Motion Settings | v0.3 | Done (Default View "Kanban" 404 fixed 2026-08-02 — see §6) |
 | EPIC-19 | Views III — Timeline, Today, Waiting, Focus, Project, Archive | v0.4 | Done (smart views fully built & routed in UI; "Archive" tab is intentionally the completed-quests chronicle, not a trash view — see §6) |
 | EPIC-20 | Work Sessions (Focus Timer) | v0.4 | Done (Focus Timer work sessions logged and persisted in database, and now aggregated into Statistics — see §6) |
 | EPIC-21 | Statistics | v0.4 | Done — all §9.7 metrics now built 2026-08-02: productive weekday/time, avg task duration, completion rate, longest streak, focus hours, est-vs-actual story points (see §6) |
@@ -154,3 +154,8 @@ A code review found every epic above genuinely wired to real DB data (no mock/ha
 - **Data Export/Import — found a bigger bug than scoped**: the Import Data button never called the `importWorkspaceData` server action at all — it only swapped client-side React state, so an imported backup silently vanished on the next page reload with no data actually written to the DB. Fixed by wiring the button to the real action (which now also restores `WorkSession`/`ActivityLog` rows) followed by a full reload; removed the now-dead client-only `loadTasks`/`loadProjects`/`loadSprints` provider methods that this bug depended on (EPIC-23).
 - **Notifications: overdue/due-soon/completed** — `task:overdue`/`task:due-soon`/`task:completed` event types existed but nothing ever emitted them. Added a once-per-calendar-day proactive check (via `checkAndEmitDueDateNotifications`) that surfaces the single most urgent overdue/due-soon task, plus a real `task:completed` emit on status → done (EPIC-29).
 - **Notes note-to-note linking** — the one piece of the original Notes idea not built alongside the rest. Added a `NoteLink` model (undirected, canonical-ordered pair) plus `linkNotesAction`/`unlinkNotesAction` and a "Linked Notes" picker in the note editor (EPIC-28).
+
+**Found in a follow-up pass (2026-08-02):**
+
+- **Dashboard is missing the story-point comparison from §9.4** — "this week: completed vs. estimated vs. actual story points" isn't rendered on the Dashboard at all. `calcEstimatedVsActualStoryPoints` (`src/lib/statistics.ts`) already computes it for the Statistics page; the Dashboard just never calls it (EPIC-13). Not yet fixed.
+- ~~"Kanban" as Default View 404s~~ → **Fixed 2026-08-02**: Kanban is the default tab shown at `/tasks` itself, not a route of its own (`src/app/(dashboard)/tasks/page.tsx` defaults its tab state to `"kanban"`). `DefaultViewRedirect` (`src/components/layout/DefaultViewRedirect.tsx`) now special-cases `defaultView === "kanban"` to push `/tasks` instead of the nonexistent `/tasks/kanban` (EPIC-18).

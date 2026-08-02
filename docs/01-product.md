@@ -265,6 +265,8 @@ On opening the app, surface:
 - Recent wins (XP gained)
 - This week: completed vs. estimated vs. actual story points
 
+**Status:** first four built and dynamic, real DB data. "This week: completed vs. estimated vs. actual story points" is missing from the Dashboard — the underlying calculation exists (`calcEstimatedVsActualStoryPoints`, used by the Statistics page) but isn't surfaced here. See `05-backlog.md` §6.
+
 ### 9.5 Work Sessions (Focus Timer)
 - Start/stop a focus session on a task; log actual time spent automatically, feeding statistics (estimated vs. actual).
 
