@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Trash2, Undo2 } from "lucide-react";
 import { List as ListIcon, Plus, Table2, ChevronLeft, ChevronRight } from "lucide-react";
-import { DragDropContext, Droppable, Draggable, type DropResult } from "react-beautiful-dnd";
+import { DragDropContext, Droppable, Draggable, type DropResult } from "@hello-pangea/dnd";
 import { Button } from "@/components/ui/button";
 import { KanbanBoard } from "@/components/tasks/KanbanBoard";
 import { PriorityMark } from "@/components/tasks/PriorityMark";
