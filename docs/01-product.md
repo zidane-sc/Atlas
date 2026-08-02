@@ -2,7 +2,7 @@
 ### Subtitle: *Your Second Brain*
 
 **Type:** Personal, single-user productivity system
-**Status:** v0.1 draft
+**Status:** v1.0 shipped (see `05-backlog.md` Epic Index) — only Icebox (§14) ideas remain open
 **Owner:** You (sole user, sole PM, sole engineer)
 
 ---
@@ -230,9 +230,9 @@ Not every task ends in a PR — capture what it *actually* produced:
 
 This directly supports your investigation → fix workflow: investigate a bug, then spin off child tasks for the fix, review, and deploy — all linked back to the original.
 
-**Decision:** a task has at most **one Parent** (single-parent hierarchy, matching Jira/Linear conventions), but unlimited **Related/Blocks/Duplicate** links. This keeps the hierarchy simple to visualize while still allowing arbitrary cross-references.
+**Decision (revised 2026-08-02):** the original plan was a single-parent hierarchy (matching Jira/Linear conventions) enforced via a dedicated `parentId` column. That column ended up dead — never set by any UI — and was removed (see `05-backlog.md` §6). Rather than re-add a `parentId` column to enforce single-parent, hierarchy now rides entirely on the flat Relations system: `parent`/`child` are relation types alongside Blocks/Blocked-By/Related/Duplicate/Caused-By/Generated-From, with **no cap on how many `parent` relations a task can have** — same as Related/Blocks/Duplicate. Simpler data model (one mechanism for all cross-references) over a hierarchy guarantee that was never actually enforced in practice anyway.
 
-**Status:** Parent/Child hierarchy is modeled as relation types (`parent`/`child`), alongside Blocks/Blocked-By/Related/Duplicate/Caused-By/Generated-From — not as a separate `parentId` column (that field existed in the schema but was dead, never set by any UI, and has been removed). See `05-backlog.md` §6.
+**Status:** Parent/Child hierarchy is modeled as relation types (`parent`/`child`), not as a separate `parentId` column. See `05-backlog.md` §6.
 
 ### 8.11 Tags & Sprint
 
@@ -382,7 +382,7 @@ These stay explicitly *ideas*, not requirements, until a version bump deliberate
 ## 15. Open Questions
 
 **Resolved:**
-- ~~Can a task have multiple parents?~~ → No — single Parent, unlimited Related/Blocks/Duplicate links (see §8.10).
+- ~~Can a task have multiple parents?~~ → Originally decided No (single Parent). **Revised 2026-08-02:** Yes — `parent` is now an unlimited relation type like Related/Blocks/Duplicate, no separate single-parent enforcement (see §8.10).
 - ~~Should Deliverables be required before Done?~~ → No — always optional (see §8.7).
 - ~~Should Reporter default silently or require selection?~~ → Defaults silently to Self (see §8.8).
 
