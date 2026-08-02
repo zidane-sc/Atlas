@@ -2,6 +2,7 @@
 
 import { Suspense } from "react";
 import dynamic from "next/dynamic";
+import type { StatisticsData } from "@/lib/statistics-data";
 
 const StatisticsContent = dynamic(
   () => import("./StatisticsContent"),
@@ -21,10 +22,10 @@ const StatisticsContent = dynamic(
   }
 );
 
-export function StatisticsPage() {
+export function StatisticsPage({ stats }: { stats: StatisticsData }) {
   return (
     <Suspense fallback={<div className="p-8">Loading statistics...</div>}>
-      <StatisticsContent />
+      <StatisticsContent stats={stats} />
     </Suspense>
   );
 }

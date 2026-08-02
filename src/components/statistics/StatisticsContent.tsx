@@ -1,48 +1,10 @@
 "use client";
 
-import { useState, useMemo } from "react";
 import { Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { RecapTrigger } from "@/components/gamification/RecapTrigger";
-import type { RecapData } from "@/components/gamification/RecapCutscene";
-import { useTasks } from "@/components/providers/TasksProvider";
-import { useProjects } from "@/components/providers/ProjectsProvider";
-import { calcTaskXP, completedAt, computeRecapGrade, createdAt, isTaskOnTime, calculateStreak, calculateLongestStreak } from "@/lib/gamification";
-import { buildProductivityProfile, calcAverageTaskDurationDays, calcCompletionRate, calcEstimatedVsActualStoryPoints, calcFocusHours } from "@/lib/statistics";
 import { TYPE_ICON } from "@/lib/mock-data";
 import ActivityHeatmap from "@/components/statistics/ActivityHeatmap";
-import type { Project } from "@/types/gamification";
-import type { Priority, Task, TaskType } from "@/types/task";
-
-const WEEKDAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-
-/**
- * Real per-day completion counts for the trailing 7 days (vs the same weekday one week prior) —
- * with only 16 mock tasks this will look sparser than a hand-authored fake week, but real-and-sparse
- * beats fake-and-full for a "compare to last week" chart.
- */
-function buildWeeklyThroughput(tasks: Task[], nowStr: string): { day: string; done: number; prevDone: number }[] {
-  const DAY_MS = 86_400_000;
-  const now = new Date(nowStr).getTime();
-  const countInRange = (start: number, end: number) =>
-    tasks.filter((t) => {
-      const c = completedAt(t);
-      if (!c) return false;
-      const ct = new Date(c).getTime();
-      return ct >= start && ct < end;
-    }).length;
-
-  const buckets: { day: string; done: number; prevDone: number }[] = [];
-  for (let i = 6; i >= 0; i--) {
-    const dayStart = now - i * DAY_MS;
-    const dayEnd = dayStart + DAY_MS;
-    buckets.push({
-      day: WEEKDAY_LABELS[new Date(dayStart).getUTCDay()],
-      done: countInRange(dayStart, dayEnd),
-      prevDone: countInRange(dayStart - 7 * DAY_MS, dayEnd - 7 * DAY_MS),
-    });
-  }
-  return buckets;
-}
+import type { StatisticsData } from "@/lib/statistics-data";
 
 /** recharts sets fill/stroke as raw SVG presentation attributes, which don't reliably
  * resolve CSS custom properties across browsers — literal hex here, mirroring globals.css. */
@@ -68,124 +30,12 @@ const TOOLTIP_STYLE = {
   fontSize: "14px",
 };
 
-function buildRecap(allTasks: Task[], projects: Project[], periodDays: number, period: "week" | "month", now: number): RecapData {
-  const day = 86_400_000;
-  const from = now - periodDays * day;
-  const prevFrom = now - periodDays * 2 * day;
-
-  const doneInRange = (start: number, end: number) =>
-    allTasks.filter((t) => {
-      const c = completedAt(t);
-      if (!c) return false;
-      const ct = new Date(c).getTime();
-      return ct >= start && ct < end;
-    });
-
-  const doneThis = doneInRange(from, now);
-  const donePrev = doneInRange(prevFrom, from);
-  const created = allTasks.filter((t) => {
-    const c = createdAt(t);
-    return c != null && new Date(c).getTime() >= from;
-  }).length;
-  const xpEarned = doneThis.reduce(
-    (sum, t) => sum + calcTaskXP(t.priority, t.storyPoint, isTaskOnTime(t)),
-    0
-  );
-  const completedByProject = projects.map((p) => ({
-    project: p,
-    completed: allTasks.filter((t) => t.project === p.name && t.status === "done").length,
-  }));
-  const topProject = completedByProject.reduce((best, p) => (p.completed > best.completed ? p : best), completedByProject[0])
-    .project;
-
-  return {
-    period,
-    done: doneThis.length,
-    prevDone: donePrev.length,
-    created,
-    xpEarned,
-    streak: calculateStreak(allTasks),
-    topProject: { name: topProject.name, emoji: topProject.emoji, colorVar: topProject.colorVar },
-    grade: computeRecapGrade(doneThis.length, created),
-  };
-}
-
-export default function StatisticsContent() {
-  const { tasks: allTasks } = useTasks();
-  const { projects } = useProjects();
-
-  const [nowTime] = useState(() => {
-    const doneTasks = allTasks.filter((t) => completedAt(t) != null);
-    const latestCompletion = doneTasks.length > 0 
-      ? Math.max(...doneTasks.map((t) => new Date(completedAt(t)!).getTime()))
-      : 0;
-    return Math.max(Date.now(), latestCompletion);
-  });
-  const kpis = [
-    { label: "TOTAL", value: allTasks.length, colorVar: "--color-text-primary" },
-    { label: "DONE", value: allTasks.filter((t) => t.status === "done").length, colorVar: "--color-status-done" },
-    { label: "ACTIVE", value: allTasks.filter((t) => t.status === "in_progress").length, colorVar: "--color-status-in-progress" },
-    { label: "WAITING", value: allTasks.filter((t) => t.status === "waiting_external").length, colorVar: "--color-status-waiting-external" },
-  ];
-
-  const PRIORITY_FILL: Record<Priority, string> = {
-    p0: CHART_COLORS.red,
-    p1: CHART_COLORS.yellow,
-    p2: CHART_COLORS.ready,
-    p3: CHART_COLORS.textMuted,
-    p4: CHART_COLORS.dim,
-  };
-  const byPriority = (["p0", "p1", "p2", "p3", "p4"] as Priority[]).map((p) => ({
-    key: p,
-    label: p.toUpperCase(),
-    value: allTasks.filter((t) => t.priority === p).length,
-    fill: PRIORITY_FILL[p],
-  }));
-
-  const byType = (Object.keys(TYPE_ICON) as TaskType[])
-    .map((type) => ({ type, value: allTasks.filter((t) => t.type === type).length }))
-    .filter((d) => d.value > 0)
-    .sort((a, b) => b.value - a.value)
-    .slice(0, 6);
-
-  const byProject = projects
-    .map((p) => {
-      const projectTasks = allTasks.filter((t) => t.project === p.name);
-      const done = projectTasks.filter((t) => t.status === "done").length;
-      return { name: p.name.split(" ")[0], done, active: projectTasks.length - done, total: projectTasks.length, colorVar: p.colorVar };
-    })
-    .filter((p) => p.total > 0);
-
-  const weekly = useMemo(() => buildRecap(allTasks, projects, 7, "week", nowTime), [allTasks, projects, nowTime]);
-  const monthly = useMemo(() => buildRecap(allTasks, projects, 30, "month", nowTime), [allTasks, projects, nowTime]);
-  const nowAnchor = useMemo(() => new Date(nowTime).toISOString().slice(0, 10), [nowTime]);
-  const weeklyThroughput = useMemo(() => buildWeeklyThroughput(allTasks, nowAnchor), [allTasks, nowAnchor]);
-
-  const productivityProfile = useMemo(() => buildProductivityProfile(allTasks), [allTasks]);
-  const completionRate = useMemo(() => calcCompletionRate(allTasks), [allTasks]);
-  const avgTaskDurationDays = useMemo(() => calcAverageTaskDurationDays(allTasks), [allTasks]);
-  const focusHours = useMemo(() => calcFocusHours(allTasks), [allTasks]);
-  const longestStreak = useMemo(() => calculateLongestStreak(allTasks), [allTasks]);
-  const storyPointComparison = useMemo(() => calcEstimatedVsActualStoryPoints(allTasks), [allTasks]);
-
-  const doneThisWeekTasks = useMemo(
-    () => allTasks.filter((t) => {
-      const c = completedAt(t);
-      if (!c) return false;
-      const ts = new Date(c).getTime();
-      return ts >= nowTime - 7 * 86_400_000 && ts <= nowTime;
-    }),
-    [allTasks, nowTime]
-  );
-  const weeklyStoryPointComparison = useMemo(() => calcEstimatedVsActualStoryPoints(doneThisWeekTasks), [doneThisWeekTasks]);
-
-  const doneThisWeek = weeklyThroughput.reduce((s, d) => s + d.done, 0);
-  const donePrevWeek = weeklyThroughput.reduce((s, d) => s + d.prevDone, 0);
-  const wow = [
-    { label: "throughput", icon: "✓", now: doneThisWeek, prev: donePrevWeek },
-    { label: "created", icon: "＋", now: weekly.created, prev: Math.max(weekly.created - 1, 0) },
-    { label: "completed", icon: "◆", now: weekly.done, prev: weekly.prevDone },
-  ];
+export default function StatisticsContent({ stats }: { stats: StatisticsData }) {
+  const {
+    tasks, nowAnchor, weekly, monthly, weeklyThroughput, kpis, byPriority, byType, byProject,
+    productivityProfile, completionRate, avgTaskDurationDays, focusHours, longestStreak,
+    storyPointComparison, doneThisWeekCount, weeklyStoryPointComparison, wow,
+  } = stats;
 
   return (
     <main className="flex h-full flex-col">
@@ -227,7 +77,7 @@ export default function StatisticsContent() {
 
       <div className="flex-1 overflow-y-auto p-6">
         <div className="flex flex-col gap-5">
-          <ActivityHeatmap tasks={allTasks} nowAnchor={nowAnchor} />
+          <ActivityHeatmap tasks={tasks} nowAnchor={nowAnchor} />
           <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
             {kpis.map((k) => (
               <div key={k.label} className="border-2 border-border bg-card p-4 text-center">
@@ -307,7 +157,7 @@ export default function StatisticsContent() {
                     <div className="h-3 flex-1" style={{ backgroundColor: "var(--color-bg-panel-alt)" }}>
                       <div
                         className="h-full"
-                        style={{ width: `${(t.value / allTasks.length) * 100}%`, backgroundColor: TYPE_BAR_COLORS[i] }}
+                        style={{ width: `${(t.value / tasks.length) * 100}%`, backgroundColor: TYPE_BAR_COLORS[i] }}
                       />
                     </div>
                     <span className="w-4 text-right text-sm text-foreground">{t.value}</span>
@@ -335,7 +185,7 @@ export default function StatisticsContent() {
             </div>
             <div className="mt-3 flex items-center gap-3 text-sm">
               <span style={{ color: "var(--color-dim)" }}>◆ THIS WEEK</span>
-              <span className="text-muted-foreground">{doneThisWeekTasks.length} quests</span>
+              <span className="text-muted-foreground">{doneThisWeekCount} quests</span>
               <span style={{ color: "var(--color-text-primary)" }}>{weeklyStoryPointComparison.estimated} SP est.</span>
               <span style={{ color: "var(--color-dim)" }}>vs</span>
               <span style={{ color: "var(--color-text-primary)" }}>{weeklyStoryPointComparison.actualHours}h</span>
