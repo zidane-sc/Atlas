@@ -12,6 +12,7 @@ import { useTasks } from "@/components/providers/TasksProvider";
 import { useSettings } from "@/components/providers/SettingsProvider";
 import { useSprints } from "@/components/providers/SprintsProvider";
 import { calcTaskCoins, calcTaskXP, completedAt, computeCharacterSheet, isTaskOnTime, calculateStreak } from "@/lib/gamification";
+import { calcEstimatedVsActualStoryPoints } from "@/lib/statistics";
 import { formatDueDate, isDueToday, isOverdue } from "@/lib/task-utils";
 import { MOCK_NOW, TYPE_ICON, todaysDailyQuest } from "@/lib/mock-data";
 
@@ -40,6 +41,24 @@ export default function Page() {
   const activeSprint = sprints.find((s) => s.status === "active");
   const sprintTasks = activeSprint ? tasks.filter((t) => t.sprint === activeSprint.name) : [];
   const sprintDone = sprintTasks.filter((t) => t.status === "done").length;
+
+  const now = useMemo(() => {
+    const doneTasks = tasks.filter((t) => completedAt(t) != null);
+    const latestCompletion = doneTasks.length > 0 ? Math.max(...doneTasks.map((t) => new Date(completedAt(t)!).getTime())) : 0;
+    return Math.max(Date.now(), latestCompletion);
+  }, [tasks]);
+
+  const doneThisWeek = useMemo(
+    () => tasks.filter((t) => {
+      const c = completedAt(t);
+      if (!c) return false;
+      const ts = new Date(c).getTime();
+      return ts >= now - 7 * 86_400_000 && ts <= now;
+    }),
+    [tasks, now]
+  );
+
+  const weeklyStoryPoints = useMemo(() => calcEstimatedVsActualStoryPoints(doneThisWeek), [doneThisWeek]);
 
   return (
     <main className="flex h-full flex-col gap-5 overflow-y-auto p-6">
@@ -138,6 +157,17 @@ export default function Page() {
           </div>
         </div>
       )}
+
+      <div className="border-2 border-border bg-card p-4">
+        <div className="mb-3 text-sm tracking-widest" style={{ color: "var(--color-primary-gold)" }}>◆ THIS WEEK</div>
+        <div className="flex flex-wrap items-center gap-3 text-sm">
+          <span className="text-muted-foreground">{doneThisWeek.length} quests completed</span>
+          <span className="text-muted-foreground">·</span>
+          <span style={{ color: "var(--color-text-primary)" }}>{weeklyStoryPoints.estimated} SP estimated</span>
+          <span className="text-muted-foreground">vs</span>
+          <span style={{ color: "var(--color-text-primary)" }}>{weeklyStoryPoints.actualHours}h actual</span>
+        </div>
+      </div>
 
       {activityLogs && activityLogs.length > 0 && (
         <div className="border-2 border-border bg-card p-4">
