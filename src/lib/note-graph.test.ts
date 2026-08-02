@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { stepSimulation, getNeighborhood, layoutRadial, type GraphNode, type GraphEdge } from "./note-graph";
+import { stepSimulation, getNeighborhood, layoutRadial, matchesSearchQuery, type GraphNode, type GraphEdge } from "./note-graph";
 
 function node(overrides: Partial<GraphNode> & Pick<GraphNode, "id" | "x" | "y">): GraphNode {
   return { vx: 0, vy: 0, pinned: false, linkCount: 0, ...overrides };
@@ -113,5 +113,20 @@ describe("layoutRadial", () => {
     const hop2 = positions.get("hop2")!;
     const dist = Math.sqrt((hop2.x - center.x) ** 2 + (hop2.y - center.y) ** 2);
     expect(dist).toBeCloseTo(280, 0);
+  });
+});
+
+describe("matchesSearchQuery", () => {
+  it("matches case-insensitively on substring", () => {
+    expect(matchesSearchQuery("JWT Refresh Token", "jwt")).toBe(true);
+  });
+
+  it("does not match an unrelated title", () => {
+    expect(matchesSearchQuery("JWT Refresh Token", "database")).toBe(false);
+  });
+
+  it("treats an empty query as matching everything", () => {
+    expect(matchesSearchQuery("Anything", "")).toBe(true);
+    expect(matchesSearchQuery("Anything", "   ")).toBe(true);
   });
 });

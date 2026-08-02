@@ -178,3 +178,10 @@ export function layoutRadial(
 
   return positions;
 }
+
+/** Case-insensitive substring match against a note title. Empty/whitespace query matches everything. */
+export function matchesSearchQuery(title: string, query: string): boolean {
+  const trimmed = query.trim();
+  if (!trimmed) return true;
+  return title.toLowerCase().includes(trimmed.toLowerCase());
+}
