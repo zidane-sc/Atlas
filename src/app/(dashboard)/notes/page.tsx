@@ -2,11 +2,13 @@
 
 import { useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
+import { List, Map as MapIcon } from "lucide-react";
 import { listNotesAction, deleteNoteAction, updateNoteAction } from "@/lib/actions/notes";
 import { useNotifications } from "@/hooks/useNotifications";
 import { NoteList } from "@/components/notes/NoteList";
 import { NoteEditorLazy } from "@/components/notes/NoteEditorLazy";
 import { DeleteConfirmModal } from "@/components/notes/DeleteConfirmModal";
+import { KnowledgeMap } from "@/components/notes/KnowledgeMap";
 import type { NotePreview } from "@/types/note";
 
 export default function NotesPage() {
@@ -19,6 +21,7 @@ export default function NotesPage() {
   const [allTags, setAllTags] = useState<string[]>([]);
   const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
+  const [viewMode, setViewMode] = useState<"list" | "map">("list");
   const [deleteModal, setDeleteModal] = useState<{ isOpen: boolean; noteId: string | null; title: string }>({ isOpen: false, noteId: null, title: "" });
   const [isDeleting, setIsDeleting] = useState(false);
 
@@ -123,6 +126,24 @@ export default function NotesPage() {
             onChange={(e) => setSearch(e.target.value)}
             className="flex-1 px-3 py-2 border border-border rounded bg-card text-sm"
           />
+          <div className="flex items-center border border-border rounded overflow-hidden">
+            <button
+              onClick={() => setViewMode("list")}
+              className={`flex items-center gap-1 px-3 py-2 text-sm transition-colors ${
+                viewMode === "list" ? "bg-primary text-primary-foreground" : "bg-card text-muted-foreground hover:bg-accent"
+              }`}
+            >
+              <List size={14} /> List
+            </button>
+            <button
+              onClick={() => setViewMode("map")}
+              className={`flex items-center gap-1 px-3 py-2 text-sm transition-colors ${
+                viewMode === "map" ? "bg-primary text-primary-foreground" : "bg-card text-muted-foreground hover:bg-accent"
+              }`}
+            >
+              <MapIcon size={14} /> Knowledge Map
+            </button>
+          </div>
           <button
             onClick={() => setIsCreating(true)}
             className="px-4 py-2 bg-primary text-primary-foreground rounded text-sm"
@@ -153,7 +174,9 @@ export default function NotesPage() {
           </div>
         )}
 
-        {loading ? (
+        {viewMode === "map" ? (
+          <KnowledgeMap selectedTags={selectedTags} onOpenNote={(id) => setEditingNoteId(id)} />
+        ) : loading ? (
           <div className="flex items-center justify-center flex-1">Loading...</div>
         ) : (
           <NoteList notes={notes} onSelectNote={handleSelectNote} onDeleteNote={handleDelete} onPinNote={handlePinNote} />
