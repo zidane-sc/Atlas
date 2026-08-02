@@ -341,6 +341,45 @@ export function KnowledgeMap({ selectedTags, onOpenNote }: KnowledgeMapProps) {
           ))}
         </g>
       </svg>
+      {!focusedNoteId && (
+        <div
+          className="absolute bottom-2 right-2 z-10 border border-border bg-card"
+          style={{ width: 150, height: 100 }}
+        >
+          <svg
+            width="100%"
+            height="100%"
+            viewBox={`0 0 ${bounds.width} ${bounds.height}`}
+            onClick={(e) => {
+              const svg = e.currentTarget;
+              const rect = svg.getBoundingClientRect();
+              const scaleX = bounds.width / rect.width;
+              const scaleY = bounds.height / rect.height;
+              const clickX = (e.clientX - rect.left) * scaleX;
+              const clickY = (e.clientY - rect.top) * scaleY;
+              setTransform((t) => ({
+                ...t,
+                x: bounds.width / 2 - clickX * t.scale,
+                y: bounds.height / 2 - clickY * t.scale,
+              }));
+            }}
+            style={{ cursor: "pointer" }}
+          >
+            {nodesRef.current.map((node) => (
+              <circle key={node.id} cx={node.x} cy={node.y} r={4} fill="var(--color-text-muted)" />
+            ))}
+            <rect
+              x={-transform.x / transform.scale}
+              y={-transform.y / transform.scale}
+              width={bounds.width / transform.scale}
+              height={bounds.height / transform.scale}
+              fill="none"
+              stroke="var(--color-primary-gold)"
+              strokeWidth={2}
+            />
+          </svg>
+        </div>
+      )}
     </div>
   );
 }
