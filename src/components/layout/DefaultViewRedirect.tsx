@@ -10,12 +10,12 @@ export function DefaultViewRedirect() {
   const { settings } = useSettings();
 
   useEffect(() => {
-    if (pathname !== "/dashboard" && pathname !== "/") return;
+    if (pathname !== "/") return;
 
     const defaultViewSetting = settings.find((s) => s.key === "defaultView");
     const defaultView = (defaultViewSetting?.value as string) || "dashboard";
 
-    if (defaultView !== "dashboard" && pathname === "/dashboard") {
+    if (defaultView !== "dashboard") {
       // Kanban is the default tab shown at /tasks itself, not its own route.
       router.push(defaultView === "kanban" ? "/tasks" : `/tasks/${defaultView}`);
     }
