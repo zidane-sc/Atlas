@@ -13,6 +13,12 @@ const RADIUS_SCALE = 3;
 const MIN_ZOOM = 0.3;
 const MAX_ZOOM = 3;
 const KINETIC_ENERGY_STOP_THRESHOLD = 0.05;
+// A large, mostly-disconnected graph (many isolated single-node notes with only center-gravity
+// pulling them, no springs to dampen relative motion) can stay above the kinetic-energy
+// threshold indefinitely — hard-cap the O(n²)-per-tick loop regardless of energy
+// (docs/05-backlog.md §8 finding #14). ~10s at 60fps is well past what any real layout needs
+// to visually settle.
+const MAX_SIMULATION_TICKS = 600;
 
 function nodeRadius(linkCount: number): number {
   const r = RADIUS_BASE + RADIUS_SCALE * Math.sqrt(linkCount);
@@ -100,7 +106,9 @@ export function KnowledgeMap({ selectedTags, onOpenNote }: KnowledgeMapProps) {
   useEffect(() => {
     if (status !== "ready" || focusedNoteId) return;
 
+    let tickCount = 0;
     const tick = () => {
+      tickCount++;
       const updated = stepSimulation(nodesRef.current, edgesRef.current, bounds);
       nodesRef.current = updated.map((n, i) => ({
         ...n,
@@ -131,7 +139,7 @@ export function KnowledgeMap({ selectedTags, onOpenNote }: KnowledgeMapProps) {
         }
       });
 
-      if (kineticEnergy > KINETIC_ENERGY_STOP_THRESHOLD) {
+      if (kineticEnergy > KINETIC_ENERGY_STOP_THRESHOLD && tickCount < MAX_SIMULATION_TICKS) {
         animationFrameRef.current = requestAnimationFrame(tick);
       }
     };
@@ -343,7 +351,7 @@ export function KnowledgeMap({ selectedTags, onOpenNote }: KnowledgeMapProps) {
                 onDoubleClick={() => onOpenNote(node.id)}
                 style={{ cursor: "pointer" }}
               >
-                <title>Double-click to open</title>
+                <title>{node.title} — double-click to open</title>
                 <circle
                   r={nodeRadius(node.linkCount)}
                   fill="var(--color-bg-panel)"

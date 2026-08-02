@@ -9,6 +9,7 @@ import { SaveAndQuitOverlay } from "@/components/gamification/SaveAndQuitOverlay
 import { XpBar } from "@/components/gamification/XpBar";
 import { useTasks } from "@/components/providers/TasksProvider";
 import { useCommandPalette } from "@/components/providers/CommandPaletteProvider";
+import { useNotifications } from "@/hooks/useNotifications";
 import { computeCharacterSheet, getNextStreakMilestone, calculateStreak, completedAt, formatLocalDate } from "@/lib/gamification";
 import { updateTask as updateTaskAction } from "@/lib/actions/tasks";
 import { updateNoteAction } from "@/lib/actions/notes";
@@ -82,7 +83,8 @@ function GroupLabel({ children }: { children: React.ReactNode }) {
 
 export function Sidebar() {
   const router = useRouter();
-  const { tasks, openCreateForm, openEditForm, justCompleted, bonusXp, bonusCoins, updateTask } = useTasks();
+  const { tasks, allTimeTasks, openCreateForm, openEditForm, justCompleted, bonusXp, bonusCoins, updateTask } = useTasks();
+  const { notify } = useNotifications();
   const [showQuit, setShowQuit] = useState(false);
   const [pinnedNotes, setPinnedNotes] = useState<NotePreview[]>([]);
   const { setOpen: setCommandPaletteOpen } = useCommandPalette();
@@ -92,11 +94,14 @@ export function Sidebar() {
       const result = await listNotesAction({ skip: 0, take: 100 });
       if (result.success) {
         setPinnedNotes(result.data!.notes.filter((n) => n.pinned));
+      } else {
+        notify(result.error?.message ?? "Failed to load pinned notes.", "error");
       }
     };
     fetchPinnedNotes();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  const sheet = useMemo(() => computeCharacterSheet(tasks, bonusXp, bonusCoins), [tasks, bonusXp, bonusCoins]);
+  const sheet = useMemo(() => computeCharacterSheet(allTimeTasks, bonusXp, bonusCoins), [allTimeTasks, bonusXp, bonusCoins]);
   const streakDays = useMemo(() => {
     const s = calculateStreak(tasks);
 

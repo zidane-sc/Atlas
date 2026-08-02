@@ -8,9 +8,10 @@ export interface RecapData {
   done: number;
   prevDone: number;
   created: number;
+  prevCreated: number;
   xpEarned: number;
   streak: number;
-  topProject: { name: string; emoji: string; colorVar: string };
+  topProject: { name: string; emoji: string; colorVar: string } | null;
   grade: RecapGrade;
 }
 
@@ -144,10 +145,14 @@ export function RecapCutscene({ data, onClose }: { data: RecapData; onClose: () 
           <SlideCard show={phase >= 4}>
             <div
               className="bg-card p-5 text-center"
-              style={{ border: `2px solid var(${data.topProject.colorVar})`, boxShadow: `0 0 16px color-mix(in srgb, var(${data.topProject.colorVar}) 20%, transparent)` }}
+              style={
+                data.topProject
+                  ? { border: `2px solid var(${data.topProject.colorVar})`, boxShadow: `0 0 16px color-mix(in srgb, var(${data.topProject.colorVar}) 20%, transparent)` }
+                  : { border: "2px solid var(--color-border)" }
+              }
             >
-              <div style={{ fontSize: "32px", lineHeight: 1 }}>{data.topProject.emoji}</div>
-              <div className="mt-2 text-sm font-bold text-foreground">{data.topProject.name}</div>
+              <div style={{ fontSize: "32px", lineHeight: 1 }}>{data.topProject?.emoji ?? "—"}</div>
+              <div className="mt-2 text-sm font-bold text-foreground">{data.topProject?.name ?? "No projects yet"}</div>
               <div className="mt-1 text-sm tracking-widest text-muted-foreground">TOP PROJECT</div>
             </div>
           </SlideCard>

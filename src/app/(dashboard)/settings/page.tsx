@@ -11,7 +11,7 @@ import { useSettings } from "@/components/providers/SettingsProvider";
 import { useNotifications } from "@/hooks/useNotifications";
 import { computeCharacterSheet } from "@/lib/gamification";
 import { updateUserProfileAction } from "@/lib/actions/user";
-import { getWorkspaceHistoryForExport, importWorkspaceData, type ActivityLogExport, type WorkSessionExport } from "@/lib/actions/import";
+import { getWorkspaceHistoryForExport, getTasksForExport, importWorkspaceData, type ActivityLogExport, type WorkSessionExport } from "@/lib/actions/import";
 import type { Project, Sprint } from "@/types/gamification";
 import type { Task } from "@/types/task";
 
@@ -84,12 +84,12 @@ function Toggle({
 
 export default function Page() {
   const { data: session, update: updateSession } = useSession();
-  const { tasks, bonusXp, bonusCoins, reset: resetTasks } = useTasks();
+  const { allTimeTasks, bonusXp, bonusCoins, reset: resetTasks } = useTasks();
   const { projects, reset: resetProjects } = useProjects();
   const { sprints, reset: resetSprints } = useSprints();
   const { settings, updateSetting, reduceMotion, setReduceMotion } = useSettings();
   const { notify } = useNotifications();
-  const sheet = useMemo(() => computeCharacterSheet(tasks, bonusXp, bonusCoins), [tasks, bonusXp, bonusCoins]);
+  const sheet = useMemo(() => computeCharacterSheet(allTimeTasks, bonusXp, bonusCoins), [allTimeTasks, bonusXp, bonusCoins]);
   const importInputRef = useRef<HTMLInputElement>(null);
   const [isEditingName, setIsEditingName] = useState(false);
   const [nameInput, setNameInput] = useState(session?.user?.name ?? "");
@@ -125,10 +125,14 @@ export default function Page() {
   }, [getSetting, updateSetting]);
 
   const onExport = async () => {
-    const history = await getWorkspaceHistoryForExport();
+    const [history, tasksForExport] = await Promise.all([getWorkspaceHistoryForExport(), getTasksForExport()]);
+    if (!tasksForExport.success) {
+      notify(tasksForExport.error?.message ?? "Failed to export tasks.", "error");
+      return;
+    }
     const payload: AtlasExport = {
       version: EXPORT_VERSION,
-      tasks,
+      tasks: tasksForExport.data.tasks,
       projects,
       sprints,
       settings: { reduceMotion },

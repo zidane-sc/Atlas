@@ -38,7 +38,7 @@ const FLOOR_STYLES: Record<string, string> = {
 
 export function RoomDecoration() {
   const {
-    tasks,
+    allTimeTasks,
     bonusXp,
     bonusCoins,
     purchasedDecorations,
@@ -52,7 +52,7 @@ export function RoomDecoration() {
   const [placingId, setPlacingId] = useState<string | null>(null);
 
   // Compute live character sheet to get exact current coins total
-  const sheet = computeCharacterSheet(tasks, bonusXp, bonusCoins);
+  const sheet = computeCharacterSheet(allTimeTasks, bonusXp, bonusCoins);
   const currentCoins = sheet.totalCoins;
 
   // Resolve placed items (with defaults if empty)

@@ -10,6 +10,32 @@ import { useSprints } from "@/components/providers/SprintsProvider";
 import { PRIORITY_SHAPE_GLYPH } from "@/components/tasks/PriorityMark";
 import { PRIORITY_SHAPE, STATUS_LABEL, STATUS_SHAPE } from "@/lib/mock-data";
 import { NAV_ITEMS_FLAT } from "@/lib/nav-items";
+import type { Task } from "@/types/task";
+import type { TaskFormValues } from "@/lib/schemas/task";
+
+/** Rebuilds the full editable field set from an existing task — same shape TaskFormSheet's
+ * rollback path uses — so `updateTask` can flip just `status` without losing other fields. */
+function taskToFormValues(t: Task, status: TaskFormValues["status"]): TaskFormValues {
+  return {
+    title: t.title,
+    description: t.description,
+    project: t.project,
+    status,
+    type: t.type,
+    priority: t.priority,
+    effort: t.effort,
+    storyPoint: t.storyPoint,
+    startDate: t.startDate,
+    dueDate: t.dueDate,
+    sprint: t.sprint,
+    waitingOn: t.waitingOn,
+    reporter: t.reporter,
+    tags: t.tags,
+    relations: t.relations,
+    attachments: t.attachments,
+    deliverables: t.deliverables,
+  };
+}
 
 interface Item {
   key: string;
@@ -28,7 +54,7 @@ export function CommandPalette() {
 }
 
 function CommandPaletteBody({ onClose }: { onClose: () => void }) {
-  const { tasks, openEditForm, openCreateForm } = useTasks();
+  const { tasks, openEditForm, openCreateForm, updateTask } = useTasks();
   const { projects, openEditForm: openProjectEditForm } = useProjects();
   const { sprints, openEditForm: openSprintEditForm } = useSprints();
   const router = useRouter();
@@ -49,11 +75,17 @@ function CommandPaletteBody({ onClose }: { onClose: () => void }) {
       },
     }));
 
-    const taskItems: Item[] = tasks
+    const matchedActiveTasks = tasks
       .filter((t) => t.status !== "done")
       .filter((t) => !q || t.title.toLowerCase().includes(q) || t.tags.some((tag) => tag.includes(q)))
-      .slice(0, 8)
-      .map((t) => ({
+      .slice(0, 8);
+
+    // "Mark Done" only surfaces once the user searches, interleaved right after each task's
+    // "open" item — same "don't clutter the default browsing list" rule the project/sprint
+    // items below already follow (docs/05-backlog.md §8 finding #13: completing a task
+    // previously always needed opening the edit form or the Kanban select).
+    const taskItems: Item[] = matchedActiveTasks.flatMap((t) => {
+      const openItem: Item = {
         key: `task-${t.id}`,
         label: t.title,
         sub: `${STATUS_SHAPE[t.status]} ${STATUS_LABEL[t.status]} · ${t.project}`,
@@ -62,7 +94,20 @@ function CommandPaletteBody({ onClose }: { onClose: () => void }) {
           openEditForm(t);
           onClose();
         },
-      }));
+      };
+      if (!q) return [openItem];
+      const completeItem: Item = {
+        key: `complete-${t.id}`,
+        label: `Mark Done: ${t.title}`,
+        sub: t.project,
+        shape: "✓",
+        action: () => {
+          updateTask(t.id, taskToFormValues(t, "done"));
+          onClose();
+        },
+      };
+      return [openItem, completeItem];
+    });
 
     const actionItems: Item[] = [
       { key: "action-new", label: "New Quest", sub: "Create a task", shape: "+", action: () => { openCreateForm(); onClose(); } },
@@ -93,7 +138,7 @@ function CommandPaletteBody({ onClose }: { onClose: () => void }) {
     return q
       ? [...taskItems, ...projectItems, ...sprintItems, ...navItems, ...actionItems]
       : [...actionItems, ...navItems, ...taskItems.slice(0, 5)];
-  }, [query, tasks, projects, sprints, router, openEditForm, openProjectEditForm, openSprintEditForm, openCreateForm, onClose]);
+  }, [query, tasks, projects, sprints, router, openEditForm, openProjectEditForm, openSprintEditForm, openCreateForm, updateTask, onClose]);
 
   const onQueryChange = (value: string) => {
     setQuery(value);

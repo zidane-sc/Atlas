@@ -18,9 +18,9 @@ import { MOCK_NOW, TYPE_ICON, todaysDailyQuest } from "@/lib/mock-data";
 export default function Page() {
   const { settings } = useSettings();
   const compactView = settings.find((s) => s.key === "compactView")?.value ?? false;
-  const { tasks, activityLogs, bonusXp, bonusCoins, lastQuestClaimedAt, claimDailyQuest } = useTasks();
+  const { tasks, allTimeTasks, activityLogs, bonusXp, bonusCoins, lastQuestClaimedAt, claimDailyQuest } = useTasks();
   const { sprints } = useSprints();
-  const sheet = useMemo(() => computeCharacterSheet(tasks, bonusXp, bonusCoins), [tasks, bonusXp, bonusCoins]);
+  const sheet = useMemo(() => computeCharacterSheet(allTimeTasks, bonusXp, bonusCoins), [allTimeTasks, bonusXp, bonusCoins]);
   const streakDays = useMemo(() => calculateStreak(tasks), [tasks]);
   const { classTitle } = sheet;
   const dailyQuestClaimed = lastQuestClaimedAt != null && lastQuestClaimedAt.slice(0, 10) === MOCK_NOW;

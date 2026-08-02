@@ -648,6 +648,7 @@ type DeletedTask = { id: string; code: string | null; title: string; deletedAt: 
 
 function TrashSection() {
   const router = useRouter();
+  const { notify } = useNotifications();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [deleted, setDeleted] = useState<DeletedTask[] | null>(null);
@@ -656,7 +657,12 @@ function TrashSection() {
   const load = async () => {
     setLoading(true);
     const result = await listDeletedTasks();
-    setDeleted(result.success ? result.data : []);
+    if (result.success) {
+      setDeleted(result.data);
+    } else {
+      notify(result.error?.message ?? "Failed to load trash.", "error");
+      setDeleted((prev) => prev ?? []);
+    }
     setLoading(false);
   };
 
@@ -672,6 +678,8 @@ function TrashSection() {
     if (result.success) {
       setDeleted((prev) => (prev ? prev.filter((t) => t.id !== id) : prev));
       router.refresh();
+    } else {
+      notify(result.error?.message ?? "Failed to restore task.", "error");
     }
     setRestoringId(null);
   };

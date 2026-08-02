@@ -30,6 +30,10 @@ export function getLevelInfo(xp: number): {
   currentXP: number;
   nextLevelXP: number;
 } {
+  // Not currently reachable (storyPoint/bonusXp are both validated non-negative), but the XP
+  // double-counting bug (docs/05-backlog.md §8 finding #1) showed the bonus ledger isn't as
+  // isolated as assumed — guard defensively rather than return a negative currentXP.
+  xp = Math.max(0, xp);
   let cumulative = 0;
   let level = 1;
   while (true) {
@@ -61,9 +65,13 @@ export function completedAt(task: Task): string | null {
   return task.completedAt ?? task.statusHistory.find((h) => h.toStatus === "done")?.changedAt ?? null;
 }
 
-/** No dedicated `created_at` in the mock Task shape — the first status log entry stands in for it. */
+/**
+ * Prefers the real `createdAt` DB column, falling back to the first status log entry for any
+ * task object that predates that field being added to the client shape (docs/05-backlog.md §8
+ * finding #16) — lets bulk task fetches drop the nested `statusHistory` include entirely.
+ */
 export function createdAt(task: Task): string | null {
-  return task.statusHistory[0]?.changedAt ?? null;
+  return task.createdAt ?? task.statusHistory[0]?.changedAt ?? null;
 }
 
 export function isTaskOnTime(task: Task): boolean {

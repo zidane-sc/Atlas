@@ -6,8 +6,8 @@ import { db } from "@/lib/db";
 import { createTaskSchema, updateTaskSchema } from "@/lib/schemas/task";
 import { Prisma, type Task } from "@/generated/prisma/client";
 import type { ActionResult } from "@/lib/actions/types";
-import { calcTaskXP, isTaskOnTime } from "@/lib/gamification";
 import { generateTaskCode, getNextTaskCodeNumber } from "@/lib/task-code";
+import type { TaskComment, TaskStatus, TaskStatusLogEntry } from "@/types/task";
 
 function toDate(value: string | null | undefined) {
   if (value === undefined) return undefined;
@@ -42,51 +42,68 @@ export async function createTask(input: unknown): Promise<ActionResult<Task>> {
 
   const { startDate, dueDate, ...rest } = parsed.data;
 
-  try {
-    const task = await db.$transaction(async (tx) => {
-      // Get project to find its code
-      const project = rest.projectId
-        ? await tx.project.findUnique({ where: { id: rest.projectId }, select: { code: true } })
-        : null;
+  // Two concurrent creates can read the same "last task" and compute the same next code
+  // number — the DB's `@@unique([ownerId, code])` rejects the second one (P2002), which used
+  // to surface as an opaque "Failed to create task." with no retry (docs/05-backlog.md §8
+  // finding #6). Retry a few times, recomputing the code number fresh each attempt, before
+  // giving up — self-heals the collision instead of losing the create.
+  const MAX_CODE_COLLISION_RETRIES = 3;
+  for (let attempt = 1; attempt <= MAX_CODE_COLLISION_RETRIES; attempt++) {
+    try {
+      const task = await db.$transaction(async (tx) => {
+        // Get project to find its code
+        const project = rest.projectId
+          ? await tx.project.findUnique({ where: { id: rest.projectId }, select: { code: true } })
+          : null;
 
-      // Generate task code with project code or default TASK prefix
-      const nextNumber = await getNextTaskCodeNumber(tx, owner.id);
-      const codePrefix = project?.code || "TASK";
-      const taskCode = generateTaskCode(codePrefix, nextNumber);
+        // Generate task code with project code or default TASK prefix
+        const nextNumber = await getNextTaskCodeNumber(tx, owner.id);
+        const codePrefix = project?.code || "TASK";
+        const taskCode = generateTaskCode(codePrefix, nextNumber);
 
-      const created = await tx.task.create({
-        data: {
-          ...rest,
-          code: taskCode,
-          ownerId: owner.id,
-          startDate: startDate ? new Date(startDate) : undefined,
-          dueDate: dueDate ? new Date(dueDate) : undefined,
-        },
-      });
+        const created = await tx.task.create({
+          data: {
+            ...rest,
+            code: taskCode,
+            ownerId: owner.id,
+            startDate: startDate ? new Date(startDate) : undefined,
+            dueDate: dueDate ? new Date(dueDate) : undefined,
+          },
+        });
 
-      await tx.taskStatusLog.create({
-        data: {
+        await tx.taskStatusLog.create({
+          data: {
+            taskId: created.id,
+            fromStatus: null,
+            toStatus: created.status,
+          },
+        });
+
+        await logActivity(tx, owner.id, {
           taskId: created.id,
-          fromStatus: null,
-          toStatus: created.status,
-        },
-      });
+          action: "created",
+          details: { title: created.title },
+        });
 
-      await logActivity(tx, owner.id, {
-        taskId: created.id,
-        action: "created",
-        details: { title: created.title },
+        return created;
       });
-
-      return created;
-    });
-    return { success: true, data: task };
-  } catch (err) {
-    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2003") {
-      return { success: false, error: { code: "NOT_FOUND", message: "Related project or sprint not found." } };
+      return { success: true, data: task };
+    } catch (err) {
+      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2003") {
+        return { success: false, error: { code: "NOT_FOUND", message: "Related project or sprint not found." } };
+      }
+      const isCodeCollision =
+        err instanceof Prisma.PrismaClientKnownRequestError &&
+        err.code === "P2002" &&
+        Array.isArray((err.meta as { target?: unknown })?.target) &&
+        (err.meta as { target: string[] }).target.includes("code");
+      if (isCodeCollision && attempt < MAX_CODE_COLLISION_RETRIES) {
+        continue;
+      }
+      return { success: false, error: { code: "INTERNAL", message: "Failed to create task." } };
     }
-    return { success: false, error: { code: "INTERNAL", message: "Failed to create task." } };
   }
+  return { success: false, error: { code: "INTERNAL", message: "Failed to create task." } };
 }
 
 export async function updateTask(id: string, input: unknown): Promise<ActionResult<Task>> {
@@ -100,6 +117,16 @@ export async function updateTask(id: string, input: unknown): Promise<ActionResu
     return {
       success: false,
       error: { code: "VALIDATION_ERROR", message: parsed.error.issues[0]?.message ?? "Invalid input." },
+    };
+  }
+
+  // Client-side filters a task out of its own relation picker (TaskFormSheet), but that's not
+  // enforced server-side — a direct action call could still make a task relate to itself
+  // (docs/05-backlog.md §8 finding #5).
+  if (parsed.data.relations?.some((r) => r.taskId === id)) {
+    return {
+      success: false,
+      error: { code: "VALIDATION_ERROR", message: "A task cannot be related to itself." },
     };
   }
 
@@ -149,27 +176,6 @@ export async function updateTask(id: string, input: unknown): Promise<ActionResu
             toStatus: updated.status,
           },
         });
-
-        // Award XP when task completes
-        if (updated.status === "done") {
-          const xpEarned = calcTaskXP(
-            updated.priority,
-            updated.storyPoint ?? undefined,
-            isTaskOnTime(updated as any)
-          );
-
-          const currentUser = await tx.user.findUnique({
-            where: { id: owner.id },
-            select: { bonusXp: true },
-          });
-
-          await tx.user.update({
-            where: { id: owner.id },
-            data: {
-              bonusXp: (currentUser?.bonusXp ?? 0) + xpEarned,
-            },
-          });
-        }
       }
 
       if (parsed.data.priority && parsed.data.priority !== existing.priority) {
@@ -434,4 +440,47 @@ export async function stopFocusTimerAction(): Promise<
     console.error("Failed to stop focus timer:", error);
     return { success: false, error: { code: "INTERNAL", message: "Failed to stop focus timer." } };
   }
+}
+
+/**
+ * On-demand full status history + comments for one task — the bulk task fetch (layout.tsx)
+ * no longer includes either, for performance (docs/05-backlog.md §8 finding #16). Called when
+ * TaskFormSheet opens an existing task, since that's the only place either is displayed.
+ */
+export async function getTaskDetails(
+  taskId: string
+): Promise<ActionResult<{ statusHistory: TaskStatusLogEntry[]; comments: TaskComment[] }>> {
+  const session = await auth();
+  if (!session?.user?.email) {
+    return { success: false, error: { code: "UNAUTHORIZED", message: "Sign in required." } };
+  }
+
+  const task = await db.task.findFirst({
+    where: { id: taskId, owner: { email: session.user.email } },
+    select: {
+      statusHistory: { orderBy: { changedAt: "asc" } },
+      comments: { orderBy: { createdAt: "asc" }, include: { author: true } },
+    },
+  });
+
+  if (!task) {
+    return { success: false, error: { code: "NOT_FOUND", message: "Task not found." } };
+  }
+
+  return {
+    success: true,
+    data: {
+      statusHistory: task.statusHistory.map((h) => ({
+        fromStatus: h.fromStatus as TaskStatus | null,
+        toStatus: h.toStatus as TaskStatus,
+        changedAt: h.changedAt.toISOString(),
+      })),
+      comments: task.comments.map((c) => ({
+        id: c.id,
+        authorName: c.author.name || c.author.email,
+        content: c.content,
+        createdAt: c.createdAt.toISOString(),
+      })),
+    },
+  };
 }

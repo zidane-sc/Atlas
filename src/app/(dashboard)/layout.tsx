@@ -36,28 +36,23 @@ export default async function DashboardLayout({
     create: { email: session.user.email, name: session.user.name ?? session.user.email },
   });
 
-  const [dbTasks, rawDbProjects, rawDbSprints, rawDbActivityLogs] = await Promise.all([
+  const [dbTasks, rawDbAllDoneTasks, rawDbProjects, rawDbSprints, rawDbActivityLogs] = await Promise.all([
+    // No nested `statusHistory`/`comments` here — both are now on-demand only, fetched by
+    // `getTaskDetails` when TaskFormSheet opens a specific task. `createdAt`/`completedAt` are
+    // direct scalar columns (see Task.createdAt, types/task.ts), so nothing in the bulk views
+    // needs the nested include anymore (docs/05-backlog.md §8 finding #16).
     db.task.findMany({
       where: { ownerId: owner.id, deletedAt: null },
       orderBy: { createdAt: "desc" },
       take: 200,
-      include: {
-        statusHistory: {
-          orderBy: {
-            changedAt: "asc",
-          },
-          take: 20,
-        },
-        comments: {
-          orderBy: {
-            createdAt: "asc",
-          },
-          include: {
-            author: true,
-          },
-          take: 10,
-        },
-      },
+    }),
+    // Unbounded (no `take`) — the 200-cap above exists for the interactive views, but
+    // gamification/statistics need lifetime totals (XP, achievement tiers, longest-ever
+    // streak, completion rate, focus hours), which would otherwise silently drop older
+    // completions once total task count passes 200. See docs/05-backlog.md §8 finding #15.
+    db.task.findMany({
+      where: { ownerId: owner.id, deletedAt: null, status: "done" },
+      orderBy: { completedAt: "asc" },
     }),
     db.project.findMany({
       where: { archivedAt: null },
@@ -137,6 +132,7 @@ export default async function DashboardLayout({
   }
 
   const tasks = dbTasks.map((t) => mapDbTaskToClient(t, dbProjects, dbSprints));
+  const allDoneTasks = rawDbAllDoneTasks.map((t) => mapDbTaskToClient(t, dbProjects, dbSprints));
   const projects = dbProjects.map(mapDbProjectToClient);
   const sprints = dbSprints.map(mapDbSprintToClient);
   const activityLogs = rawDbActivityLogs.map((l) => ({
@@ -167,6 +163,7 @@ export default async function DashboardLayout({
           <SprintsProvider initialSprints={sprints}>
             <TasksProvider
               initialTasks={tasks}
+              initialAllDoneTasks={allDoneTasks}
               initialActivityLogs={activityLogs}
               initialBonusXp={owner.bonusXp}
               initialBonusCoins={owner.bonusCoins}

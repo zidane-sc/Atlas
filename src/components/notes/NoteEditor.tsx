@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { createNoteAction, updateNoteAction, getNoteAction, linkNotesAction, unlinkNotesAction, listNotesAction } from "@/lib/actions/notes";
 import { insertMarkdown } from "@/lib/markdown";
 import { useTasks } from "@/components/providers/TasksProvider";
+import { useNotifications } from "@/hooks/useNotifications";
 import { MarkdownToolbar } from "./MarkdownToolbar";
 import { MarkdownPreview } from "./MarkdownPreview";
 import { GamificationFooter } from "./GamificationFooter";
@@ -19,6 +20,7 @@ interface NoteEditorProps {
 
 export function NoteEditor({ noteId, initialData, onSave, onClose }: NoteEditorProps) {
   const { tasks } = useTasks();
+  const { notify } = useNotifications();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const taskSearchRef = useRef<HTMLInputElement>(null);
   const [title, setTitle] = useState(initialData?.note.title || "");
@@ -83,11 +85,13 @@ export function NoteEditor({ noteId, initialData, onSave, onClose }: NoteEditorP
           setCreatedNoteId(result.data.id);
         }
         setLastSaved(new Date().toLocaleTimeString());
+      } else {
+        notify(result.error?.message ?? "Autosave failed — your changes aren't saved yet.", "error");
       }
     } finally {
       setSaving(false);
     }
-  }, [title, content, tags, taskIds, noteId]);
+  }, [title, content, tags, taskIds, noteId, notify]);
 
   const handleSave = useCallback(async () => {
     if (!title.trim() || !content.trim()) return;
@@ -112,11 +116,13 @@ export function NoteEditor({ noteId, initialData, onSave, onClose }: NoteEditorP
       if (result.success) {
         setLastSaved(new Date().toLocaleTimeString());
         onSave?.(result.data!);
+      } else {
+        notify(result.error?.message ?? "Failed to save note.", "error");
       }
     } finally {
       setSaving(false);
     }
-  }, [title, content, tags, noteId, onSave]);
+  }, [title, content, tags, noteId, onSave, notify]);
 
   const debouncedSave = useCallback(() => {
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);

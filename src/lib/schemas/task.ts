@@ -98,7 +98,10 @@ export const createTaskSchema = z.object({
   relations: z.array(relationSchema).default([]),
   attachments: z.array(attachmentSchema).default([]),
   deliverables: z.array(deliverableSchema).default([]),
-});
+}).refine(
+  (data) => !data.startDate || !data.dueDate || data.startDate <= data.dueDate,
+  { message: "Start date must be on or before the due date.", path: ["dueDate"] }
+);
 
 export type CreateTaskInput = z.input<typeof createTaskSchema>;
 
@@ -130,7 +133,14 @@ export const updateTaskSchema = z.object({
   relations: z.array(relationSchema).optional(),
   attachments: z.array(attachmentSchema).optional(),
   deliverables: z.array(deliverableSchema).optional(),
-});
+}).refine(
+  // Only catches the common case: both dates submitted together, as the task form always does
+  // (docs/05-backlog.md §8 finding #10). A request that changes just one date against an
+  // already-set other date on the existing row isn't checked here — this is input-shape
+  // validation only, it has no access to the row being patched.
+  (data) => !data.startDate || !data.dueDate || data.startDate <= data.dueDate,
+  { message: "Start date must be on or before the due date.", path: ["dueDate"] }
+);
 
 export type UpdateTaskInput = z.input<typeof updateTaskSchema>;
 

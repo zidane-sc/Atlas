@@ -6,6 +6,7 @@ import { ChevronDown } from "lucide-react";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { getTaskNotesAction } from "@/lib/actions/notes";
+import { useNotifications } from "@/hooks/useNotifications";
 import type { NotePreview } from "@/types/note";
 
 interface TaskNoteLinksProps {
@@ -15,6 +16,7 @@ interface TaskNoteLinksProps {
 
 export function TaskNoteLinks({ taskId, onAddNote }: TaskNoteLinksProps) {
   const router = useRouter();
+  const { notify } = useNotifications();
   const [notes, setNotes] = useState<NotePreview[]>([]);
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -28,6 +30,8 @@ export function TaskNoteLinks({ taskId, onAddNote }: TaskNoteLinksProps) {
     const result = await getTaskNotesAction(taskId);
     if (result.success) {
       setNotes(result.data!.notes);
+    } else {
+      notify(result.error?.message ?? "Failed to load linked notes.", "error");
     }
     setLoading(false);
   };

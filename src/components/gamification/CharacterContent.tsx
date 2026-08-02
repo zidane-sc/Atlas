@@ -10,7 +10,7 @@ import { updateUserProfileAction } from "@/lib/actions/user";
 
 export default function CharacterContent() {
   const { data: session, update: updateSession } = useSession();
-  const { tasks, bonusXp, bonusCoins } = useTasks();
+  const { tasks, allTimeTasks, bonusXp, bonusCoins } = useTasks();
   const { notify } = useNotifications();
   const [isEditing, setIsEditing] = useState(false);
   const [formName, setFormName] = useState("");
@@ -32,7 +32,7 @@ export default function CharacterContent() {
     }
     setSaving(false);
   };
-  const sheet = useMemo(() => computeCharacterSheet(tasks, bonusXp, bonusCoins), [tasks, bonusXp, bonusCoins]);
+  const sheet = useMemo(() => computeCharacterSheet(allTimeTasks, bonusXp, bonusCoins), [allTimeTasks, bonusXp, bonusCoins]);
   const streakDays = useMemo(() => calculateStreak(tasks), [tasks]);
   const taskXp = sheet.globalXP;
 

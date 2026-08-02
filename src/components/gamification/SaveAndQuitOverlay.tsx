@@ -56,7 +56,7 @@ function StatCard({
 }
 
 export function SaveAndQuitOverlay({ onClose }: { onClose: () => void }) {
-  const { tasks } = useTasks();
+  const { tasks, allTimeTasks } = useTasks();
   const [saving, setSaving] = useState(false);
   const [serverStats, setServerStats] = useState<{ bonusXp: number; bonusCoins: number } | null>(null);
   const savingRef = useRef(false);
@@ -100,9 +100,9 @@ export function SaveAndQuitOverlay({ onClose }: { onClose: () => void }) {
   const totalCoins = useMemo(
     () => {
       if (!serverStats) return 0;
-      return computeCharacterSheet(tasks, serverStats.bonusXp, serverStats.bonusCoins).totalCoins;
+      return computeCharacterSheet(allTimeTasks, serverStats.bonusXp, serverStats.bonusCoins).totalCoins;
     },
-    [tasks, serverStats]
+    [allTimeTasks, serverStats]
   );
 
   const farewell = getFarewell(todayCompletedCount, streakDays);

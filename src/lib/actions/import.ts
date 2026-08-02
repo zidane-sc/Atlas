@@ -8,6 +8,7 @@ import type { ActionResult } from "@/lib/actions/types";
 import { toDbProjectCategory } from "@/lib/schemas/project";
 import { Prisma } from "@/generated/prisma/client";
 import type { ProjectCategory, ProjectStatus, SprintStatus, TaskStatus, TaskType, TaskPriority, TaskEffort, TaskReporter } from "@/generated/prisma/client";
+import { mapDbTaskToClient } from "@/lib/tasks-reducer";
 
 export interface WorkSessionExport {
   taskId: string;
@@ -84,6 +85,45 @@ export async function getWorkspaceHistoryForExport(): Promise<
   };
 }
 
+/**
+ * Fresh, complete task fetch straight from the DB for export — the client-held `tasks` state
+ * is capped at 200 tasks and, since the bulk fetch dropped its nested `statusHistory`/`comments`
+ * includes for performance (docs/05-backlog.md §8 finding #16), no longer carries full history
+ * for any task except whichever one currently has its edit sheet open. A backup must not depend
+ * on either limitation — this queries every non-deleted task with its complete history/comments,
+ * with no `take` limit, same one-time-cost tradeoff already accepted by
+ * `getWorkspaceHistoryForExport` above.
+ */
+export async function getTasksForExport(): Promise<ActionResult<{ tasks: Task[] }>> {
+  const session = await auth();
+  if (!session?.user?.email) {
+    return { success: false, error: { code: "UNAUTHORIZED", message: "Sign in required." } };
+  }
+
+  const user = await db.user.findUnique({ where: { email: session.user.email }, select: { id: true } });
+  if (!user) {
+    return { success: false, error: { code: "NOT_FOUND", message: "User not found." } };
+  }
+
+  const [dbTasks, dbProjects, dbSprints] = await Promise.all([
+    db.task.findMany({
+      where: { ownerId: user.id, deletedAt: null },
+      orderBy: { createdAt: "asc" },
+      include: {
+        statusHistory: { orderBy: { changedAt: "asc" } },
+        comments: { orderBy: { createdAt: "asc" }, include: { author: true } },
+      },
+    }),
+    db.project.findMany({ where: { archivedAt: null } }),
+    db.sprint.findMany(),
+  ]);
+
+  return {
+    success: true,
+    data: { tasks: dbTasks.map((t) => mapDbTaskToClient(t, dbProjects, dbSprints)) },
+  };
+}
+
 export async function importWorkspaceData(
   payload: ImportPayload
 ): Promise<ActionResult<{ success: boolean }>> {
@@ -106,6 +146,14 @@ export async function importWorkspaceData(
     const taskIds = new Set(tasks.map((t) => t.id));
 
     await db.$transaction(async (tx) => {
+      // Snapshot Note<->Task links before the task wipe below — `NoteTaskLink.taskId` cascades
+      // on task delete, and Notes aren't part of the import payload at all, so without this
+      // every note-task link in the account is silently destroyed by every import
+      // (docs/05-backlog.md §8 finding #3). Restored after tasks are recreated, below.
+      const preservedNoteTaskLinks = await tx.noteTaskLink.findMany({
+        where: { taskId: { in: [...taskIds] } },
+      });
+
       // 1. Wipe existing data
       await tx.taskStatusLog.deleteMany({});
       await tx.comment.deleteMany({});
@@ -208,6 +256,17 @@ export async function importWorkspaceData(
             })),
           });
         }
+      }
+
+      // Restore the Note<->Task links snapshotted before the wipe (see comment above).
+      if (preservedNoteTaskLinks.length > 0) {
+        await tx.noteTaskLink.createMany({
+          data: preservedNoteTaskLinks.map((l) => ({
+            noteId: l.noteId,
+            taskId: l.taskId,
+            createdAt: l.createdAt,
+          })),
+        });
       }
 
       // 5. Restore Focus Timer history and the activity feed — previously dropped on

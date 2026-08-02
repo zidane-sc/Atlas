@@ -22,6 +22,8 @@ import { useTasks } from "@/components/providers/TasksProvider";
 import { useSettings } from "@/components/providers/SettingsProvider";
 import { useNotifications } from "@/hooks/useNotifications";
 import { calcTaskCoins, calcTaskXP } from "@/lib/gamification";
+import { getTaskDetails } from "@/lib/actions/tasks";
+import type { TaskComment, TaskStatusLogEntry } from "@/types/task";
 import { PriorityMark } from "./PriorityMark";
 import { StatusBadge } from "./StatusBadge";
 import {
@@ -112,7 +114,7 @@ export function TaskFormSheet() {
 }
 
 function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | null }) {
-  const { tasks, closeForm, createTask, updateTask, deleteTask, duplicateTask, togglePin, activeTimer, startTimer, stopTimer, switchPhase } = useTasks();
+  const { tasks, allTimeTasks, closeForm, createTask, updateTask, deleteTask, duplicateTask, togglePin, activeTimer, startTimer, stopTimer, switchPhase } = useTasks();
   const { projects } = useProjects();
   const { sprints } = useSprints();
   const { notify } = useNotifications();
@@ -172,6 +174,50 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
   );
 
   const otherTasks = useMemo(() => tasks.filter((t) => t.id !== task?.id), [tasks, task?.id]);
+  // Relations store a denormalized (taskId, title) snapshot with no live FK check — a related
+  // task that's since been trashed just renders its stale cached title forever with no signal
+  // (docs/05-backlog.md §8 finding #5). allTimeTasks is the best available existence check since
+  // it covers more history than the 200-cap `tasks`, though very old non-done targets outside
+  // both lists could still show a false "trashed" — an accepted, documented edge case.
+  const liveTaskIds = useMemo(() => new Set(allTimeTasks.map((t) => t.id)), [allTimeTasks]);
+
+  // Full status history + comments are no longer part of the bulk task fetch (performance —
+  // docs/05-backlog.md §8 finding #16), so fetch them on-demand here, the only place either
+  // is displayed.
+  const [taskDetail, setTaskDetail] = useState<{ statusHistory: TaskStatusLogEntry[]; comments: TaskComment[] } | null>(null);
+  const [taskDetailLoading, setTaskDetailLoading] = useState(mode === "edit" && !!task);
+
+  const refreshTaskDetail = async () => {
+    if (!task) return;
+    const result = await getTaskDetails(task.id);
+    if (result.success) {
+      setTaskDetail(result.data);
+    } else {
+      notify(result.error?.message ?? "Failed to load task history/comments.", "error");
+    }
+  };
+
+  useEffect(() => {
+    if (mode !== "edit" || !task) return;
+    let cancelled = false;
+    setTaskDetailLoading(true);
+    (async () => {
+      const result = await getTaskDetails(task.id);
+      if (cancelled) return;
+      if (result.success) {
+        setTaskDetail(result.data);
+      } else {
+        notify(result.error?.message ?? "Failed to load task history/comments.", "error");
+      }
+      setTaskDetailLoading(false);
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // Runs once per task the sheet is opened for — TaskFormSheet already remounts
+    // (`key={sheet.task?.id ?? "create"}`) whenever the edited task changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [task?.id, mode]);
 
   const projectOptions = useMemo(() => {
     return projectSearch
@@ -654,15 +700,20 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
               <p className="text-muted-foreground">No relations yet.</p>
             ) : (
               <ul className="flex flex-col gap-1">
-                {form.relations.map((r) => (
-                  <li key={r.taskId} className="flex items-center justify-between gap-2">
-                    <span className="text-muted-foreground capitalize">{humanize(r.relationType)}</span>
-                    <span className="flex-1 truncate text-right">{r.title}</span>
-                    <button type="button" onClick={() => removeRelation(r.taskId)} className="shrink-0" style={{ color: "var(--color-status-blocked)" }}>
-                      ✕
-                    </button>
-                  </li>
-                ))}
+                {form.relations.map((r) => {
+                  const isGone = !liveTaskIds.has(r.taskId);
+                  return (
+                    <li key={r.taskId} className="flex items-center justify-between gap-2">
+                      <span className="text-muted-foreground capitalize">{humanize(r.relationType)}</span>
+                      <span className="flex-1 truncate text-right" style={isGone ? { color: "var(--color-text-muted)", fontStyle: "italic" } : undefined}>
+                        {r.title}{isGone && " (trashed)"}
+                      </span>
+                      <button type="button" onClick={() => removeRelation(r.taskId)} className="shrink-0" style={{ color: "var(--color-status-blocked)" }}>
+                        ✕
+                      </button>
+                    </li>
+                  );
+                })}
               </ul>
             )}
             <div className="flex flex-col gap-2 border-t border-border pt-2">
@@ -877,10 +928,12 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
             <Section title="Comments" shape="💬">
               <div className="flex flex-col gap-2">
                 <ul className="flex flex-col gap-2 max-h-48 overflow-y-auto border-b border-border pb-2">
-                  {(!liveTask?.comments || liveTask.comments.length === 0) ? (
+                  {taskDetailLoading ? (
+                    <li className="text-xs text-muted-foreground italic">Loading comments…</li>
+                  ) : (!taskDetail?.comments || taskDetail.comments.length === 0) ? (
                     <li className="text-xs text-muted-foreground italic">No comments yet</li>
                   ) : (
-                    liveTask.comments.map((c) => (
+                    taskDetail.comments.map((c) => (
                       <li key={c.id} className="flex flex-col gap-0.5 text-xs bg-muted/30 p-1.5 border border-border">
                         <div className="flex justify-between font-bold text-muted-foreground">
                           <span>{c.authorName}</span>
@@ -891,7 +944,7 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
                     ))
                   )}
                 </ul>
-                <CommentInput taskId={task.id} />
+                <CommentInput taskId={task.id} onAdded={refreshTaskDetail} />
               </div>
             </Section>
 
@@ -899,14 +952,18 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
 
             <Section title="History" shape="◫">
               <ul className="flex flex-col gap-1">
-                {task.statusHistory.map((h, i) => (
-                  <li key={i} className="flex justify-between text-xs">
-                    <span className="text-muted-foreground">
-                      {h.fromStatus ? STATUS_LABEL[h.fromStatus] : "Created"} → {STATUS_LABEL[h.toStatus]}
-                    </span>
-                    <span className="text-muted-foreground">{new Date(h.changedAt).toLocaleDateString()} {new Date(h.changedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                  </li>
-                ))}
+                {taskDetailLoading ? (
+                  <li className="text-xs text-muted-foreground italic">Loading history…</li>
+                ) : (
+                  (taskDetail?.statusHistory ?? []).map((h, i) => (
+                    <li key={i} className="flex justify-between text-xs">
+                      <span className="text-muted-foreground">
+                        {h.fromStatus ? STATUS_LABEL[h.fromStatus] : "Created"} → {STATUS_LABEL[h.toStatus]}
+                      </span>
+                      <span className="text-muted-foreground">{new Date(h.changedAt).toLocaleDateString()} {new Date(h.changedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                    </li>
+                  ))
+                )}
               </ul>
             </Section>
           </>
@@ -921,7 +978,7 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
   );
 }
 
-function CommentInput({ taskId }: { taskId: string }) {
+function CommentInput({ taskId, onAdded }: { taskId: string; onAdded: () => void }) {
   const { addComment } = useTasks();
   const [content, setContent] = useState("");
   const [loading, setLoading] = useState(false);
@@ -933,6 +990,7 @@ function CommentInput({ taskId }: { taskId: string }) {
     try {
       await addComment(taskId, content.trim());
       setContent("");
+      onAdded();
     } finally {
       setLoading(false);
     }

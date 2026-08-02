@@ -87,6 +87,13 @@ export function playChime() {
 
 interface TasksContextValue {
   tasks: Task[];
+  /**
+   * Lifetime task set (every non-deleted task ever, not just the 200-cap interactive window) —
+   * use this for anything that claims to be an all-time total: Character Sheet XP/level/skills,
+   * achievement tiers, longest-ever streak, completion rate, focus hours. Anything genuinely
+   * windowed (current streak, this-week recap, trailing throughput) should keep using `tasks`.
+   */
+  allTimeTasks: Task[];
   activityLogs: ActivityLogClient[];
   createTask: (values: TaskFormValues) => void;
   updateTask: (id: string, values: TaskFormValues) => Promise<boolean>;
@@ -133,6 +140,7 @@ const TasksContext = createContext<TasksContextValue | null>(null);
  */
 export function TasksProvider({
   initialTasks,
+  initialAllDoneTasks,
   initialActivityLogs,
   initialBonusXp,
   initialBonusCoins,
@@ -144,6 +152,7 @@ export function TasksProvider({
   children,
 }: {
   initialTasks: Task[];
+  initialAllDoneTasks: Task[];
   initialActivityLogs: ActivityLogClient[];
   initialBonusXp: number;
   initialBonusCoins: number;
@@ -156,6 +165,14 @@ export function TasksProvider({
 }) {
   const initialTasksRef = useRef(initialTasks);
   const [tasks, dispatch] = useReducer(tasksReducer, initialTasks);
+  // Static for the session (fetched once at page load) — session-fresh completions are already
+  // covered by `tasks` itself and merged in below, so this only ever needs to hold the older
+  // done tasks that fall outside the 200-task interactive window.
+  const [allDoneTasksBeyondWindow] = useState(initialAllDoneTasks);
+  const allTimeTasks = useMemo(() => {
+    const seen = new Set(tasks.map((t) => t.id));
+    return [...tasks, ...allDoneTasksBeyondWindow.filter((t) => !seen.has(t.id))];
+  }, [tasks, allDoneTasksBeyondWindow]);
   const [hasMore, setHasMore] = useState(initialTasks.length >= 200);
   const [isSearchLoadingMore, setIsSearchLoadingMore] = useState(false);
   const [activityLogs, setActivityLogs] = useState<ActivityLogClient[]>(initialActivityLogs);
@@ -197,6 +214,7 @@ export function TasksProvider({
   const value = useMemo<TasksContextValue>(
     () => ({
       tasks,
+      allTimeTasks,
       createTask: async (values) => {
         const input = {
           title: values.title,
@@ -267,16 +285,18 @@ export function TasksProvider({
           const newStreak = calculateStreak(updatedTasks);
           const streakExtended = newStreak > oldStreak;
 
-          // Calculate old and new character sheets to detect level-up
-          const oldSheet = computeCharacterSheet(tasks, bonusXp);
-          const newSheet = computeCharacterSheet(updatedTasks, bonusXp);
+          // Calculate old and new character sheets to detect level-up — uses the lifetime task
+          // set (not just the 200-cap window) so level/XP totals aren't missing older completions.
+          const updatedAllTimeTasks = allTimeTasks.map((t) => t.id === id ? { ...t, status: "done" as const } : t);
+          const oldSheet = computeCharacterSheet(allTimeTasks, bonusXp);
+          const newSheet = computeCharacterSheet(updatedAllTimeTasks, bonusXp);
           checkAndEmitLevelUp(oldSheet.globalXP, newSheet.globalXP);
 
           // Calculate old and new achievements to detect unlocks
           const dbProjects = projects as any[];
           const dbSprints = sprints as any[];
-          const oldAchievements = computeUnlockedAchievements(tasks, dbProjects, dbSprints);
-          const newAchievements = computeUnlockedAchievements(updatedTasks, dbProjects, dbSprints);
+          const oldAchievements = computeUnlockedAchievements(allTimeTasks, dbProjects, dbSprints);
+          const newAchievements = computeUnlockedAchievements(updatedAllTimeTasks, dbProjects, dbSprints);
           checkAndEmitAchievementUnlocks(oldAchievements, newAchievements);
 
           // Emit streak milestone notification
@@ -435,13 +455,13 @@ export function TasksProvider({
           // Check for level-up before updating bonusXp state
           const dbProjects = projects as any[];
           const dbSprints = sprints as any[];
-          const oldSheet = computeCharacterSheet(tasks, bonusXp);
-          const newSheet = computeCharacterSheet(tasks, res.data.bonusXp);
+          const oldSheet = computeCharacterSheet(allTimeTasks, bonusXp);
+          const newSheet = computeCharacterSheet(allTimeTasks, res.data.bonusXp);
           checkAndEmitLevelUp(oldSheet.globalXP, newSheet.globalXP);
 
           // Check for achievement unlocks
-          const oldAchievements = computeUnlockedAchievements(tasks, dbProjects, dbSprints);
-          const newAchievements = computeUnlockedAchievements(tasks, dbProjects, dbSprints);
+          const oldAchievements = computeUnlockedAchievements(allTimeTasks, dbProjects, dbSprints);
+          const newAchievements = computeUnlockedAchievements(allTimeTasks, dbProjects, dbSprints);
           checkAndEmitAchievementUnlocks(oldAchievements, newAchievements);
 
           setBonusXp(res.data.bonusXp);
@@ -651,6 +671,7 @@ export function TasksProvider({
     }),
     [
       tasks,
+      allTimeTasks,
       activityLogs,
       sheet,
       justCompletedAt,

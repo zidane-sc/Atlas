@@ -115,6 +115,13 @@ export interface Task {
   statusHistory: TaskStatusLogEntry[];
   comments?: TaskComment[];
   completedAt?: string;
+  /**
+   * Direct DB column — the real source of truth for "when was this created," replacing the
+   * `statusHistory[0]?.changedAt` proxy `createdAt()` (gamification.ts) used to rely on
+   * exclusively. Lets bulk task fetches drop the nested `statusHistory` include entirely
+   * (docs/05-backlog.md §8 finding #16).
+   */
+  createdAt: string;
 }
 
 export interface TaskComment {

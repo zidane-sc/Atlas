@@ -57,6 +57,7 @@ export function mapDbTaskToClient(dbTask: DbTaskWithLogs, dbProjects?: DbProject
     startDate: dbTask.startDate ? dbTask.startDate.toISOString().split("T")[0] : undefined,
     dueDate: dbTask.dueDate ? dbTask.dueDate.toISOString().split("T")[0] : undefined,
     completedAt: dbTask.completedAt ? dbTask.completedAt.toISOString() : undefined,
+    createdAt: dbTask.createdAt.toISOString(),
     sprint: sprint ? sprint.name : (dbTask.sprintId ? (SPRINT_REV_MAP[dbTask.sprintId] ?? undefined) : undefined),
     reporter: dbTask.reporter as Reporter,
     tags: dbTask.tags,
@@ -138,6 +139,7 @@ export function buildTaskFromValues(id: string, changedAt: string, values: TaskF
     deliverables: values.deliverables,
     statusHistory: [{ fromStatus: null, toStatus: values.status, changedAt }],
     completedAt: values.status === "done" ? changedAt : undefined,
+    createdAt: changedAt,
   };
 }
 
