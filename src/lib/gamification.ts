@@ -1,6 +1,7 @@
 import type { Priority, Task, TaskType } from "@/types/task";
 import type { Project, Sprint } from "@/types/gamification";
 import { notificationEmitter } from "@/hooks/useNotifications";
+import { isDueSoon, isOverdue } from "@/lib/task-utils";
 
 /** Priority base XP and coin bonus — docs/03-design.md §11.1, §11.5 */
 export const PRIORITY_XP_BASE: Record<Priority, number> = {
@@ -223,7 +224,7 @@ export function computeRecapGrade(done: number, created: number): RecapGrade {
 }
 
 /** Every currently-known achievement id — the switch in computeAchievementProgress covers each one. */
-export const ACHIEVEMENT_IDS = ["a1", "a2", "a3", "a4", "a5", "a6", "a7", "a8", "a9", "a10", "a11", "a12"] as const;
+export const ACHIEVEMENT_IDS = ["a1", "a2", "a3", "a4", "a5", "a6", "a7", "a8", "a9", "a10", "a11", "a12", "a13", "a14"] as const;
 
 /** Countable progress toward a locked achievement's threshold — docs/03-design.md §11.7 */
 export function computeAchievementProgress(
@@ -282,10 +283,12 @@ export function computeAchievementProgress(
       }
       return best;
     }
-    case "a12": // Perfect Week — no "Perfect Day" concept exists anywhere yet (only in docs), and
-      // real consecutive-day tracking needs state across real time a stateless fold can't honestly
-      // provide. Scoped out until Perfect Day itself is defined, not silently faked.
-      return null;
+    case "a12": // Perfect Week — 7 consecutive days with a quest completed each day
+      return { current: Math.min(calculateLongestStreak(tasks), 7), max: 7 };
+    case "a13": // 500 Quests
+      return { current: done.length, max: 500 };
+    case "a14": // 1000 Quests
+      return { current: done.length, max: 1000 };
     default:
       return null;
   }
@@ -331,6 +334,10 @@ function findUnlockDate(id: string, done: Task[], projects: Project[]): string |
       return completedAtOf(sortedByCompletion[9]);
     case "a6":
       return completedAtOf(sortedByCompletion[99]);
+    case "a13":
+      return completedAtOf(sortedByCompletion[499]);
+    case "a14":
+      return completedAtOf(sortedByCompletion[999]);
     case "a4": {
       const bugs = sortedByCompletion.filter((t) => t.type === "bug");
       return completedAtOf(bugs[49]);
@@ -360,8 +367,9 @@ function findUnlockDate(id: string, done: Task[], projects: Project[]): string |
     }
     case "a5":
     case "a11":
-      // Sprint/project completion — the qualifying task set is re-filtered by the caller's
-      // progress check; the most recent completion overall is a reasonable proxy for "just now".
+    case "a12":
+      // Sprint/project completion and streak-length unlocks aren't tied to one specific task;
+      // the most recent completion overall is a reasonable proxy for "just now".
       return completedAtOf(sortedByCompletion.at(-1));
     default:
       return null;
@@ -417,6 +425,29 @@ export function calculateStreak(tasks: Task[], nowStr?: string): number {
   }
 
   return streak;
+}
+
+/** Longest-ever run of consecutive calendar days with at least one completed task — docs/01-product.md §9.7. */
+export function calculateLongestStreak(tasks: Task[]): number {
+  const doneTasks = tasks.filter((t) => t.status === "done");
+  const completionDates = new Set<string>();
+  for (const t of doneTasks) {
+    const at = completedAt(t);
+    if (at) completionDates.add(formatLocalDate(at));
+  }
+  if (completionDates.size === 0) return 0;
+
+  const sortedDates = Array.from(completionDates).sort();
+  let longest = 1;
+  let current = 1;
+  for (let i = 1; i < sortedDates.length; i++) {
+    const prev = parseLocalDate(sortedDates[i - 1]);
+    const next = parseLocalDate(sortedDates[i]);
+    const dayGap = Math.round((next.getTime() - prev.getTime()) / 86_400_000);
+    current = dayGap === 1 ? current + 1 : 1;
+    longest = Math.max(longest, current);
+  }
+  return longest;
 }
 
 /**
@@ -491,6 +522,8 @@ export function checkAndEmitAchievementUnlocks(
     a10: "Scholar",
     a11: "Guild Master",
     a12: "Perfect Week",
+    a13: "500 Quests",
+    a14: "1000 Quests",
   };
 
   for (const achievementId of ACHIEVEMENT_IDS) {
@@ -523,5 +556,40 @@ export function checkAndEmitStreakMilestone(oldStreak: number, newStreak: number
         vibe,
       });
     }
+  }
+}
+
+/**
+ * Proactive overdue/due-soon nudge — docs/01-product.md §9.4 dashboard counts show these,
+ * but nothing previously pinged the notification queue about them (docs/05-backlog.md §6).
+ * Picks the single most urgent task per category rather than one toast per task, since the
+ * notification queue only holds 5 at a time and a to-do app shouldn't spam on every load.
+ */
+export function checkAndEmitDueDateNotifications(tasks: Task[], today: string): void {
+  const active = tasks.filter((t) => t.status !== "done");
+
+  const overdue = active
+    .filter((t) => isOverdue(t.dueDate, today))
+    .sort((a, b) => (a.dueDate ?? "").localeCompare(b.dueDate ?? ""));
+  if (overdue.length > 0) {
+    const [first, ...rest] = overdue;
+    notificationEmitter.emit({
+      type: 'task:overdue',
+      taskId: first.id,
+      title: rest.length > 0 ? `${first.title} (+${rest.length} more overdue)` : first.title,
+    });
+  }
+
+  const dueSoon = active
+    .filter((t) => isDueSoon(t.dueDate, today))
+    .sort((a, b) => (a.dueDate ?? "").localeCompare(b.dueDate ?? ""));
+  if (dueSoon.length > 0) {
+    const [first, ...rest] = dueSoon;
+    notificationEmitter.emit({
+      type: 'task:due-soon',
+      taskId: first.id,
+      title: rest.length > 0 ? `${first.title} (+${rest.length} more due soon)` : first.title,
+      dueDate: first.dueDate!,
+    });
   }
 }

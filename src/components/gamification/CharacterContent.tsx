@@ -1,28 +1,34 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useSession } from "next-auth/react";
 import { useTasks } from "@/components/providers/TasksProvider";
+import { useNotifications } from "@/hooks/useNotifications";
 import { computeCharacterSheet, SKILL_META, STATS, calculateStreak, completedAt } from "@/lib/gamification";
 import { TYPE_ICON } from "@/lib/mock-data";
 import { updateUserProfileAction } from "@/lib/actions/user";
 
 export default function CharacterContent() {
+  const { data: session, update: updateSession } = useSession();
   const { tasks, bonusXp, bonusCoins } = useTasks();
+  const { notify } = useNotifications();
   const [isEditing, setIsEditing] = useState(false);
   const [formName, setFormName] = useState("");
-  const [formGuild, setFormGuild] = useState("");
   const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState<{ type: string; text: string } | null>(null);
 
   const handleSave = async () => {
+    if (!formName.trim()) {
+      notify("Name cannot be empty", "error");
+      return;
+    }
     setSaving(true);
-    setMessage(null);
-    const result = await updateUserProfileAction(formName, formGuild);
+    const result = await updateUserProfileAction(formName);
     if (result.success) {
-      setMessage({ type: "success", text: "Profile updated!" });
+      await updateSession({ user: { ...session?.user, name: formName } });
+      notify("Name updated!");
       setIsEditing(false);
     } else {
-      setMessage({ type: "error", text: result.error?.message ?? "Failed to update" });
+      notify(result.error?.message ?? "Failed to update name", "error");
     }
     setSaving(false);
   };
@@ -80,14 +86,6 @@ export default function CharacterContent() {
                     className="px-2 py-1 border border-border rounded text-base bg-card"
                     placeholder="Name"
                   />
-                  <input
-                    type="text"
-                    value={formGuild}
-                    onChange={(e) => setFormGuild(e.target.value)}
-                    className="px-2 py-1 border border-border rounded text-sm bg-card"
-                    placeholder="Guild"
-                    maxLength={100}
-                  />
                   <div className="flex gap-2">
                     <button
                       onClick={handleSave}
@@ -103,27 +101,20 @@ export default function CharacterContent() {
                       Cancel
                     </button>
                   </div>
-                  {message && (
-                    <p style={{ fontSize: "12px", color: message.type === "error" ? "var(--color-status-blocked)" : "var(--color-status-ready)" }}>
-                      {message.text}
-                    </p>
-                  )}
                 </div>
               ) : (
-                <>
-                  <div className="mb-1 font-display text-base text-foreground flex justify-between items-center">
-                    {formName || "Aric Stormcloak"}
-                    <button
-                      onClick={() => setIsEditing(true)}
-                      className="text-xs px-2 py-1 border border-border rounded hover:bg-primary/10"
-                    >
-                      Edit
-                    </button>
-                  </div>
-                  <div className="mb-3 font-display text-[11px]" style={{ color: "var(--color-primary-gold)" }}>
-                    {formGuild || "Adventurer"}
-                  </div>
-                </>
+                <div className="mb-3 font-display text-base text-foreground flex justify-between items-center">
+                  {session?.user?.name ?? "Aric Stormcloak"}
+                  <button
+                    onClick={() => {
+                      setFormName(session?.user?.name ?? "");
+                      setIsEditing(true);
+                    }}
+                    className="text-xs px-2 py-1 border border-border rounded hover:bg-primary/10"
+                  >
+                    Edit
+                  </button>
+                </div>
               )}
               <div className="mb-3 font-display text-[11px]" style={{ color: "var(--color-primary-gold)" }}>
                 {sheet.classTitle.toUpperCase()}

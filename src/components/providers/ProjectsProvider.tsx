@@ -3,7 +3,7 @@
 import { createContext, useContext, useMemo, useRef, useState } from "react";
 import type { ProjectFormValues } from "@/lib/schemas/project";
 import type { Project } from "@/types/gamification";
-import { useToast } from "@/components/providers/ToastProvider";
+import { useNotifications } from "@/hooks/useNotifications";
 import {
   createProject as apiCreateProject,
   updateProject as apiUpdateProject,
@@ -27,8 +27,6 @@ interface ProjectsContextValue {
   openEditForm: (project: Project) => void;
   closeForm: () => void;
   reset: () => void;
-  /** Settings → Import Data. */
-  loadProjects: (projects: Project[]) => void;
 }
 
 const ProjectsContext = createContext<ProjectsContextValue | null>(null);
@@ -44,7 +42,7 @@ export function ProjectsProvider({
   const initialProjectsRef = useRef(initialProjects);
   const [projects, setProjects] = useState<Project[]>(initialProjects);
   const [sheet, setSheet] = useState<SheetState>({ open: false, mode: "create", project: null });
-  const { toast } = useToast();
+  const { notify } = useNotifications();
 
   const value = useMemo<ProjectsContextValue>(
     () => ({
@@ -61,7 +59,7 @@ export function ProjectsProvider({
 
         const result = await apiCreateProject(values);
         if (!result.success) {
-          toast(result.error.message, "error");
+          notify(result.error.message, "error");
           setProjects((prev) => prev.filter((p) => p.id !== tempId));
         } else {
           setProjects((prev) =>
@@ -82,7 +80,7 @@ export function ProjectsProvider({
 
         const result = await apiUpdateProject(id, values);
         if (!result.success) {
-          toast(result.error.message, "error");
+          notify(result.error.message, "error");
           setProjects((prev) => prev.map((p) => (p.id === id ? oldProject : p)));
         } else {
           setProjects((prev) =>
@@ -99,7 +97,7 @@ export function ProjectsProvider({
 
         const result = await apiDeleteProject(id);
         if (!result.success) {
-          toast(result.error.message, "error");
+          notify(result.error.message, "error");
           setProjects((prev) => [...prev, prevProject]);
         }
       },
@@ -111,12 +109,8 @@ export function ProjectsProvider({
         setProjects(initialProjectsRef.current);
         setSheet({ open: false, mode: "create", project: null });
       },
-      loadProjects: (loaded) => {
-        setProjects(loaded);
-        setSheet({ open: false, mode: "create", project: null });
-      },
     }),
-    [projects, sheet, toast]
+    [projects, sheet, notify]
   );
 
   return <ProjectsContext.Provider value={value}>{children}</ProjectsContext.Provider>;

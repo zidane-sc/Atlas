@@ -36,5 +36,20 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       const email = profile?.email ?? user?.email;
       return Boolean(allowedEmail) && email === allowedEmail;
     },
+    jwt({ token, trigger, session, user }) {
+      if (user) {
+        token.name = user.name;
+      }
+      if (trigger === "update" && session?.user?.name) {
+        token.name = session.user.name;
+      }
+      return token;
+    },
+    session({ session, token }) {
+      if (token?.name && session.user) {
+        session.user.name = token.name as string;
+      }
+      return session;
+    },
   },
 });

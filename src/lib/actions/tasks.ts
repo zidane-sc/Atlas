@@ -83,7 +83,7 @@ export async function createTask(input: unknown): Promise<ActionResult<Task>> {
     return { success: true, data: task };
   } catch (err) {
     if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2003") {
-      return { success: false, error: { code: "NOT_FOUND", message: "Parent task not found." } };
+      return { success: false, error: { code: "NOT_FOUND", message: "Related project or sprint not found." } };
     }
     return { success: false, error: { code: "INTERNAL", message: "Failed to create task." } };
   }
@@ -101,10 +101,6 @@ export async function updateTask(id: string, input: unknown): Promise<ActionResu
       success: false,
       error: { code: "VALIDATION_ERROR", message: parsed.error.issues[0]?.message ?? "Invalid input." },
     };
-  }
-
-  if (parsed.data.parentId === id) {
-    return { success: false, error: { code: "VALIDATION_ERROR", message: "A task cannot be its own parent." } };
   }
 
   const owner = await db.user.findFirst({ where: { email: session.user.email } });
@@ -201,7 +197,7 @@ export async function updateTask(id: string, input: unknown): Promise<ActionResu
     return { success: true, data: task };
   } catch (err) {
     if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2003") {
-      return { success: false, error: { code: "NOT_FOUND", message: "Parent task not found." } };
+      return { success: false, error: { code: "NOT_FOUND", message: "Related project or sprint not found." } };
     }
     return { success: false, error: { code: "INTERNAL", message: "Failed to update task." } };
   }
@@ -244,6 +240,71 @@ export async function deleteTask(id: string): Promise<ActionResult<{ id: string 
     }
     return { success: false, error: { code: "INTERNAL", message: "Failed to delete task." } };
   }
+}
+
+export async function restoreTask(id: string): Promise<ActionResult<{ id: string }>> {
+  const session = await auth();
+  if (!session?.user?.email) {
+    return { success: false, error: { code: "UNAUTHORIZED", message: "Sign in required." } };
+  }
+
+  const owner = await db.user.findFirst({ where: { email: session.user.email } });
+  if (!owner) {
+    return { success: false, error: { code: "NOT_FOUND", message: "User not found." } };
+  }
+
+  try {
+    await db.$transaction(async (tx) => {
+      const existing = await tx.task.findFirst({ where: { id, ownerId: owner.id, deletedAt: { not: null } } });
+      if (!existing) {
+        throw new Error("NOT_FOUND");
+      }
+
+      await tx.task.update({
+        where: { id },
+        data: { deletedAt: null },
+      });
+
+      await logActivity(tx, owner.id, {
+        taskId: id,
+        action: "restored",
+        details: { title: existing.title },
+      });
+    });
+
+    return { success: true, data: { id } };
+  } catch (err) {
+    if (err instanceof Error && err.message === "NOT_FOUND") {
+      return { success: false, error: { code: "NOT_FOUND", message: "Deleted task not found." } };
+    }
+    return { success: false, error: { code: "INTERNAL", message: "Failed to restore task." } };
+  }
+}
+
+export async function listDeletedTasks(): Promise<
+  ActionResult<{ id: string; code: string | null; title: string; deletedAt: string }[]>
+> {
+  const session = await auth();
+  if (!session?.user?.email) {
+    return { success: false, error: { code: "UNAUTHORIZED", message: "Sign in required." } };
+  }
+
+  const owner = await db.user.findFirst({ where: { email: session.user.email } });
+  if (!owner) {
+    return { success: false, error: { code: "NOT_FOUND", message: "User not found." } };
+  }
+
+  const deleted = await db.task.findMany({
+    where: { ownerId: owner.id, deletedAt: { not: null } },
+    orderBy: { deletedAt: "desc" },
+    take: 50,
+    select: { id: true, code: true, title: true, deletedAt: true },
+  });
+
+  return {
+    success: true,
+    data: deleted.map((t) => ({ id: t.id, code: t.code, title: t.title, deletedAt: t.deletedAt!.toISOString() })),
+  };
 }
 
 export async function logWorkSession(

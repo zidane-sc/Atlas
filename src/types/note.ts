@@ -36,4 +36,8 @@ export interface NoteWithMeta {
     id: string;
     title: string;
   }[];
+  linkedNotes: {
+    id: string;
+    title: string;
+  }[];
 }

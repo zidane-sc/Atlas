@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { buildHeatmapGrid } from "./statistics";
+import {
+  buildHeatmapGrid,
+  buildProductivityProfile,
+  calcAverageTaskDurationDays,
+  calcCompletionRate,
+  calcEstimatedVsActualStoryPoints,
+  calcFocusHours,
+} from "./statistics";
 import type { Task } from "@/types/task";
 
 function task(overrides: Partial<Task> & Pick<Task, "id" | "priority" | "type" | "status">): Task {
@@ -98,5 +105,116 @@ describe("buildHeatmapGrid", () => {
       ANCHOR
     );
     expect(grid.maxCount).toBe(3);
+  });
+});
+
+describe("calcCompletionRate", () => {
+  it("returns 0 for an empty task list", () => {
+    expect(calcCompletionRate([])).toBe(0);
+  });
+
+  it("is the percentage of all tasks currently done", () => {
+    const tasks = [
+      task({ id: "a", priority: "p2", type: "coding", status: "done" }),
+      task({ id: "b", priority: "p2", type: "coding", status: "done" }),
+      task({ id: "c", priority: "p2", type: "coding", status: "todo" }),
+      task({ id: "d", priority: "p2", type: "coding", status: "in_progress" }),
+    ];
+    expect(calcCompletionRate(tasks)).toBe(50);
+  });
+});
+
+describe("calcFocusHours", () => {
+  it("sums timeSpentSeconds across all tasks, in hours", () => {
+    const tasks = [
+      task({ id: "a", priority: "p2", type: "coding", status: "done", timeSpentSeconds: 3600 }),
+      task({ id: "b", priority: "p2", type: "coding", status: "in_progress", timeSpentSeconds: 1800 }),
+    ];
+    expect(calcFocusHours(tasks)).toBe(1.5);
+  });
+
+  it("is 0 when nothing has been timed", () => {
+    expect(calcFocusHours([task({ id: "a", priority: "p2", type: "coding", status: "todo" })])).toBe(0);
+  });
+});
+
+describe("calcAverageTaskDurationDays", () => {
+  it("returns null when no done task has both a created and completed timestamp", () => {
+    expect(calcAverageTaskDurationDays([])).toBeNull();
+  });
+
+  it("averages calendar days from first status-log entry to completion", () => {
+    const tasks = [
+      task({
+        id: "a",
+        priority: "p2",
+        type: "coding",
+        status: "done",
+        statusHistory: [
+          { fromStatus: null, toStatus: "todo", changedAt: "2026-07-01T10:00:00Z" },
+          { fromStatus: "todo", toStatus: "done", changedAt: "2026-07-03T10:00:00Z" },
+        ],
+      }),
+      task({
+        id: "b",
+        priority: "p2",
+        type: "coding",
+        status: "done",
+        statusHistory: [
+          { fromStatus: null, toStatus: "todo", changedAt: "2026-07-01T10:00:00Z" },
+          { fromStatus: "todo", toStatus: "done", changedAt: "2026-07-02T10:00:00Z" },
+        ],
+      }),
+    ];
+    // task a: 2 days, task b: 1 day → average 1.5
+    expect(calcAverageTaskDurationDays(tasks)).toBe(1.5);
+  });
+});
+
+describe("calcEstimatedVsActualStoryPoints", () => {
+  it("only counts done tasks with a story point set", () => {
+    const tasks = [
+      task({ id: "a", priority: "p2", type: "coding", status: "done", storyPoint: 5, timeSpentSeconds: 3600 * 3 }),
+      task({ id: "b", priority: "p2", type: "coding", status: "done", storyPoint: 3, timeSpentSeconds: 3600 }),
+      task({ id: "c", priority: "p2", type: "coding", status: "in_progress", storyPoint: 8, timeSpentSeconds: 3600 * 5 }),
+      task({ id: "d", priority: "p2", type: "coding", status: "done", timeSpentSeconds: 3600 }),
+    ];
+    expect(calcEstimatedVsActualStoryPoints(tasks)).toEqual({ estimated: 8, actualHours: 4 });
+  });
+});
+
+describe("buildProductivityProfile", () => {
+  it("returns nulls when nothing has been completed", () => {
+    expect(buildProductivityProfile([])).toEqual({
+      bestWeekday: null,
+      bestWeekdayCount: 0,
+      bestPeriod: null,
+      bestPeriodCount: 0,
+    });
+  });
+
+  it("finds the weekday with the most completions", () => {
+    const WEEKDAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+    const majorityAt = "2026-07-06T12:00:00Z";
+    const expectedWeekday = WEEKDAY_NAMES[new Date(majorityAt).getDay()];
+    const tasks = [
+      task({ id: "a", priority: "p2", type: "coding", status: "done", completedAt: majorityAt }),
+      task({ id: "b", priority: "p2", type: "coding", status: "done", completedAt: majorityAt }),
+      task({ id: "c", priority: "p2", type: "coding", status: "done", completedAt: "2026-07-08T12:00:00Z" }),
+    ];
+    const profile = buildProductivityProfile(tasks);
+    expect(profile.bestWeekday).toBe(expectedWeekday);
+    expect(profile.bestWeekdayCount).toBe(2);
+  });
+
+  it("finds the time-of-day period with the most completions", () => {
+    const tasks = [
+      task({ id: "a", priority: "p2", type: "coding", status: "done", completedAt: "2026-07-06T08:00:00Z" }),
+      task({ id: "b", priority: "p2", type: "coding", status: "done", completedAt: "2026-07-07T09:00:00Z" }),
+      task({ id: "c", priority: "p2", type: "coding", status: "done", completedAt: "2026-07-08T20:00:00Z" }),
+    ];
+    const profile = buildProductivityProfile(tasks);
+    expect(profile.bestPeriodCount).toBe(2);
+    expect(profile.bestPeriod).toMatch(/Morning|Afternoon|Evening|Night/);
   });
 });

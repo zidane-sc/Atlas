@@ -4,7 +4,7 @@ import { useState } from "react";
 import { ChevronDown, X } from "lucide-react";
 import { useTasks } from "@/components/providers/TasksProvider";
 import { STATUS_LABEL, STATUS_SHAPE, TYPE_ICON } from "@/lib/mock-data";
-import { countActiveFilters, type TaskFilters } from "@/lib/task-filters";
+import { countActiveFilters, EMPTY_TASK_FILTERS, normalizeFilters, type TaskFilters } from "@/lib/task-filters";
 import type { Priority, TaskStatus, TaskType } from "@/types/task";
 
 const PRIORITIES: Priority[] = ["p0", "p1", "p2", "p3", "p4"];
@@ -79,14 +79,31 @@ function FilterDropdown<T extends string>({
   );
 }
 
+function OpToggle<T extends string>({ value, options, onChange }: { value: T; options: { value: T; label: string }[]; onChange: (v: T) => void }) {
+  const index = options.findIndex((o) => o.value === value);
+  return (
+    <button
+      type="button"
+      onClick={() => onChange(options[(index + 1) % options.length].value)}
+      className="border px-1.5 py-1 text-sm font-bold transition-colors"
+      style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-bg-panel)", color: "var(--color-text-muted)" }}
+      title="Click to cycle operator"
+    >
+      {options[index]?.label ?? options[0].label}
+    </button>
+  );
+}
+
 export function TaskFilterBar({
   filters,
   onChange,
   projectNames,
+  tagNames,
 }: {
   filters: TaskFilters;
   onChange: (filters: TaskFilters) => void;
   projectNames: string[];
+  tagNames: string[];
 }) {
   const { savedFilters, saveFilter, deleteFilter } = useTasks();
   const [viewsOpen, setViewsOpen] = useState(false);
@@ -136,7 +153,7 @@ export function TaskFilterBar({
                     <button
                       type="button"
                       onClick={() => {
-                        onChange(view.filters);
+                        onChange(normalizeFilters(view.filters));
                         setViewsOpen(false);
                       }}
                       className="flex-1 text-left text-sm text-foreground hover:text-primary truncate font-bold"
@@ -159,20 +176,34 @@ export function TaskFilterBar({
         )}
       </div>
 
-      <FilterDropdown
-        label="Status"
-        options={STATUSES}
-        selected={filters.statuses}
-        onChange={(statuses) => onChange({ ...filters, statuses })}
-        renderOption={(s) => <span>{STATUS_SHAPE[s]} {STATUS_LABEL[s]}</span>}
-      />
-      <FilterDropdown
-        label="Priority"
-        options={PRIORITIES}
-        selected={filters.priorities}
-        onChange={(priorities) => onChange({ ...filters, priorities })}
-        renderOption={(p) => <span>{p.toUpperCase()}</span>}
-      />
+      <div className="flex items-center gap-0.5">
+        <OpToggle
+          value={filters.statusOp}
+          options={[{ value: "is", label: "IS" }, { value: "is_not", label: "≠" }]}
+          onChange={(statusOp) => onChange({ ...filters, statusOp })}
+        />
+        <FilterDropdown
+          label="Status"
+          options={STATUSES}
+          selected={filters.statuses}
+          onChange={(statuses) => onChange({ ...filters, statuses })}
+          renderOption={(s) => <span>{STATUS_SHAPE[s]} {STATUS_LABEL[s]}</span>}
+        />
+      </div>
+      <div className="flex items-center gap-0.5">
+        <OpToggle
+          value={filters.priorityOp}
+          options={[{ value: "any", label: "IS" }, { value: "gte", label: "≥" }, { value: "lte", label: "≤" }]}
+          onChange={(priorityOp) => onChange({ ...filters, priorityOp })}
+        />
+        <FilterDropdown
+          label="Priority"
+          options={PRIORITIES}
+          selected={filters.priorities}
+          onChange={(priorities) => onChange({ ...filters, priorities: filters.priorityOp === "any" ? priorities : priorities.slice(-1) })}
+          renderOption={(p) => <span>{p.toUpperCase()}</span>}
+        />
+      </div>
       <FilterDropdown
         label="Project"
         options={projectNames}
@@ -187,12 +218,29 @@ export function TaskFilterBar({
         onChange={(types) => onChange({ ...filters, types })}
         renderOption={(t) => <span>{TYPE_ICON[t]} {t}</span>}
       />
+      <FilterDropdown
+        label="Tag"
+        options={tagNames}
+        selected={filters.tags}
+        onChange={(tags) => onChange({ ...filters, tags })}
+        renderOption={(t) => <span>#{t}</span>}
+      />
+
+      <button
+        type="button"
+        onClick={() => onChange({ ...filters, combineMode: filters.combineMode === "AND" ? "OR" : "AND" })}
+        className="border px-2 py-1 text-sm font-bold transition-colors"
+        style={{ borderColor: "var(--color-primary-gold)", backgroundColor: "var(--color-bg-panel)", color: "var(--color-primary-gold)" }}
+        title="Toggle how the active filters combine"
+      >
+        Match: {filters.combineMode}
+      </button>
 
       <input
         value={filters.query}
         onChange={(e) => onChange({ ...filters, query: e.target.value })}
-        placeholder="Search title or #tag..."
-        aria-label="Search title or tag"
+        placeholder="Search title, #tag, project, attachment..."
+        aria-label="Search title, tag, project, or attachment"
         className="min-w-[160px] flex-1 border px-2 py-1 text-sm text-foreground outline-none focus:border-primary"
         style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-bg-panel)" }}
       />
@@ -239,7 +287,7 @@ export function TaskFilterBar({
 
           <button
             type="button"
-            onClick={() => onChange({ statuses: [], priorities: [], projects: [], types: [], query: "" })}
+            onClick={() => onChange(EMPTY_TASK_FILTERS)}
             className="flex items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
           >
             <X size={12} /> Clear ({activeCount})

@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { listNotesAction, deleteNoteAction, updateNoteAction } from "@/lib/actions/notes";
-import { useToast } from "@/components/providers/ToastProvider";
+import { useNotifications } from "@/hooks/useNotifications";
 import { NoteList } from "@/components/notes/NoteList";
 import { NoteEditorLazy } from "@/components/notes/NoteEditorLazy";
 import { DeleteConfirmModal } from "@/components/notes/DeleteConfirmModal";
@@ -11,7 +11,7 @@ import type { NotePreview } from "@/types/note";
 
 export default function NotesPage() {
   const searchParams = useSearchParams();
-  const { toast } = useToast();
+  const { notify } = useNotifications();
   const [notes, setNotes] = useState<NotePreview[]>([]);
   const [search, setSearch] = useState("");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
@@ -76,7 +76,7 @@ export default function NotesPage() {
     const note = notes.find((n) => n.id === id);
     await updateNoteAction({ noteId: id, pinned });
     setNotes(notes.map((n) => (n.id === id ? { ...n, pinned } : n)));
-    toast(`📌 ${pinned ? "Pinned" : "Unpinned"}: "${note?.title}"`, "success");
+    notify(`📌 ${pinned ? "Pinned" : "Unpinned"}: "${note?.title}"`, "success");
   };
 
   const handleSaveNote = async () => {

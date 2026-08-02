@@ -41,9 +41,13 @@ export function SettingsProvider({
 
   const updateSetting = useCallback(async (key: string, value: unknown) => {
     // Optimistic update
-    setSettings((prev) =>
-      prev.map((s) => (s.key === key ? { ...s, value } : s))
-    );
+    setSettings((prev) => {
+      const exists = prev.find((s) => s.key === key);
+      if (exists) {
+        return prev.map((s) => (s.key === key ? { ...s, value } : s));
+      }
+      return [...prev, { key, value } as UserSetting];
+    });
 
     const { updateUserSettingAction } = await import("@/lib/actions/user");
     const res = await updateUserSettingAction(key, value);

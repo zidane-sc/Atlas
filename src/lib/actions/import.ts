@@ -9,11 +9,79 @@ import { toDbProjectCategory } from "@/lib/schemas/project";
 import { Prisma } from "@/generated/prisma/client";
 import type { ProjectCategory, ProjectStatus, SprintStatus, TaskStatus, TaskType, TaskPriority, TaskEffort, TaskReporter } from "@/generated/prisma/client";
 
+export interface WorkSessionExport {
+  taskId: string;
+  startedAt: string;
+  endedAt: string;
+  durationSeconds: number;
+}
+
+export interface ActivityLogExport {
+  taskId: string | null;
+  projectId: string | null;
+  sprintId: string | null;
+  action: string;
+  details: unknown;
+  createdAt: string;
+}
+
 interface ImportPayload {
   tasks: Task[];
   projects: Project[];
   sprints: Sprint[];
   bonus: { xp: number; coins: number };
+  workSessions?: WorkSessionExport[];
+  activityLogs?: ActivityLogExport[];
+}
+
+/**
+ * Raw WorkSession/ActivityLog rows for a full export — the client-held `tasks`/`activityLogs`
+ * state is either aggregated (timeSpentSeconds) or display-shaped and take(10)-capped, so a
+ * faithful round-trip needs a fresh, complete query straight from the DB (docs/05-backlog.md §6).
+ */
+export async function getWorkspaceHistoryForExport(): Promise<
+  ActionResult<{ workSessions: WorkSessionExport[]; activityLogs: ActivityLogExport[] }>
+> {
+  const session = await auth();
+  if (!session?.user?.email) {
+    return { success: false, error: { code: "UNAUTHORIZED", message: "Sign in required." } };
+  }
+
+  const user = await db.user.findUnique({ where: { email: session.user.email }, select: { id: true } });
+  if (!user) {
+    return { success: false, error: { code: "NOT_FOUND", message: "User not found." } };
+  }
+
+  const [rawWorkSessions, rawActivityLogs] = await Promise.all([
+    db.workSession.findMany({
+      where: { task: { ownerId: user.id } },
+      select: { taskId: true, startedAt: true, endedAt: true, durationSeconds: true },
+    }),
+    db.activityLog.findMany({
+      where: { actorId: user.id },
+      select: { taskId: true, projectId: true, sprintId: true, action: true, details: true, createdAt: true },
+    }),
+  ]);
+
+  return {
+    success: true,
+    data: {
+      workSessions: rawWorkSessions.map((w) => ({
+        taskId: w.taskId,
+        startedAt: w.startedAt.toISOString(),
+        endedAt: w.endedAt.toISOString(),
+        durationSeconds: w.durationSeconds,
+      })),
+      activityLogs: rawActivityLogs.map((a) => ({
+        taskId: a.taskId,
+        projectId: a.projectId,
+        sprintId: a.sprintId,
+        action: a.action,
+        details: a.details,
+        createdAt: a.createdAt.toISOString(),
+      })),
+    },
+  };
 }
 
 export async function importWorkspaceData(
@@ -34,7 +102,8 @@ export async function importWorkspaceData(
       return { success: false, error: { code: "NOT_FOUND", message: "User not found." } };
     }
 
-    const { tasks, projects, sprints, bonus } = payload;
+    const { tasks, projects, sprints, bonus, workSessions = [], activityLogs = [] } = payload;
+    const taskIds = new Set(tasks.map((t) => t.id));
 
     await db.$transaction(async (tx) => {
       // 1. Wipe existing data
@@ -141,7 +210,38 @@ export async function importWorkspaceData(
         }
       }
 
-      // 5. Update user stats
+      // 5. Restore Focus Timer history and the activity feed — previously dropped on
+      // re-import even though the wipe step above deletes both (docs/05-backlog.md §6).
+      const validWorkSessions = workSessions.filter((w) => taskIds.has(w.taskId));
+      if (validWorkSessions.length > 0) {
+        await tx.workSession.createMany({
+          data: validWorkSessions.map((w) => ({
+            taskId: w.taskId,
+            startedAt: new Date(w.startedAt),
+            endedAt: new Date(w.endedAt),
+            durationSeconds: w.durationSeconds,
+          })),
+        });
+      }
+
+      const validActivityLogs = activityLogs.filter(
+        (a) => (a.taskId == null || taskIds.has(a.taskId)) && (a.projectId == null || projects.some((p) => p.id === a.projectId)) && (a.sprintId == null || sprints.some((s) => s.id === a.sprintId))
+      );
+      if (validActivityLogs.length > 0) {
+        await tx.activityLog.createMany({
+          data: validActivityLogs.map((a) => ({
+            actorId: user.id,
+            taskId: a.taskId,
+            projectId: a.projectId,
+            sprintId: a.sprintId,
+            action: a.action,
+            details: (a.details ?? undefined) as Prisma.InputJsonValue | undefined,
+            createdAt: new Date(a.createdAt),
+          })),
+        });
+      }
+
+      // 6. Update user stats
       await tx.user.update({
         where: { id: user.id },
         data: {

@@ -9,10 +9,14 @@ import { z } from "zod";
 
 const taskFiltersSchema = z.object({
   statuses: z.array(z.string()),
+  statusOp: z.enum(["is", "is_not"]),
   priorities: z.array(z.string()),
+  priorityOp: z.enum(["any", "gte", "lte"]),
   projects: z.array(z.string()),
   types: z.array(z.string()),
+  tags: z.array(z.string()),
   query: z.string(),
+  combineMode: z.enum(["AND", "OR"]),
 });
 
 const saveFilterInputSchema = z.object({

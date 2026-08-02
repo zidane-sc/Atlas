@@ -5,7 +5,8 @@ export type NotificationEvent =
   | { type: 'task:rescheduled'; taskId: string; title: string; newDate: string }
   | { type: 'gamification:level-up'; newLevel: number; xp: number }
   | { type: 'gamification:achievement-unlocked'; achievementId: string; name: string }
-  | { type: 'gamification:streak-milestone'; days: number; vibe: string };
+  | { type: 'gamification:streak-milestone'; days: number; vibe: string }
+  | { type: 'message'; text: string; kind: 'success' | 'error' };
 
 export interface NotificationPayload {
   id: string;
@@ -30,6 +31,8 @@ export function getNotificationMessage(event: NotificationEvent): { icon: string
       return { icon: '⭐', text: `Achievement unlocked: ${event.name}` };
     case 'gamification:streak-milestone':
       return { icon: '🔥', text: `${event.days}-day streak! (${event.vibe})` };
+    case 'message':
+      return { icon: event.kind === 'success' ? '✓' : '✕', text: event.text };
   }
 }
 
@@ -37,5 +40,6 @@ export function shouldPlaySound(event: NotificationEvent): boolean {
   return event.type === 'gamification:level-up'
     || event.type === 'gamification:achievement-unlocked'
     || event.type === 'gamification:streak-milestone'
-    || event.type === 'task:rescheduled';
+    || event.type === 'task:rescheduled'
+    || event.type === 'message';
 }

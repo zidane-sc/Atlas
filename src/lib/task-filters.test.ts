@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { applyTaskFilters, countActiveFilters, EMPTY_TASK_FILTERS } from "./task-filters";
+import { applyTaskFilters, countActiveFilters, EMPTY_TASK_FILTERS, normalizeFilters, type TaskFilters } from "./task-filters";
 import type { Task } from "@/types/task";
 
 function task(overrides: Partial<Task>): Task {
@@ -35,7 +35,7 @@ describe("applyTaskFilters", () => {
     expect(result.map((t) => t.id).sort()).toEqual(["a", "c"]);
   });
 
-  it("ANDs across facets", () => {
+  it("ANDs across facets by default", () => {
     const result = applyTaskFilters(tasks, { ...EMPTY_TASK_FILTERS, projects: ["ATS"], priorities: ["p0"] });
     expect(result.map((t) => t.id)).toEqual(["a"]);
   });
@@ -45,8 +45,13 @@ describe("applyTaskFilters", () => {
     expect(applyTaskFilters(tasks, { ...EMPTY_TASK_FILTERS, query: "urgent" }).map((t) => t.id)).toEqual(["a"]);
   });
 
+  it("matches free-text query against project name", () => {
+    expect(applyTaskFilters(tasks, { ...EMPTY_TASK_FILTERS, query: "atlas" }).map((t) => t.id)).toEqual(["b"]);
+  });
+
   it("combines every facet together (AND)", () => {
     const result = applyTaskFilters(tasks, {
+      ...EMPTY_TASK_FILTERS,
       statuses: ["waiting_external"],
       priorities: ["p1"],
       projects: ["ATS"],
@@ -54,6 +59,41 @@ describe("applyTaskFilters", () => {
       query: "release",
     });
     expect(result.map((t) => t.id)).toEqual(["c"]);
+  });
+
+  it("combines active facets with OR when combineMode is OR — docs/01-product.md §9.3", () => {
+    const result = applyTaskFilters(tasks, {
+      ...EMPTY_TASK_FILTERS,
+      combineMode: "OR",
+      statuses: ["blocked"],
+      types: ["deployment"],
+    });
+    expect(result.map((t) => t.id).sort()).toEqual(["a", "c"]);
+  });
+
+  it("filters by tag facet, independent of the free-text query", () => {
+    const result = applyTaskFilters(tasks, { ...EMPTY_TASK_FILTERS, tags: ["release"] });
+    expect(result.map((t) => t.id)).toEqual(["c"]);
+  });
+
+  it("statusOp is_not excludes the selected statuses instead of requiring them", () => {
+    const result = applyTaskFilters(tasks, { ...EMPTY_TASK_FILTERS, statuses: ["todo"], statusOp: "is_not" });
+    expect(result.map((t) => t.id).sort()).toEqual(["a", "c"]);
+  });
+
+  it("priorityOp gte matches everything at least as urgent as the selected priority", () => {
+    const result = applyTaskFilters(tasks, { ...EMPTY_TASK_FILTERS, priorities: ["p1"], priorityOp: "gte" });
+    expect(result.map((t) => t.id).sort()).toEqual(["a", "c"]);
+  });
+
+  it("priorityOp lte matches everything at most as urgent as the selected priority", () => {
+    const result = applyTaskFilters(tasks, { ...EMPTY_TASK_FILTERS, priorities: ["p1"], priorityOp: "lte" });
+    expect(result.map((t) => t.id).sort()).toEqual(["b", "c"]);
+  });
+
+  it("normalizes a saved filter missing newer fields instead of crashing", () => {
+    const legacy = { statuses: [], priorities: [], projects: ["ATS"], types: [], query: "" } as unknown as TaskFilters;
+    expect(applyTaskFilters(tasks, legacy).map((t) => t.id).sort()).toEqual(["a", "c"]);
   });
 });
 
@@ -64,7 +104,18 @@ describe("countActiveFilters", () => {
 
   it("counts each selected value and a non-empty query as one facet each", () => {
     expect(
-      countActiveFilters({ statuses: ["blocked", "done"], priorities: ["p0"], projects: [], types: [], query: "x" })
+      countActiveFilters({ ...EMPTY_TASK_FILTERS, statuses: ["blocked", "done"], priorities: ["p0"], query: "x" })
     ).toBe(4);
+  });
+
+  it("counts tag selections too", () => {
+    expect(countActiveFilters({ ...EMPTY_TASK_FILTERS, tags: ["backend", "urgent"] })).toBe(2);
+  });
+});
+
+describe("normalizeFilters", () => {
+  it("fills in missing fields with the old defaults", () => {
+    const legacy = { statuses: ["done"], priorities: [], projects: [], types: [], query: "" } as unknown as TaskFilters;
+    expect(normalizeFilters(legacy)).toEqual({ ...EMPTY_TASK_FILTERS, statuses: ["done"] });
   });
 });

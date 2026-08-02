@@ -6,7 +6,8 @@ import { RecapTrigger } from "@/components/gamification/RecapTrigger";
 import type { RecapData } from "@/components/gamification/RecapCutscene";
 import { useTasks } from "@/components/providers/TasksProvider";
 import { useProjects } from "@/components/providers/ProjectsProvider";
-import { calcTaskXP, completedAt, computeRecapGrade, createdAt, isTaskOnTime, calculateStreak } from "@/lib/gamification";
+import { calcTaskXP, completedAt, computeRecapGrade, createdAt, isTaskOnTime, calculateStreak, calculateLongestStreak } from "@/lib/gamification";
+import { buildProductivityProfile, calcAverageTaskDurationDays, calcCompletionRate, calcEstimatedVsActualStoryPoints, calcFocusHours } from "@/lib/statistics";
 import { TYPE_ICON } from "@/lib/mock-data";
 import ActivityHeatmap from "@/components/statistics/ActivityHeatmap";
 import type { Project } from "@/types/gamification";
@@ -160,6 +161,13 @@ export default function StatisticsContent() {
   const nowAnchor = useMemo(() => new Date(nowTime).toISOString().slice(0, 10), [nowTime]);
   const weeklyThroughput = useMemo(() => buildWeeklyThroughput(allTasks, nowAnchor), [allTasks, nowAnchor]);
 
+  const productivityProfile = useMemo(() => buildProductivityProfile(allTasks), [allTasks]);
+  const completionRate = useMemo(() => calcCompletionRate(allTasks), [allTasks]);
+  const avgTaskDurationDays = useMemo(() => calcAverageTaskDurationDays(allTasks), [allTasks]);
+  const focusHours = useMemo(() => calcFocusHours(allTasks), [allTasks]);
+  const longestStreak = useMemo(() => calculateLongestStreak(allTasks), [allTasks]);
+  const storyPointComparison = useMemo(() => calcEstimatedVsActualStoryPoints(allTasks), [allTasks]);
+
   const doneThisWeek = weeklyThroughput.reduce((s, d) => s + d.done, 0);
   const donePrevWeek = weeklyThroughput.reduce((s, d) => s + d.prevDone, 0);
   const wow = [
@@ -297,8 +305,35 @@ export default function StatisticsContent() {
               </div>
             </div>
           </div>
+
+          <div className="border-2 border-border bg-card p-4">
+            <div className="mb-4 text-sm tracking-widest" style={{ color: "var(--color-status-ready)" }}>▸ PRODUCTIVITY</div>
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+              <StatTile label="COMPLETION RATE" value={`${completionRate}%`} />
+              <StatTile label="LONGEST STREAK" value={`${longestStreak}d`} />
+              <StatTile label="FOCUS HOURS" value={`${focusHours}h`} />
+              <StatTile label="AVG TASK DURATION" value={avgTaskDurationDays != null ? `${avgTaskDurationDays}d` : "—"} />
+              <StatTile label="BEST DAY" value={productivityProfile.bestWeekday ?? "—"} />
+              <StatTile label="BEST TIME" value={productivityProfile.bestPeriod ?? "—"} />
+            </div>
+            <div className="mt-4 flex items-center gap-3 border-t pt-4 text-sm" style={{ borderColor: "var(--color-border)" }}>
+              <span style={{ color: "var(--color-dim)" }}>SP EST. VS. ACTUAL</span>
+              <span style={{ color: "var(--color-text-primary)" }}>{storyPointComparison.estimated} SP estimated</span>
+              <span style={{ color: "var(--color-dim)" }}>vs</span>
+              <span style={{ color: "var(--color-text-primary)" }}>{storyPointComparison.actualHours}h actual</span>
+            </div>
+          </div>
         </div>
       </div>
     </main>
+  );
+}
+
+function StatTile({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="text-center">
+      <div className="font-display text-lg" style={{ color: "var(--color-text-primary)" }}>{value}</div>
+      <div className="mt-1 text-sm tracking-widest text-muted-foreground">{label}</div>
+    </div>
   );
 }

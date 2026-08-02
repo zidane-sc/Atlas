@@ -3,7 +3,7 @@
 import { createContext, useContext, useMemo, useRef, useState } from "react";
 import type { SprintFormValues } from "@/lib/schemas/sprint";
 import type { Sprint } from "@/types/gamification";
-import { useToast } from "@/components/providers/ToastProvider";
+import { useNotifications } from "@/hooks/useNotifications";
 import {
   createSprint as apiCreateSprint,
   updateSprint as apiUpdateSprint,
@@ -27,8 +27,6 @@ interface SprintsContextValue {
   openEditForm: (sprint: Sprint) => void;
   closeForm: () => void;
   reset: () => void;
-  /** Settings → Import Data. */
-  loadSprints: (sprints: Sprint[]) => void;
 }
 
 const SprintsContext = createContext<SprintsContextValue | null>(null);
@@ -44,7 +42,7 @@ export function SprintsProvider({
   const initialSprintsRef = useRef(initialSprints);
   const [sprints, setSprints] = useState<Sprint[]>(initialSprints);
   const [sheet, setSheet] = useState<SheetState>({ open: false, mode: "create", sprint: null });
-  const { toast } = useToast();
+  const { notify } = useNotifications();
 
   const value = useMemo<SprintsContextValue>(
     () => ({
@@ -61,7 +59,7 @@ export function SprintsProvider({
 
         const result = await apiCreateSprint(values);
         if (!result.success) {
-          toast(result.error.message, "error");
+          notify(result.error.message, "error");
           setSprints((prev) => prev.filter((s) => s.id !== tempId));
         } else {
           setSprints((prev) =>
@@ -82,7 +80,7 @@ export function SprintsProvider({
 
         const result = await apiUpdateSprint(id, values);
         if (!result.success) {
-          toast(result.error.message, "error");
+          notify(result.error.message, "error");
           setSprints((prev) => prev.map((s) => (s.id === id ? oldSprint : s)));
         } else {
           setSprints((prev) =>
@@ -99,7 +97,7 @@ export function SprintsProvider({
 
         const result = await apiDeleteSprint(id);
         if (!result.success) {
-          toast(result.error.message, "error");
+          notify(result.error.message, "error");
           setSprints((prev) => [...prev, prevSprint]);
         }
       },
@@ -111,12 +109,8 @@ export function SprintsProvider({
         setSprints(initialSprintsRef.current);
         setSheet({ open: false, mode: "create", sprint: null });
       },
-      loadSprints: (loaded) => {
-        setSprints(loaded);
-        setSheet({ open: false, mode: "create", sprint: null });
-      },
     }),
-    [sprints, sheet, toast]
+    [sprints, sheet, notify]
   );
 
   return <SprintsContext.Provider value={value}>{children}</SprintsContext.Provider>;

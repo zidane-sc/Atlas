@@ -6,11 +6,10 @@ import { buildTaskFromValues, tasksReducer, mapDbTaskToClient } from "@/lib/task
 import type { Task, ActivityLogClient } from "@/types/task";
 import { createComment as apiCreateComment } from "@/lib/actions/comments";
 import { updateUserStats as apiUpdateUserStats, claimDailyQuestAction as apiClaimDailyQuest } from "@/lib/actions/user";
-import { useToast } from "@/components/providers/ToastProvider";
+import { useNotifications } from "@/hooks/useNotifications";
 import { useProjects } from "@/components/providers/ProjectsProvider";
 import { useSprints } from "@/components/providers/SprintsProvider";
 import { useSettings } from "@/components/providers/SettingsProvider";
-import { useNotifications } from "@/hooks/useNotifications";
 import {
   createTask as apiCreateTask,
   updateTask as apiUpdateTask,
@@ -29,7 +28,9 @@ import {
   checkAndEmitLevelUp,
   checkAndEmitAchievementUnlocks,
   checkAndEmitStreakMilestone,
+  checkAndEmitDueDateNotifications,
 } from "@/lib/gamification";
+import { getTodayDate } from "@/lib/mock-data";
 import { purchaseDecoration as apiPurchaseDecoration, placeDecoration as apiPlaceDecoration } from "@/lib/actions/decorations";
 import type { TaskFilters } from "@/lib/task-filters";
 import type { SavedFilterClient } from "@/lib/actions/filters";
@@ -68,17 +69,17 @@ export function playChime() {
   notes.forEach((freq, idx) => {
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
-    
+
     osc.type = "sine";
     osc.frequency.setValueAtTime(freq, now + idx * 0.08);
-    
+
     gain.gain.setValueAtTime(0, now + idx * 0.08);
     gain.gain.linearRampToValueAtTime(0.15, now + idx * 0.08 + 0.03);
     gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.08 + 0.3);
-    
+
     osc.connect(gain);
     gain.connect(ctx.destination);
-    
+
     osc.start(now + idx * 0.08);
     osc.stop(now + idx * 0.08 + 0.35);
   });
@@ -110,8 +111,6 @@ interface TasksContextValue {
   switchPhase: (taskId: string) => Promise<void>;
   /** Settings → Reset All. */
   reset: () => void;
-  /** Settings → Import Data — replaces tasks + bonus XP/coins with an imported snapshot. */
-  loadTasks: (tasks: Task[], bonusXp: number, bonusCoins: number, savedFilters?: SavedFilterClient[]) => void;
   loadMore: (lastTaskId: string) => Promise<void>;
   hasMore: boolean;
   lazySearchLoadMore: () => Promise<void>;
@@ -171,7 +170,7 @@ export function TasksProvider({
   const [activeTimer, setActiveTimer] = useState<ActiveTimer | null>(initialActiveTimer);
   const [completions, setCompletions] = useState<CompletionOverlay[]>([]);
   const lastSyncTimeRef = useRef<Record<string, number>>({});
-  const { toast } = useToast();
+  const { notify, emit } = useNotifications();
   const { projects } = useProjects();
   const { sprints } = useSprints();
   const { soundEnabled, focusMinutes } = useSettings();
@@ -181,6 +180,19 @@ export function TasksProvider({
     const id = setTimeout(() => setJustCompletedAt(null), 4000);
     return () => clearTimeout(id);
   }, [justCompletedAt]);
+
+  const dueCheckRanRef = useRef(false);
+  useEffect(() => {
+    if (dueCheckRanRef.current) return;
+    dueCheckRanRef.current = true;
+    const today = getTodayDate();
+    // Once per calendar day per browser — a to-do app shouldn't re-nag about the same
+    // overdue quest on every navigation within the same day.
+    const lastCheck = window.localStorage.getItem("atlas:lastDueCheck");
+    if (lastCheck === today) return;
+    window.localStorage.setItem("atlas:lastDueCheck", today);
+    checkAndEmitDueDateNotifications(tasks, today);
+  }, [tasks]);
 
   const value = useMemo<TasksContextValue>(
     () => ({
@@ -207,7 +219,7 @@ export function TasksProvider({
 
         const result = await apiCreateTask(input);
         if (!result.success) {
-          toast(result.error.message, "error");
+          notify(result.error.message, "error");
         } else {
           const dbProjects = projects as any[];
           const dbSprints = sprints as any[];
@@ -232,14 +244,14 @@ export function TasksProvider({
             if (res.success) {
               const { taskId, seconds: finalSeconds, startedAt, endedAt } = res.data;
               apiLogWorkSession(taskId, finalSeconds, startedAt, endedAt).catch((err) => {
-                toast(err?.error?.message ?? "Failed to log work session", "error");
+                notify(err?.error?.message ?? "Failed to log work session", "error");
               });
             } else {
-              toast(res.error.message, "error");
+              notify(res.error.message, "error");
               dispatch({ type: "addTime", id, seconds: -seconds });
             }
           }).catch((err) => {
-            toast(err?.error?.message ?? "Failed to stop timer", "error");
+            notify(err?.error?.message ?? "Failed to stop timer", "error");
             dispatch({ type: "addTime", id, seconds: -seconds });
           });
         }
@@ -269,6 +281,7 @@ export function TasksProvider({
 
           // Emit streak milestone notification
           checkAndEmitStreakMilestone(oldStreak, newStreak);
+          emit({ type: "task:completed", taskId: id, title: values.title });
 
           setCompletions((c) => [...c, { id: cid, xp, title: values.title, streak: streakExtended ? newStreak : undefined }]);
           if (soundEnabled) {
@@ -301,11 +314,9 @@ export function TasksProvider({
           deliverables: values.deliverables,
         };
 
-        console.log("updateTask server call input:", input);
         const result = await apiUpdateTask(id, input);
-        console.log("updateTask server call result:", result);
         if (!result.success) {
-          toast(result.error.message, "error");
+          notify(result.error.message, "error");
           // Rollback
           const oldValues: TaskFormValues = {
             title: oldTask.title,
@@ -348,7 +359,7 @@ export function TasksProvider({
 
         const result = await apiDeleteTask(id);
         if (!result.success) {
-          toast(result.error.message, "error");
+          notify(result.error.message, "error");
           // Rollback
           dispatch({ type: "restore", task: prev });
         }
@@ -377,7 +388,7 @@ export function TasksProvider({
         };
         const tempId = crypto.randomUUID();
         const changedAt = new Date().toISOString();
-        
+
         // Optimistic insert & edit view open
         dispatch({ type: "create", id: tempId, changedAt, values });
         setSheet({ open: true, mode: "edit", task: buildTaskFromValues(tempId, changedAt, values) });
@@ -398,7 +409,7 @@ export function TasksProvider({
 
         const result = await apiCreateTask(input);
         if (!result.success) {
-          toast(result.error.message, "error");
+          notify(result.error.message, "error");
           dispatch({ type: "delete", id: tempId });
           setSheet((s) => (s.task?.id === tempId ? { ...s, open: false } : s));
         } else {
@@ -436,10 +447,10 @@ export function TasksProvider({
           setBonusXp(res.data.bonusXp);
           setBonusCoins(res.data.bonusCoins);
           setLastQuestClaimedAt(res.data.lastQuestClaimedAt);
-          toast("Daily quest claimed! +XP and +Coins!", "success");
+          notify("Daily quest claimed! +XP and +Coins!", "success");
           return true;
         } else {
-          toast(res.error.message, "error");
+          notify(res.error.message, "error");
           return false;
         }
       },
@@ -448,7 +459,7 @@ export function TasksProvider({
       addComment: async (taskId, content) => {
         const result = await apiCreateComment({ taskId, content });
         if (!result.success) {
-          toast(result.error.message, "error");
+          notify(result.error.message, "error");
           return;
         }
 
@@ -471,9 +482,9 @@ export function TasksProvider({
 
         const result = await apiTogglePin(taskId, pinned);
         if (result.success) {
-          toast(pinned ? "📌 Task pinned!" : "Pinned removed", "success");
+          notify(pinned ? "📌 Task pinned!" : "Pinned removed", "success");
         } else {
-          toast("Failed to toggle pin", "error");
+          notify("Failed to toggle pin", "error");
           dispatch({ type: "togglePin", id: taskId, pinned: !pinned });
         }
       },
@@ -482,7 +493,7 @@ export function TasksProvider({
         setActiveTimer({ taskId, startedAt, phase });
         const res = await apiStartFocusTimer(taskId, phase);
         if (!res.success) {
-          toast(res.error.message, "error");
+          notify(res.error.message, "error");
           setActiveTimer(null);
         }
       },
@@ -501,12 +512,12 @@ export function TasksProvider({
             dispatch({ type: "addTime", id: current.taskId, seconds });
             const logRes = await apiLogWorkSession(taskId, finalSeconds, startedAt, endedAt);
             if (!logRes.success) {
-              toast(logRes.error.message, "error");
+              notify(logRes.error.message, "error");
               dispatch({ type: "addTime", id: current.taskId, seconds: -seconds });
             }
           }
         } else {
-          toast(res.error.message, "error");
+          notify(res.error.message, "error");
           setActiveTimer(current);
         }
       },
@@ -516,7 +527,7 @@ export function TasksProvider({
 
         const res = await apiStopFocusTimer();
         if (!res.success) {
-          toast(res.error.message, "error");
+          notify(res.error.message, "error");
           return;
         }
 
@@ -529,7 +540,7 @@ export function TasksProvider({
           dispatch({ type: "addTime", id: taskId, seconds: loggedSeconds });
 
           apiLogWorkSession(taskId, loggedSeconds, startedAt, endedAt).catch((err) => {
-            toast(err?.error?.message ?? "Failed to log work session", "error");
+            notify(err?.error?.message ?? "Failed to log work session", "error");
             dispatch({ type: "addTime", id: taskId, seconds: -loggedSeconds });
           });
         }
@@ -538,7 +549,7 @@ export function TasksProvider({
         setActiveTimer(null);
 
         if (soundEnabled) playChime();
-        toast(nextPhase === "focus" ? "Focus session done — break time! ☕" : "Break's over — back to it! 🔥", "success");
+        notify(nextPhase === "focus" ? "Focus session done — break time! ☕" : "Break's over — back to it! 🔥", "success");
 
         if ("Notification" in window && Notification.permission === "granted") {
           new Notification(nextPhase === "focus" ? "Break Time!" : "Focus Time!", {
@@ -550,7 +561,7 @@ export function TasksProvider({
         setActiveTimer({ taskId, startedAt: startedAtMs, phase: nextPhase });
         const startRes = await apiStartFocusTimer(taskId, nextPhase);
         if (!startRes.success) {
-          toast(startRes.error.message, "error");
+          notify(startRes.error.message, "error");
           setActiveTimer(null);
         }
       },
@@ -566,19 +577,6 @@ export function TasksProvider({
         setLastQuestClaimedAt(null);
         setActiveTimer(null);
         await apiUpdateUserStats({ bonusXp: 0, bonusCoins: 0 });
-      },
-      loadTasks: async (loaded, loadedBonusXp, loadedBonusCoins, loadedSavedFilters = []) => {
-        dispatch({ type: "reset", tasks: loaded });
-        setSheet({ open: false, mode: "create", task: null });
-        setJustCompletedAt(null);
-        setBonusXp(loadedBonusXp);
-        setBonusCoins(loadedBonusCoins);
-        setPurchasedDecorations([]);
-        setPlacedDecorations({});
-        setSavedFilters(loadedSavedFilters);
-        setLastQuestClaimedAt(null);
-        setActiveTimer(null);
-        await apiUpdateUserStats({ bonusXp: loadedBonusXp, bonusCoins: loadedBonusCoins });
       },
       loadMore: async (lastTaskId) => {
         const result = await apiLoadMoreTasks({ cursor: lastTaskId, limit: 100 });
@@ -609,10 +607,10 @@ export function TasksProvider({
         if (res.success) {
           setBonusCoins(res.data.bonusCoins);
           setPurchasedDecorations(res.data.purchasedDecorations);
-          toast("Item purchased successfully!", "success");
+          notify("Item purchased successfully!", "success");
           return true;
         } else {
-          toast(res.error.message, "error");
+          notify(res.error.message, "error");
           return false;
         }
       },
@@ -620,10 +618,10 @@ export function TasksProvider({
         const res = await apiPlaceDecoration(category, itemId);
         if (res.success) {
           setPlacedDecorations(res.data.placedDecorations as Record<string, string | null>);
-          toast("Item placed in room!", "success");
+          notify("Item placed in room!", "success");
           return true;
         } else {
-          toast(res.error.message, "error");
+          notify(res.error.message, "error");
           return false;
         }
       },
@@ -632,10 +630,10 @@ export function TasksProvider({
         const res = await apiSaveFilter(name, filters);
         if (res.success) {
           setSavedFilters(res.data);
-          toast("Filter view saved!", "success");
+          notify("Filter view saved!", "success");
           return true;
         } else {
-          toast(res.error.message, "error");
+          notify(res.error.message, "error");
           return false;
         }
       },
@@ -643,10 +641,10 @@ export function TasksProvider({
         const res = await apiDeleteFilter(id);
         if (res.success) {
           setSavedFilters(res.data);
-          toast("Saved filter deleted.", "success");
+          notify("Saved filter deleted.", "success");
           return true;
         } else {
-          toast(res.error.message, "error");
+          notify(res.error.message, "error");
           return false;
         }
       },
@@ -663,7 +661,7 @@ export function TasksProvider({
       placedDecorations,
       savedFilters,
       activeTimer,
-      toast,
+      notify,
       projects,
       sprints,
       soundEnabled,

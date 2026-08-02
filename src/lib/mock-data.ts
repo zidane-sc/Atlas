@@ -436,7 +436,9 @@ export const mockAchievements: Achievement[] = [
   { id: "a9", name: "Code Warrior", description: "Complete 100 quests of type Coding", icon: "💻", category: "crafting", xp: 500, unlocked: false, unlockedAt: null },
   { id: "a10", name: "Scholar", description: "Complete 50 quests in a University project", icon: "📚", category: "crafting", xp: 300, unlocked: false, unlockedAt: null },
   { id: "a11", name: "Guild Master", description: "Complete an entire project", icon: "🛡", category: "social", xp: 500, unlocked: false, unlockedAt: null },
-  { id: "a12", name: "Perfect Week", description: "7 consecutive Perfect Days", icon: "🌟", category: "social", xp: 700, unlocked: false, unlockedAt: null },
+  { id: "a12", name: "Perfect Week", description: "Complete at least one quest on 7 consecutive days", icon: "🌟", category: "social", xp: 700, unlocked: false, unlockedAt: null },
+  { id: "a13", name: "500 Quests", description: "Complete 500 quests total", icon: "🏅", category: "combat", xp: 800, unlocked: false, unlockedAt: null },
+  { id: "a14", name: "1000 Quests", description: "Complete 1000 quests total", icon: "👑", category: "combat", xp: 1500, unlocked: false, unlockedAt: null },
 ];
 
 /** Rotating daily quest templates — docs/01-product.md §9.6 (one auto-selected per day). */

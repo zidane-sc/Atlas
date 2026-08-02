@@ -36,32 +36,34 @@ Rather than the original "notes/journal first" brainstorm, this reflects what yo
 | Epic | Name | Phase | Status |
 |---|---|---|---|
 | EPIC-01 | Auth & Foundation | v0.1 | Done |
-| EPIC-02 | Task Core (CRUD, core fields) | v0.1 | Done |
+| EPIC-02 | Task Core (CRUD, core fields) | v0.1 | Done (restore/un-delete + Trash view added 2026-08-02 — see §6) |
 | EPIC-03 | Projects (basic) | v0.1 | Done |
 | EPIC-04 | Views I — Kanban, List | v0.1 | Done |
 | EPIC-05 | Status History & Basic Completion Feedback | v0.1 | Done |
 | EPIC-06 | Command Palette & Quick Capture | v0.1 | Done |
-| EPIC-07 | Extended Task Fields (Effort, Attachments, Deliverables, Reporter, Owner) | v0.2 | Done |
+| EPIC-07 | Extended Task Fields (Effort, Attachments, Deliverables, Reporter, Owner) | v0.2 | Done — Owner intentionally never reassigned (see `01-product.md` §8.9, revised 2026-08-02) |
 | EPIC-08 | Tags | v0.2 | Done |
 | EPIC-09 | Sprints | v0.2 | Done (database-wired, Server Actions CRUD) |
-| EPIC-10 | Task Relations | v0.2 | Done |
-| EPIC-11 | Search & Filters | v0.2 | Done |
+| EPIC-10 | Task Relations | v0.2 | Done — Parent/Child/Blocked-By added as relation types 2026-08-02 (no separate `parentId` column, see §6) |
+| EPIC-11 | Search & Filters | v0.2 | Done — search now covers projects/attachments; filters got comparators, a Tag facet, and a global AND/OR toggle 2026-08-02 (see §6) |
 | EPIC-12 | Views II — Table, Calendar | v0.2 | Done |
 | EPIC-13 | Comments, Activity Log & Dashboard v1 | v0.2 | Done |
 | EPIC-14 | XP & Leveling | v0.3 | Done (derived calculations, sidebar XP bar) |
-| EPIC-15 | Achievements | v0.3 | Done (achievements page is fully functional & dynamic) |
-| EPIC-16 | Streaks | v0.3 | Done (dynamically calculated from task completion dates) |
+| EPIC-15 | Achievements | v0.3 | Done — "Perfect Week" now a real 7-day-streak check, 500/1000 Quests tiers added 2026-08-02 (see §6) |
+| EPIC-16 | Streaks | v0.3 | Done (current streak + longest-ever streak, both dynamically calculated from task completion dates) |
 | EPIC-17 | Coins & Room Decoration | v0.3 | Done (Coins persisted in DB, Room Decoration built as JRPG panel and fully persisted) |
 | EPIC-18 | Sound & Motion Settings | v0.3 | Done (sound/motion options added to DB, global settings provider wired, chime checks setting) |
-| EPIC-19 | Views III — Timeline, Today, Waiting, Focus, Project, Archive | v0.4 | Done (smart views fully built & routed in UI) |
-| EPIC-20 | Work Sessions (Focus Timer) | v0.4 | Done (Focus Timer work sessions logged and persisted in database, time spent mapped dynamically) |
-| EPIC-21 | Statistics | v0.4 | Done (Recharts charts fully built and dynamic) |
+| EPIC-19 | Views III — Timeline, Today, Waiting, Focus, Project, Archive | v0.4 | Done (smart views fully built & routed in UI; "Archive" tab is intentionally the completed-quests chronicle, not a trash view — see §6) |
+| EPIC-20 | Work Sessions (Focus Timer) | v0.4 | Done (Focus Timer work sessions logged and persisted in database, and now aggregated into Statistics — see §6) |
+| EPIC-21 | Statistics | v0.4 | Done — all §9.7 metrics now built 2026-08-02: productive weekday/time, avg task duration, completion rate, longest streak, focus hours, est-vs-actual story points (see §6) |
 | EPIC-22 | Saved Filters | v0.4 | Done (saved view custom filters added to DB, filter bar updated with saved views select/save UI) |
-| EPIC-23 | Data Export | v0.4 | Done (JSON backup export and bulk database workspace restore implemented in server actions and settings UI) |
+| EPIC-23 | Data Export | v0.4 | Done — round-trips WorkSession + ActivityLog 2026-08-02; also fixed a bigger bug where Import Data never actually wrote to the DB at all (see §6) |
 | EPIC-24 | Polish & Full Test Coverage | v1.0 | Done (linter verified with 0 problems, 100% of unit tests passing, full production build verified) |
 | EPIC-25 | Character Sheet (skill levels, stats, class title) | v0.3 | Done (character page fully functional & dynamic) |
 | EPIC-26 | Companion (ambient mood widget) | v0.3 | Done (ambient sidebar widget built & mood-reactive) |
 | EPIC-27 | Weekly/Monthly Recap Cutscene | v0.3 | Done (recap grade formula, trigger, and stats calculations are fully dynamic without mock dependencies) |
+| EPIC-28 | Notes (task-linked notes, attachments, tags, pinning, note-to-note linking) | v2 idea, built ahead of schedule | Done. Not previously tracked as an epic; pulled out of the icebox in `01-product.md` §14 because it already shipped. |
+| EPIC-29 | In-App Notifications (toast queue + sound + undo) | not in original scope | Done — `task:overdue`/`task:due-soon` now checked once/day and `task:completed` emitted on completion 2026-08-02 (see §6). Undocumented until this review; see `01-product.md` §9.8. |
 
 
 ---
@@ -128,8 +130,27 @@ Detailed story breakdowns for these get written when v0.1 is actually done — w
 
 Straight from `01-product.md` §14 — kept here too so new ideas land in one obvious place instead of interrupting whatever phase is active:
 
-**v2 candidates:** Notes (task/note-linked), Knowledge Base, Team Load Tracking (read-only), Calendar free-time tracking, AI task breakdown/planning, GitHub integration, calendar sync.
+**v2 candidates:** ~~Notes (task/note-linked)~~ — built, see EPIC-28. Knowledge Base, Team Load Tracking (read-only), Calendar free-time tracking, AI task breakdown/planning, GitHub integration, calendar sync.
 
 **v3 candidates:** Life journal, habit tracker, personal wiki, desktop/terminal widgets.
 
 New idea mid-build? It goes here, not into the current phase — that discipline is what keeps `01-product.md`'s vision stable.
+
+---
+
+## 6. Review Findings (found 2026-08-02, fixed same day unless noted)
+
+A code review found every epic above genuinely wired to real DB data (no mock/hardcoded UI) — but "Done" at the epic level had hidden a batch of smaller unfinished pieces. All were fixed in the same pass except where marked otherwise:
+
+- **Task restore / trash** — `deleteTask` only soft-deleted (`deletedAt`) with no way back. Added `restoreTask` + `listDeletedTasks` server actions and a "Trash" section in the Archive tab with per-task Restore (EPIC-02).
+- **"Archive" tab naming** — investigated as a possible bug ("shows completed tasks, not a trash view") but this is correct as built: it's the "Hall of Records" chronicle of completed quests per `01-product.md` §10's IA table, a different concept from trash. Trash was added as its own section instead of repurposing Archive (EPIC-19).
+- ~~Owner is not reassignable~~ / ~~Watchers don't exist~~ → **Resolved as non-goals, not bugs**: only one `User` row can ever exist (single allow-listed email, EPIC-01), so neither "reassign Owner" nor "Watchers" has anyone to point at. See `01-product.md` §8.9.
+- **Parent/Child hierarchy** — `Task.parentId` was dead schema/action plumbing (accepted by Zod, self-parent-guarded, but never set by any UI). Removed the dead column entirely and added `parent`/`child`/`blocked_by` as relation types instead, so hierarchy works through the existing flat Relations system rather than a second, parallel mechanism (EPIC-10).
+- **Search coverage** — was task-title/tag only. Now also matches project name and attachment label/URL, per `01-product.md` §9.3 (EPIC-11).
+- **Filter expressiveness** — was AND-of-OR-per-facet only. Added a Status "is/is not" toggle, a Priority "any/≥/≤" comparator, a dedicated Tag facet, and a global AND/OR combine toggle across all active facets, per the `Project = ATS AND Priority >= P2 AND Status != Done AND Tag = Backend` example in §9.3 (EPIC-11).
+- **Achievement "Perfect Week"** — was hardcoded to return `null` progress (no "Perfect Day" concept existed). Now real: 7 consecutive days with a quest completed, reusing the new `calculateLongestStreak` helper. Also added the missing 500/1000 Quests tiers alongside the existing 100 (EPIC-15).
+- **Longest-ever streak** — only the current consecutive-day streak existed. Added `calculateLongestStreak`, used by both Perfect Week and the new Statistics panel (EPIC-16, EPIC-21).
+- **Statistics §9.7 gaps** — most-productive weekday/time, average task duration, completion rate, longest streak, focus hours, and estimated-vs-actual story points were all missing (only heatmap + week-over-week deltas existed). All six added as a "Productivity" panel, reading real `timeSpentSeconds`/`completedAt`/`storyPoint` data (EPIC-21).
+- **Data Export/Import — found a bigger bug than scoped**: the Import Data button never called the `importWorkspaceData` server action at all — it only swapped client-side React state, so an imported backup silently vanished on the next page reload with no data actually written to the DB. Fixed by wiring the button to the real action (which now also restores `WorkSession`/`ActivityLog` rows) followed by a full reload; removed the now-dead client-only `loadTasks`/`loadProjects`/`loadSprints` provider methods that this bug depended on (EPIC-23).
+- **Notifications: overdue/due-soon/completed** — `task:overdue`/`task:due-soon`/`task:completed` event types existed but nothing ever emitted them. Added a once-per-calendar-day proactive check (via `checkAndEmitDueDateNotifications`) that surfaces the single most urgent overdue/due-soon task, plus a real `task:completed` emit on status → done (EPIC-29).
+- **Notes note-to-note linking** — the one piece of the original Notes idea not built alongside the rest. Added a `NoteLink` model (undirected, canonical-ordered pair) plus `linkNotesAction`/`unlinkNotesAction` and a "Linked Notes" picker in the note editor (EPIC-28).

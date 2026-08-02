@@ -8,13 +8,14 @@ import { useTasks } from "@/components/providers/TasksProvider";
 import { useProjects } from "@/components/providers/ProjectsProvider";
 import { useSprints } from "@/components/providers/SprintsProvider";
 import { useSettings } from "@/components/providers/SettingsProvider";
-import { useToast } from "@/components/providers/ToastProvider";
+import { useNotifications } from "@/hooks/useNotifications";
 import { computeCharacterSheet } from "@/lib/gamification";
-import { dashboardMock } from "@/lib/mock-data";
+import { updateUserProfileAction } from "@/lib/actions/user";
+import { getWorkspaceHistoryForExport, importWorkspaceData, type ActivityLogExport, type WorkSessionExport } from "@/lib/actions/import";
 import type { Project, Sprint } from "@/types/gamification";
 import type { Task } from "@/types/task";
 
-const EXPORT_VERSION = 1;
+const EXPORT_VERSION = 2;
 
 interface AtlasExport {
   version: number;
@@ -23,6 +24,9 @@ interface AtlasExport {
   sprints: Sprint[];
   settings: { reduceMotion: boolean };
   bonus: { xp: number; coins: number };
+  /** Added in version 2 — absent on older export files, defaulted to [] on import. */
+  workSessions?: WorkSessionExport[];
+  activityLogs?: ActivityLogExport[];
 }
 
 function isAtlasExport(data: unknown): data is AtlasExport {
@@ -79,26 +83,49 @@ function Toggle({
 }
 
 export default function Page() {
-  const { data: session } = useSession();
-  const { tasks, bonusXp, bonusCoins, reset: resetTasks, loadTasks } = useTasks();
-  const { projects, reset: resetProjects, loadProjects } = useProjects();
-  const { sprints, reset: resetSprints, loadSprints } = useSprints();
+  const { data: session, update: updateSession } = useSession();
+  const { tasks, bonusXp, bonusCoins, reset: resetTasks } = useTasks();
+  const { projects, reset: resetProjects } = useProjects();
+  const { sprints, reset: resetSprints } = useSprints();
   const { settings, updateSetting, reduceMotion, setReduceMotion } = useSettings();
-  const { toast } = useToast();
+  const { notify } = useNotifications();
   const sheet = useMemo(() => computeCharacterSheet(tasks, bonusXp, bonusCoins), [tasks, bonusXp, bonusCoins]);
   const importInputRef = useRef<HTMLInputElement>(null);
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [nameInput, setNameInput] = useState(session?.user?.name ?? "");
+  const [savingName, setSavingName] = useState(false);
 
-  const getSetting = useCallback((key: string): any => {
+  const getSetting = useCallback((key: string, defaultValue?: any): any => {
     const setting = settings.find((s) => s.key === key);
-    return setting?.value ?? false;
+    if (setting !== undefined) return setting?.value;
+    if (defaultValue !== undefined) return defaultValue;
+    return false;
   }, [settings]);
+
+  const handleSaveName = async () => {
+    if (!nameInput.trim()) {
+      notify("Name cannot be empty", "error");
+      return;
+    }
+    setSavingName(true);
+    const result = await updateUserProfileAction(nameInput);
+    if (result.success) {
+      await updateSession({ user: { ...session?.user, name: nameInput } });
+      notify("Name updated!");
+      setIsEditingName(false);
+    } else {
+      notify(result.error?.message ?? "Failed to update name", "error");
+    }
+    setSavingName(false);
+  };
 
   const handleToggle = useCallback((key: string) => {
     const current = getSetting(key);
     void updateSetting(key, !current);
   }, [getSetting, updateSetting]);
 
-  const onExport = () => {
+  const onExport = async () => {
+    const history = await getWorkspaceHistoryForExport();
     const payload: AtlasExport = {
       version: EXPORT_VERSION,
       tasks,
@@ -106,6 +133,8 @@ export default function Page() {
       sprints,
       settings: { reduceMotion },
       bonus: { xp: bonusXp, coins: bonusCoins },
+      workSessions: history.success ? history.data.workSessions : [],
+      activityLogs: history.success ? history.data.activityLogs : [],
     };
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
@@ -114,20 +143,30 @@ export default function Page() {
     a.download = "atlas-export.json";
     a.click();
     URL.revokeObjectURL(url);
-    toast("Exported everything — tasks, projects, sprints, settings, and bonus XP/coins.");
+    notify("Exported everything — tasks, projects, sprints, settings, focus timer history, activity log, and bonus XP/coins.");
   };
 
   const onImportFile = async (file: File) => {
     try {
       const data: unknown = JSON.parse(await file.text());
       if (!isAtlasExport(data)) throw new Error("Not a recognized Atlas export file.");
-      loadTasks(data.tasks, data.bonus?.xp ?? 0, data.bonus?.coins ?? 0);
-      loadProjects(data.projects);
-      loadSprints(data.sprints);
+      const result = await importWorkspaceData({
+        tasks: data.tasks,
+        projects: data.projects,
+        sprints: data.sprints,
+        bonus: data.bonus ?? { xp: 0, coins: 0 },
+        workSessions: data.workSessions ?? [],
+        activityLogs: data.activityLogs ?? [],
+      });
+      if (!result.success) throw new Error(result.error.message);
       if (data.settings) setReduceMotion(data.settings.reduceMotion);
-      toast(`Imported ${data.tasks.length} tasks, ${data.projects.length} projects, ${data.sprints.length} sprints.`);
+      notify(`Imported ${data.tasks.length} tasks, ${data.projects.length} projects, ${data.sprints.length} sprints. Reloading…`);
+      // A full workspace restore replaces everything the DB holds — every provider needs
+      // to re-hydrate from fresh server data, which a client-side dispatch can't do for
+      // all of them at once, so reload rather than trying to patch each provider's state.
+      window.location.reload();
     } catch (err) {
-      toast(err instanceof Error ? err.message : "Import failed — file isn't valid JSON.", "error");
+      notify(err instanceof Error ? err.message : "Import failed — file isn't valid JSON.", "error");
     }
   };
 
@@ -135,15 +174,8 @@ export default function Page() {
     resetTasks();
     resetProjects();
     resetSprints();
-    toast("Reset to starting data.");
+    notify("Reset to starting data.");
   };
-
-  const account: [string, string][] = [
-    ["Adventurer Name", "Aric Stormcloak"],
-    ["Guild", "Squad Lead · Uni · Freelancer"],
-    ["Streak", `${dashboardMock.streakDays} days`],
-    ["Coins", `🪙 ${sheet.totalCoins}`],
-  ];
 
   const shortcuts: [string, string][] = [
     ["Ctrl+K", "Open command palette"],
@@ -175,7 +207,7 @@ export default function Page() {
               type="number"
               min={1}
               max={120}
-              value={getSetting("focusMinutes") as number}
+              value={getSetting("focusMinutes", 25) as number}
               onChange={(e) => void updateSetting("focusMinutes", Math.max(1, Math.min(120, Number(e.target.value))))}
               className="w-16 border border-border bg-card px-2 py-1 text-center text-sm"
             />
@@ -192,7 +224,7 @@ export default function Page() {
               type="number"
               min={1}
               max={120}
-              value={getSetting("breakMinutes") as number}
+              value={getSetting("breakMinutes", 5) as number}
               onChange={(e) => void updateSetting("breakMinutes", Math.max(1, Math.min(120, Number(e.target.value))))}
               className="w-16 border border-border bg-card px-2 py-1 text-center text-sm"
             />
@@ -217,9 +249,47 @@ export default function Page() {
         </div>
 
         <SectionDivider>Account</SectionDivider>
-        <div className="flex items-center justify-between border-b border-border py-2">
-          <span className="text-sm text-muted-foreground">Adventurer Name</span>
-          <span className="text-sm text-foreground">{session?.user?.name ?? "Aric Stormcloak"}</span>
+        <div className="border-b border-border py-3">
+          <div className="mb-2 text-sm text-muted-foreground">Adventurer Name</div>
+          {isEditingName ? (
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={nameInput}
+                onChange={(e) => setNameInput(e.target.value)}
+                className="flex-1 border border-border bg-card px-2 py-1 text-sm rounded"
+              />
+              <button
+                onClick={handleSaveName}
+                disabled={savingName}
+                className="px-3 py-1 bg-primary text-primary-foreground rounded text-xs"
+              >
+                {savingName ? "Saving..." : "Save"}
+              </button>
+              <button
+                onClick={() => {
+                  setIsEditingName(false);
+                  setNameInput(session?.user?.name ?? "");
+                }}
+                className="px-3 py-1 border border-border rounded text-xs"
+              >
+                Cancel
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-foreground">{session?.user?.name ?? "Aric Stormcloak"}</span>
+              <button
+                onClick={() => {
+                  setNameInput(session?.user?.name ?? "");
+                  setIsEditingName(true);
+                }}
+                className="text-xs px-2 py-1 border border-border rounded hover:bg-primary/10"
+              >
+                Edit
+              </button>
+            </div>
+          )}
         </div>
         <div className="flex items-center justify-between border-b border-border py-2">
           <span className="text-sm text-muted-foreground">Coins</span>

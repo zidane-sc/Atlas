@@ -200,6 +200,8 @@ export async function getNoteAction(noteId: string): Promise<ActionResult<NoteWi
             task: { select: { id: true, title: true } },
           },
         },
+        linksAsA: { select: { noteB: { select: { id: true, title: true } } } },
+        linksAsB: { select: { noteA: { select: { id: true, title: true } } } },
       },
     });
 
@@ -232,6 +234,10 @@ export async function getNoteAction(noteId: string): Promise<ActionResult<NoteWi
           id: link.task.id,
           title: link.task.title,
         })),
+        linkedNotes: [
+          ...note.linksAsA.map((link) => ({ id: link.noteB.id, title: link.noteB.title })),
+          ...note.linksAsB.map((link) => ({ id: link.noteA.id, title: link.noteA.title })),
+        ],
       },
     };
   } catch (error) {
@@ -432,5 +438,75 @@ export async function uploadNoteAttachmentAction(
   } catch (error) {
     console.error("Failed to upload attachment:", error);
     return { success: false, error: { code: "INTERNAL", message: "Failed to upload attachment." } };
+  }
+}
+
+/** Canonical (noteAId, noteBId) ordering so a pair is never stored twice in either direction. */
+function orderedPair(noteId: string, targetNoteId: string): [string, string] {
+  return noteId < targetNoteId ? [noteId, targetNoteId] : [targetNoteId, noteId];
+}
+
+export async function linkNotesAction(noteId: string, targetNoteId: string): Promise<ActionResult<void>> {
+  const session = await auth();
+  if (!session?.user?.email) {
+    return { success: false, error: { code: "UNAUTHORIZED", message: "Sign in required." } };
+  }
+
+  if (noteId === targetNoteId) {
+    return { success: false, error: { code: "VALIDATION_ERROR", message: "A note cannot link to itself." } };
+  }
+
+  try {
+    const user = await db.user.findUnique({ where: { email: session.user.email }, select: { id: true } });
+    if (!user) {
+      return { success: false, error: { code: "NOT_FOUND", message: "User not found." } };
+    }
+
+    const [noteA, noteB] = await Promise.all([
+      db.note.findUnique({ where: { id: noteId }, select: { userId: true } }),
+      db.note.findUnique({ where: { id: targetNoteId }, select: { userId: true } }),
+    ]);
+    if (!noteA || noteA.userId !== user.id || !noteB || noteB.userId !== user.id) {
+      return { success: false, error: { code: "UNAUTHORIZED", message: "Not authorized." } };
+    }
+
+    const [noteAId, noteBId] = orderedPair(noteId, targetNoteId);
+    await db.noteLink.upsert({
+      where: { noteAId_noteBId: { noteAId, noteBId } },
+      create: { noteAId, noteBId },
+      update: {},
+    });
+
+    return { success: true, data: undefined };
+  } catch (error) {
+    console.error("Failed to link notes:", error);
+    return { success: false, error: { code: "INTERNAL", message: "Failed to link notes." } };
+  }
+}
+
+export async function unlinkNotesAction(noteId: string, targetNoteId: string): Promise<ActionResult<void>> {
+  const session = await auth();
+  if (!session?.user?.email) {
+    return { success: false, error: { code: "UNAUTHORIZED", message: "Sign in required." } };
+  }
+
+  try {
+    const user = await db.user.findUnique({ where: { email: session.user.email }, select: { id: true } });
+    if (!user) {
+      return { success: false, error: { code: "NOT_FOUND", message: "User not found." } };
+    }
+
+    const note = await db.note.findUnique({ where: { id: noteId }, select: { userId: true } });
+    if (!note || note.userId !== user.id) {
+      return { success: false, error: { code: "UNAUTHORIZED", message: "Not authorized." } };
+    }
+
+    const [noteAId, noteBId] = orderedPair(noteId, targetNoteId);
+    await db.noteLink.deleteMany({ where: { noteAId, noteBId } });
+
+    return { success: true, data: undefined };
+  } catch (error) {
+    console.error("Failed to unlink notes:", error);
+    return { success: false, error: { code: "INTERNAL", message: "Failed to unlink notes." } };
   }
 }

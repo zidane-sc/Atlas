@@ -119,11 +119,6 @@ model Task {
   sprintId  String?  @map("sprint_id") @db.Uuid
   sprint    Sprint?  @relation(fields: [sprintId], references: [id], onDelete: SetNull)
 
-  parentId String? @map("parent_id") @db.Uuid
-  // Single parent only — decision from docs/01-product.md §8.10.
-  parent   Task?   @relation("TaskParent", fields: [parentId], references: [id])
-  children Task[]  @relation("TaskParent")
-
   status   TaskStatus
   type     TaskType
   priority TaskPriority
@@ -165,7 +160,6 @@ model Task {
   @@index([status])
   @@index([projectId])
   @@index([dueDate])
-  @@index([parentId])
   @@index([ownerId])
   @@index([ownerId, status])
   @@index([ownerId, deletedAt])
@@ -301,6 +295,8 @@ model Note {
 
   attachments NoteAttachment[]
   taskLinks   NoteTaskLink[]
+  linksAsA    NoteLink[]       @relation("NoteLinkA")
+  linksAsB    NoteLink[]       @relation("NoteLinkB")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -339,5 +335,25 @@ model NoteTaskLink {
   @@id([noteId, taskId])
   @@index([taskId])
   @@map("note_task_links")
+}
+
+/**
+ * Note-to-note linking — docs/01-product.md §14, the one piece of the original Notes idea
+ * that wasn't built alongside the rest (docs/05-backlog.md EPIC-28). Undirected: one row per
+ * pair, stored with noteAId as the lexicographically smaller id so a pair is never inserted
+ * twice in either direction — enforced at the application layer, not by a DB constraint.
+ */
+model NoteLink {
+  id      String @id @default(cuid())
+  noteAId String
+  noteA   Note   @relation("NoteLinkA", fields: [noteAId], references: [id], onDelete: Cascade)
+  noteBId String
+  noteB   Note   @relation("NoteLinkB", fields: [noteBId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@unique([noteAId, noteBId])
+  @@index([noteBId])
+  @@map("note_links")
 }
 

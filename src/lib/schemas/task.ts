@@ -11,8 +11,13 @@ const STATUS_VALUES = Object.keys(STATUS_LABEL) as [TaskStatus, ...TaskStatus[]]
 const TYPE_VALUES = Object.keys(TYPE_ICON) as [TaskType, ...TaskType[]];
 const PRIORITY_VALUES = Object.keys(PRIORITY_LABEL) as [Priority, ...Priority[]];
 
-/** No existing map to read these off, so this is now the one place they're defined — docs/01-product.md §8.10/§8.6/§8.7. */
-export const RELATION_TYPES = ["blocks", "related", "duplicate", "caused_by", "generated_from"] as const;
+/**
+ * No existing map to read these off, so this is now the one place they're defined —
+ * docs/01-product.md §8.10/§8.6/§8.7. Parent/Child hierarchy is modeled as relation
+ * types here, not as a separate `parentId` column — there is no dedicated parent/child
+ * schema field, single-parent-ness is a UI convention (add at most one "parent" relation).
+ */
+export const RELATION_TYPES = ["parent", "child", "blocks", "blocked_by", "related", "duplicate", "caused_by", "generated_from"] as const;
 /** Reporter options — docs/01-product.md §8.8. */
 export const REPORTER_OPTIONS = ["self", "qa", "manager", "pm", "client", "lecturer", "friend", "other"] as const satisfies readonly Reporter[];
 export const ATTACHMENT_TYPES = [
@@ -78,7 +83,6 @@ export const createTaskSchema = z.object({
   description: z.string().trim().optional(),
   projectId: z.uuid().optional(),
   sprintId: z.uuid().optional(),
-  parentId: z.uuid().optional(),
   status: z.enum(TASK_STATUS_VALUES).default("inbox"),
   type: z.enum(TYPE_VALUES).default("coding"),
   priority: z.enum(PRIORITY_VALUES).default("p2"),
@@ -109,7 +113,6 @@ export const updateTaskSchema = z.object({
   description: z.string().trim().nullable().optional(),
   projectId: z.uuid().nullable().optional(),
   sprintId: z.uuid().nullable().optional(),
-  parentId: z.uuid().nullable().optional(),
   status: z.enum(TASK_STATUS_VALUES).optional(),
   type: z.enum(TYPE_VALUES).optional(),
   priority: z.enum(PRIORITY_VALUES).optional(),

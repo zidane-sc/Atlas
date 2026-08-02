@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useTasks } from "@/components/providers/TasksProvider";
+import { useNotifications } from "@/hooks/useNotifications";
 import { KANBAN_COLUMNS, STATUS_COLOR_VAR, STATUS_LABEL, STATUS_SHAPE } from "@/lib/mock-data";
 import type { Task, TaskStatus } from "@/types/task";
 import { TaskCard } from "./TaskCard";
@@ -9,11 +10,12 @@ import { EmptyState } from "@/components/ui/EmptyState";
 
 export function KanbanBoard({ tasks }: { tasks: Task[] }) {
   const { openEditForm, updateTask } = useTasks();
+  const { notify } = useNotifications();
   const [dragOverStatus, setDragOverStatus] = useState<TaskStatus | null>(null);
 
-  const moveTask = (task: Task, status: TaskStatus) => {
+  const moveTask = async (task: Task, status: TaskStatus) => {
     if (task.status === status) return;
-    updateTask(task.id, {
+    const success = await updateTask(task.id, {
       title: task.title,
       description: task.description,
       project: task.project,
@@ -31,6 +33,9 @@ export function KanbanBoard({ tasks }: { tasks: Task[] }) {
       attachments: task.attachments,
       deliverables: task.deliverables,
     });
+    if (success) {
+      notify(`${STATUS_LABEL[status]}: "${task.title}"`, "success");
+    }
   };
 
   const onDrop = (e: React.DragEvent, status: TaskStatus) => {

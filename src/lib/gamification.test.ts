@@ -3,6 +3,7 @@ import {
   calcTaskCoins,
   calcTaskXP,
   completedAt,
+  computeAchievementProgress,
   computeCharacterSheet,
   computeRecapGrade,
   getCompanionMood,
@@ -10,7 +11,11 @@ import {
   getLevelInfo,
   xpForLevel,
   calculateStreak,
+  calculateLongestStreak,
+  checkAndEmitDueDateNotifications,
 } from "./gamification";
+import { notificationEmitter } from "@/hooks/useNotifications";
+import type { NotificationEvent } from "@/lib/notification-events";
 import type { Task } from "@/types/task";
 
 function task(overrides: Partial<Task> & Pick<Task, "id" | "priority" | "type" | "status">): Task {
@@ -166,6 +171,80 @@ describe("calculateStreak", () => {
       task({ id: "3", priority: "p2", type: "coding", status: "done", statusHistory: [{ fromStatus: "todo", toStatus: "done", changedAt: "2026-07-28T09:00:00Z" }] }),
     ];
     expect(calculateStreak(list, "2026-07-30T15:00:00Z")).toBe(0);
+  });
+});
+
+describe("calculateLongestStreak", () => {
+  it("returns 0 if no tasks are done", () => {
+    expect(calculateLongestStreak([])).toBe(0);
+  });
+
+  it("finds the longest historical run, not just the most recent one", () => {
+    const at = (d: string) => [{ fromStatus: "todo" as const, toStatus: "done" as const, changedAt: `${d}T10:00:00Z` }];
+    const list = [
+      // a 3-day run in the past...
+      task({ id: "1", priority: "p2", type: "coding", status: "done", statusHistory: at("2026-07-01") }),
+      task({ id: "2", priority: "p2", type: "coding", status: "done", statusHistory: at("2026-07-02") }),
+      task({ id: "3", priority: "p2", type: "coding", status: "done", statusHistory: at("2026-07-03") }),
+      // ...a gap...
+      // ...then only a 2-day run more recently.
+      task({ id: "4", priority: "p2", type: "coding", status: "done", statusHistory: at("2026-07-10") }),
+      task({ id: "5", priority: "p2", type: "coding", status: "done", statusHistory: at("2026-07-11") }),
+    ];
+    expect(calculateLongestStreak(list)).toBe(3);
+  });
+});
+
+describe("computeAchievementProgress — a12/a13/a14 (docs/05-backlog.md §6 fix)", () => {
+  it("a12 Perfect Week is real progress toward a 7-day streak, not permanently null", () => {
+    const at = (d: string) => [{ fromStatus: "todo" as const, toStatus: "done" as const, changedAt: `${d}T10:00:00Z` }];
+    const sevenDays = ["01", "02", "03", "04", "05", "06", "07"].map((d, i) =>
+      task({ id: `t${i}`, priority: "p2", type: "coding", status: "done", statusHistory: at(`2026-07-${d}`) })
+    );
+    expect(computeAchievementProgress("a12", sevenDays, [], [])).toEqual({ current: 7, max: 7 });
+    expect(computeAchievementProgress("a12", [], [], [])).toEqual({ current: 0, max: 7 });
+  });
+
+  it("a13/a14 add the 500/1000 quest tiers alongside a6's 100", () => {
+    const done = Array.from({ length: 3 }, (_, i) =>
+      task({ id: `t${i}`, priority: "p2", type: "coding", status: "done" })
+    );
+    expect(computeAchievementProgress("a13", done, [], [])).toEqual({ current: 3, max: 500 });
+    expect(computeAchievementProgress("a14", done, [], [])).toEqual({ current: 3, max: 1000 });
+  });
+});
+
+describe("checkAndEmitDueDateNotifications — docs/05-backlog.md §6 (was declared, never emitted)", () => {
+  function capture(fn: () => void): NotificationEvent[] {
+    const events: NotificationEvent[] = [];
+    const unsubscribe = notificationEmitter.subscribe((e) => events.push(e));
+    fn();
+    unsubscribe();
+    return events;
+  }
+
+  it("emits nothing when nothing is overdue or due soon", () => {
+    const tasks = [task({ id: "1", priority: "p2", type: "coding", status: "todo", dueDate: "2026-07-10" })];
+    const events = capture(() => checkAndEmitDueDateNotifications(tasks, "2026-07-02"));
+    expect(events).toEqual([]);
+  });
+
+  it("emits task:overdue for the most overdue active task, ignoring done tasks", () => {
+    const tasks = [
+      task({ id: "1", priority: "p2", type: "coding", status: "todo", title: "Oldest", dueDate: "2026-06-01" }),
+      task({ id: "2", priority: "p2", type: "coding", status: "in_progress", title: "Newer", dueDate: "2026-06-15" }),
+      task({ id: "3", priority: "p2", type: "coding", status: "done", title: "Finished late", dueDate: "2026-06-01" }),
+    ];
+    const events = capture(() => checkAndEmitDueDateNotifications(tasks, "2026-07-02"));
+    const overdue = events.find((e) => e.type === "task:overdue");
+    expect(overdue).toMatchObject({ taskId: "1", title: "Oldest (+1 more overdue)" });
+  });
+
+  it("emits task:due-soon for a task due today or tomorrow", () => {
+    const tasks = [task({ id: "1", priority: "p2", type: "coding", status: "ready", title: "Almost due", dueDate: "2026-07-03" })];
+    const events = capture(() => checkAndEmitDueDateNotifications(tasks, "2026-07-02"));
+    const dueSoon = events.find((e) => e.type === "task:due-soon");
+    expect(dueSoon).toMatchObject({ taskId: "1", title: "Almost due", dueDate: "2026-07-03" });
   });
 });
 

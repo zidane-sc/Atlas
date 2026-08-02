@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Trash2, Undo2 } from "lucide-react";
 import { List as ListIcon, Plus, Table2, ChevronLeft, ChevronRight } from "lucide-react";
 import { DragDropContext, Droppable, Draggable, type DropResult } from "react-beautiful-dnd";
 import { Button } from "@/components/ui/button";
@@ -14,10 +15,10 @@ import { PixBar } from "@/components/ui/PixBar";
 import { useTasks } from "@/components/providers/TasksProvider";
 import { useProjects } from "@/components/providers/ProjectsProvider";
 import { useNotifications } from "@/hooks/useNotifications";
-import { useToast } from "@/components/providers/ToastProvider";
 import { calcTaskXP, completedAt, isTaskOnTime } from "@/lib/gamification";
 import { formatDueDate, isOverdue } from "@/lib/task-utils";
 import { applyTaskFilters, EMPTY_TASK_FILTERS, type TaskFilters } from "@/lib/task-filters";
+import { listDeletedTasks, restoreTask } from "@/lib/actions/tasks";
 import { MOCK_NOW, PRIORITY_COLOR_VAR, STATUS_COLOR_VAR, TYPE_ICON } from "@/lib/mock-data";
 import type { Project } from "@/types/gamification";
 import type { Priority, Task, TaskStatus } from "@/types/task";
@@ -50,6 +51,7 @@ export default function Page() {
   }, [searchParams]);
 
   const projectNames = useMemo(() => projects.map((p) => p.name), [projects]);
+  const tagNames = useMemo(() => Array.from(new Set(allTasks.flatMap((t) => t.tags))).sort(), [allTasks]);
   const filteredTasks = useMemo(() => applyTaskFilters(allTasks, filters), [allTasks, filters]);
   const hasStatusFilter = filters.statuses.length > 0;
 
@@ -103,7 +105,7 @@ export default function Page() {
         )}
       </div>
 
-      <TaskFilterBar filters={filters} onChange={setFilters} projectNames={projectNames} />
+      <TaskFilterBar filters={filters} onChange={setFilters} projectNames={projectNames} tagNames={tagNames} />
 
       <div className="flex-1 overflow-hidden">
         {tab === "kanban" && <KanbanBoard tasks={filteredTasks} />}
@@ -238,7 +240,6 @@ function TableTab({ tasks, onSelect }: { tasks: Task[]; onSelect: (t: Task) => v
 function CalendarTab({ tasks, onSelect }: { tasks: Task[]; onSelect: (t: Task) => void }) {
   const { updateTask } = useTasks();
   const { emit: emitNotification, setUndoState, setUndoCallback } = useNotifications();
-  const { toast } = useToast();
   const [viewDate, setViewDate] = useState(new Date(MOCK_NOW));
   const [openDay, setOpenDay] = useState<string | null>(null);
   const [calendarView, setCalendarView] = useState<'due-date' | 'start-date'>('due-date');
@@ -609,11 +610,11 @@ function ArchiveTab({ tasks, onSelect }: { tasks: Task[]; onSelect: (t: Task) =>
     .sort((a, b) => (b.completedAt ?? "").localeCompare(a.completedAt ?? ""));
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex h-full flex-col overflow-y-auto">
       <div className="px-6 py-2" style={{ borderBottom: "1px solid var(--color-border)", backgroundColor: "var(--color-bg-panel-alt)" }}>
         <p className="text-sm text-muted-foreground">{archived.length} completed quests chronicled</p>
       </div>
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1">
         {archived.length === 0 ? (
           <p className="py-20 text-center text-base text-muted-foreground">[ HALL IS EMPTY ]</p>
         ) : (
@@ -638,6 +639,80 @@ function ArchiveTab({ tasks, onSelect }: { tasks: Task[]; onSelect: (t: Task) =>
           })
         )}
       </div>
+      <TrashSection />
+    </div>
+  );
+}
+
+type DeletedTask = { id: string; code: string | null; title: string; deletedAt: string };
+
+function TrashSection() {
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [deleted, setDeleted] = useState<DeletedTask[] | null>(null);
+  const [restoringId, setRestoringId] = useState<string | null>(null);
+
+  const load = async () => {
+    setLoading(true);
+    const result = await listDeletedTasks();
+    setDeleted(result.success ? result.data : []);
+    setLoading(false);
+  };
+
+  const toggle = () => {
+    const next = !open;
+    setOpen(next);
+    if (next && deleted === null) load();
+  };
+
+  const handleRestore = async (id: string) => {
+    setRestoringId(id);
+    const result = await restoreTask(id);
+    if (result.success) {
+      setDeleted((prev) => (prev ? prev.filter((t) => t.id !== id) : prev));
+      router.refresh();
+    }
+    setRestoringId(null);
+  };
+
+  return (
+    <div style={{ borderTop: "2px solid var(--color-border)" }}>
+      <button
+        type="button"
+        onClick={toggle}
+        className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-muted-foreground hover:text-foreground"
+      >
+        <Trash2 size={12} /> Trash{deleted ? ` (${deleted.length})` : ""}
+        <span className="ml-auto">{open ? "▲" : "▼"}</span>
+      </button>
+      {open && (
+        <div>
+          {loading && <p className="px-4 py-3 text-sm text-muted-foreground">Loading…</p>}
+          {!loading && deleted?.length === 0 && (
+            <p className="px-4 py-3 text-sm text-muted-foreground">Trash is empty.</p>
+          )}
+          {!loading &&
+            deleted?.map((t) => (
+              <div
+                key={t.id}
+                className="flex items-center gap-3 border-t border-border px-4 py-2 text-left opacity-70"
+              >
+                <span className="text-xs font-mono font-bold" style={{ color: "var(--color-primary-gold)" }}>{t.code}</span>
+                <span className="flex-1 truncate text-sm text-muted-foreground line-through">{t.title}</span>
+                <span className="text-sm text-muted-foreground">deleted {formatDueDate(t.deletedAt.slice(0, 10))}</span>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  disabled={restoringId === t.id}
+                  onClick={() => handleRestore(t.id)}
+                >
+                  <Undo2 size={11} /> Restore
+                </Button>
+              </div>
+            ))}
+        </div>
+      )}
     </div>
   );
 }

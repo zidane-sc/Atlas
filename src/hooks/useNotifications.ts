@@ -41,8 +41,13 @@ export function useNotifications() {
     notificationEmitter.emit(event);
   }, []);
 
+  const notify = useCallback((text: string, kind: 'success' | 'error' = 'success') => {
+    emit({ type: 'message', text, kind });
+  }, [emit]);
+
   return {
     emit,
+    notify,
     setUndoState: context?.setUndoState,
     setUndoCallback: context?.setUndoCallback,
   };

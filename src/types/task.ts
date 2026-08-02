@@ -32,7 +32,10 @@ export type Effort = "xs" | "s" | "m" | "l" | "xl" | "xxl";
 export type Reporter = "self" | "qa" | "manager" | "pm" | "client" | "lecturer" | "friend" | "other";
 
 export type RelationType =
+  | "parent"
+  | "child"
   | "blocks"
+  | "blocked_by"
   | "related"
   | "duplicate"
   | "caused_by"

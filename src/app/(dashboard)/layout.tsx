@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { SessionProvider } from "next-auth/react";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { DefaultViewRedirect } from "@/components/layout/DefaultViewRedirect";
 import { CommandPalette } from "@/components/layout/CommandPalette";
@@ -10,7 +11,6 @@ import { ProjectsProvider } from "@/components/providers/ProjectsProvider";
 import { SprintsProvider } from "@/components/providers/SprintsProvider";
 import { CommandPaletteProvider } from "@/components/providers/CommandPaletteProvider";
 import { SettingsProvider } from "@/components/providers/SettingsProvider";
-import { ToastProvider } from "@/components/providers/ToastProvider";
 import { NotificationProvider } from "@/components/providers/NotificationProvider";
 import { mockProjects, mockSprints } from "@/lib/mock-data";
 import { auth } from "@/lib/auth";
@@ -159,7 +159,7 @@ export default async function DashboardLayout({
     : null;
 
   return (
-    <ToastProvider>
+    <SessionProvider>
       <SettingsProvider initialSettings={owner.settings as unknown as UserSetting[]}>
         <NotificationProvider>
         <DefaultViewRedirect />
@@ -191,6 +191,6 @@ export default async function DashboardLayout({
         </ProjectsProvider>
         </NotificationProvider>
       </SettingsProvider>
-    </ToastProvider>
+    </SessionProvider>
   );
 }

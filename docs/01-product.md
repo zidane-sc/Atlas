@@ -217,9 +217,12 @@ Not every task ends in a PR — capture what it *actually* produced:
 
 **Decision:** defaults silently to **Self** on task creation — no prompt, no required selection. You only change it when a task genuinely originated from someone else (e.g. a QA-reported bug).
 
-### 8.9 Owner / Watcher (replaces "Delegate")
+### 8.9 Owner (replaces "Delegate")
 
-Rather than a dedicated delegation field, a task has an **Owner** (defaults to you; changes if delegated) and optional **Watchers**. Combined with the "Waiting External" status, this covers delegation without adding complexity.
+**Decision (revised 2026-08-02):** Auth allow-lists exactly one email (`01-product.md` §3, EPIC-01) — there is only ever one `User` row. That makes both "Watchers" and "reassign Owner to someone else" structurally meaningless: there is no second account to point at. Dropped as a non-goal instead of built:
+
+- **Watchers** — removed from scope entirely. Won't build.
+- **Owner** — stays as-is: auto-fills to you on task creation, never reassigned. The "delegated to someone else" case this was meant to cover is fully handled by the **Reporter** field (§8.8, tracks *who it came from*, not a User FK) plus the **Waiting External** status (tracks *who it's currently with*) — no Owner picker needed.
 
 ### 8.10 Task Relations
 
@@ -228,6 +231,8 @@ Rather than a dedicated delegation field, a task has an **Owner** (defaults to y
 This directly supports your investigation → fix workflow: investigate a bug, then spin off child tasks for the fix, review, and deploy — all linked back to the original.
 
 **Decision:** a task has at most **one Parent** (single-parent hierarchy, matching Jira/Linear conventions), but unlimited **Related/Blocks/Duplicate** links. This keeps the hierarchy simple to visualize while still allowing arbitrary cross-references.
+
+**Status:** Parent/Child hierarchy is modeled as relation types (`parent`/`child`), alongside Blocks/Blocked-By/Related/Duplicate/Caused-By/Generated-From — not as a separate `parentId` column (that field existed in the schema but was dead, never set by any UI, and has been removed). See `05-backlog.md` §6.
 
 ### 8.11 Tags & Sprint
 
@@ -276,6 +281,12 @@ On opening the app, surface:
 
 ### 9.7 Statistics
 Heatmap of activity, most productive weekday/time, average task duration, completion rate, longest streak, focus hours, estimated vs. actual story points, week-over-week deltas (throughput / created / completed vs. last week).
+
+**Status:** all of the above are built and dynamic, including most-productive weekday/time, average task duration, completion rate, longest-ever streak, focus hours (aggregated from `WorkSession` rows, §9.5), and estimated-vs-actual story points. See `05-backlog.md` §6.
+
+### 9.8 Notifications (built, not originally spec'd)
+
+Not part of the original plan, but shipped alongside the work above: an in-app toast queue with sound (gated on the sound setting), used for CRUD success/error feedback, a 5-second "Undo" on calendar reschedule, and gamification events (level-up, achievement unlocked, streak milestone). Overdue and due-soon task alerting runs once per calendar day, surfacing the single most urgent overdue/due-soon task; a `task:completed` toast also fires on completion. See `05-backlog.md` EPIC-29.
 
 ---
 
@@ -353,7 +364,7 @@ Workspace
 ## 14. Future Ideas (Not Committed — Direction Only)
 
 **v2 candidates:**
-- **Notes** — free-form notes that can reference a task, or reference other notes (many-to-many linking).
+- ~~**Notes** — free-form notes that can reference a task, or reference other notes (many-to-many linking).~~ → **Built** (built ahead of schedule, outside the phased plan — see `05-backlog.md` EPIC-28). Task-linked notes, attachments, tags, pinning, and note-to-note linking all ship.
 - **Knowledge Base** — networked/backlinked notes, second-brain style (Obsidian-like), for durable knowledge rather than task-scoped notes.
 - **Team Load Tracking** — read-only visibility into your team members' task load/capacity, as a squad lead. Observational only — no shared editing, permissions, or notifications to others (see §6 note).
 - **Calendar (free-time tracking)** — beyond deadline tracking, surface your own open/available time blocks, not just due dates.

@@ -66,12 +66,10 @@ export async function updateUserSettingAction(
     }
 
     const currentSettings = (user.settings || []) as unknown as UserSetting[];
-    const updatedSettings = currentSettings.map((s) => {
-      if (s.key === key) {
-        return { ...s, value };
-      }
-      return s;
-    });
+    const exists = currentSettings.some((s) => s.key === key);
+    const updatedSettings = exists
+      ? currentSettings.map((s) => (s.key === key ? { ...s, value } : s))
+      : [...currentSettings, { key, label: key, description: "", type: typeof value === "number" ? "number" : typeof value === "boolean" ? "boolean" : "string", value } as UserSetting];
 
     const updated = await db.user.update({
       where: { email: session.user.email },
@@ -259,19 +257,17 @@ export async function updateDrawerLastSelectedAction(
 
 const updateUserProfileSchema = z.object({
   name: z.string().min(1, "Name required").max(50, "Name too long"),
-  guild: z.string().max(100, "Guild too long").optional(),
 });
 
 export async function updateUserProfileAction(
-  name: string,
-  guild?: string
-): Promise<ActionResult<{ name: string; guild?: string }>> {
+  name: string
+): Promise<ActionResult<{ name: string }>> {
   const session = await auth();
   if (!session?.user?.email) {
     return { success: false, error: { code: "UNAUTHORIZED", message: "Sign in required." } };
   }
 
-  const parsed = updateUserProfileSchema.safeParse({ name, guild });
+  const parsed = updateUserProfileSchema.safeParse({ name });
   if (!parsed.success) {
     return {
       success: false,
@@ -284,16 +280,14 @@ export async function updateUserProfileAction(
       where: { email: session.user.email },
       data: {
         name: parsed.data.name,
-        guild: parsed.data.guild,
       },
-      select: { name: true, guild: true },
+      select: { name: true },
     });
 
     return {
       success: true,
       data: {
         name: updated.name,
-        guild: updated.guild ?? undefined,
       },
     };
   } catch (error) {

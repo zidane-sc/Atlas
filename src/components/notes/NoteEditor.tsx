@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { createNoteAction, updateNoteAction, getNoteAction } from "@/lib/actions/notes";
+import { createNoteAction, updateNoteAction, getNoteAction, linkNotesAction, unlinkNotesAction, listNotesAction } from "@/lib/actions/notes";
 import { insertMarkdown } from "@/lib/markdown";
 import { useTasks } from "@/components/providers/TasksProvider";
 import { MarkdownToolbar } from "./MarkdownToolbar";
@@ -31,6 +31,13 @@ export function NoteEditor({ noteId, initialData, onSave, onClose }: NoteEditorP
   );
   const [taskSearch, setTaskSearch] = useState("");
   const [showTaskPicker, setShowTaskPicker] = useState(false);
+  const [linkedNotes, setLinkedNotes] = useState<Array<{ id: string; title: string }>>(
+    initialData?.linkedNotes || []
+  );
+  const [noteLinkSearch, setNoteLinkSearch] = useState("");
+  const [showNoteLinkPicker, setShowNoteLinkPicker] = useState(false);
+  const [noteLinkResults, setNoteLinkResults] = useState<Array<{ id: string; title: string }>>([]);
+  const noteLinkSearchRef = useRef<HTMLInputElement>(null);
   const [saving, setSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<string | null>(null);
   const [tagError, setTagError] = useState<string | null>(null);
@@ -38,6 +45,9 @@ export function NoteEditor({ noteId, initialData, onSave, onClose }: NoteEditorP
   const saveTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
   const errorTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
   const noteCreatedRef = useRef<string | null>(null);
+  // Mirrors noteCreatedRef into state — reading a ref's .current during render (for
+  // currentNoteId below) breaks React's rules and won't re-render when it changes.
+  const [createdNoteId, setCreatedNoteId] = useState<string | null>(null);
 
   const handleAutoSave = useCallback(async () => {
     if (!title.trim() || !content.trim()) return;
@@ -70,6 +80,7 @@ export function NoteEditor({ noteId, initialData, onSave, onClose }: NoteEditorP
       if (result.success) {
         if (!noteId && result.data?.id && !noteCreatedRef.current) {
           noteCreatedRef.current = result.data.id;
+          setCreatedNoteId(result.data.id);
         }
         setLastSaved(new Date().toLocaleTimeString());
       }
@@ -119,6 +130,7 @@ export function NoteEditor({ noteId, initialData, onSave, onClose }: NoteEditorP
       setTags(initialData.note.tags);
       setLinkedTasks(initialData.linkedTasks);
       setTaskIds(initialData.linkedTasks.map((t) => t.id));
+      setLinkedNotes(initialData.linkedNotes);
     }
   }, [initialData?.note.id]);
 
@@ -134,6 +146,7 @@ export function NoteEditor({ noteId, initialData, onSave, onClose }: NoteEditorP
             setTags(result.data.note.tags);
             setLinkedTasks(result.data.linkedTasks);
             setTaskIds(result.data.linkedTasks.map((t) => t.id));
+            setLinkedNotes(result.data.linkedNotes);
           }
         } finally {
           setIsLoading(false);
@@ -187,6 +200,42 @@ export function NoteEditor({ noteId, initialData, onSave, onClose }: NoteEditorP
       textarea.focus();
     }, 0);
     debouncedSave();
+  };
+
+  const currentNoteId = noteId || createdNoteId;
+
+  useEffect(() => {
+    if (!showNoteLinkPicker) return;
+    const timeoutId = setTimeout(async () => {
+      const result = await listNotesAction({ search: noteLinkSearch || undefined, take: 8 });
+      if (result.success) {
+        const excluded = new Set([currentNoteId, ...linkedNotes.map((n) => n.id)]);
+        setNoteLinkResults(
+          result.data.notes.filter((n) => !excluded.has(n.id)).map((n) => ({ id: n.id, title: n.title }))
+        );
+      }
+    }, 200);
+    return () => clearTimeout(timeoutId);
+  }, [showNoteLinkPicker, noteLinkSearch, currentNoteId, linkedNotes]);
+
+  const handleLinkNote = async (target: { id: string; title: string }) => {
+    if (!currentNoteId) return;
+    setLinkedNotes((prev) => [...prev, target]);
+    setNoteLinkSearch("");
+    const result = await linkNotesAction(currentNoteId, target.id);
+    if (!result.success) {
+      setLinkedNotes((prev) => prev.filter((n) => n.id !== target.id));
+    }
+  };
+
+  const handleUnlinkNote = async (targetId: string) => {
+    if (!currentNoteId) return;
+    const prev = linkedNotes;
+    setLinkedNotes((p) => p.filter((n) => n.id !== targetId));
+    const result = await unlinkNotesAction(currentNoteId, targetId);
+    if (!result.success) {
+      setLinkedNotes(prev);
+    }
   };
 
   const handleAddTag = () => {
@@ -530,6 +579,86 @@ export function NoteEditor({ noteId, initialData, onSave, onClose }: NoteEditorP
             </div>
           </div>
         </div>
+
+        {/* Linked Notes — docs/01-product.md §14 note-to-note linking */}
+        <div className="px-3 pb-3 text-xs">
+          <div className="mb-1" style={{ color: "var(--color-text-muted)" }}>🔗 Linked Notes</div>
+          {!currentNoteId ? (
+            <div className="text-xs" style={{ color: "var(--color-text-muted)" }}>Save this note first to link it to others.</div>
+          ) : (
+            <>
+              {linkedNotes.length > 0 && (
+                <div className="flex gap-1 flex-wrap mb-2 max-h-12 overflow-y-auto">
+                  {linkedNotes.map((n) => (
+                    <div
+                      key={n.id}
+                      className="px-1.5 py-0.5 rounded border border-gray-500 flex items-center gap-0.5 text-xs group hover:border-primary-gold transition-colors flex-shrink-0"
+                      style={{ color: "var(--color-foreground)" }}
+                    >
+                      <span className="truncate max-w-[120px] text-xs">{n.title}</span>
+                      <button
+                        type="button"
+                        onClick={() => handleUnlinkNote(n.id)}
+                        className="opacity-50 group-hover:opacity-100 text-xs"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div className="relative">
+                <input
+                  ref={noteLinkSearchRef}
+                  type="text"
+                  value={noteLinkSearch}
+                  onChange={(e) => setNoteLinkSearch(e.target.value)}
+                  onFocus={() => setShowNoteLinkPicker(true)}
+                  onBlur={() => setTimeout(() => setShowNoteLinkPicker(false), 150)}
+                  placeholder="link a note..."
+                  className="w-full max-w-xs px-1.5 py-0.25 border border-gray-500 rounded bg-panel text-xs transition-all"
+                  style={{
+                    borderColor: showNoteLinkPicker ? "var(--color-primary-gold)" : "var(--color-border)",
+                    color: "var(--color-foreground)",
+                  }}
+                />
+                {showNoteLinkPicker && (
+                  <div
+                    className="absolute bottom-full left-0 w-full max-w-xs mb-0.5 border border-gray-500 rounded bg-panel overflow-hidden z-50"
+                    style={{ borderColor: "var(--color-primary-gold)" }}
+                  >
+                    <div className="max-h-48 overflow-y-auto" style={{ backgroundColor: "var(--color-bg-panel)" }}>
+                      {noteLinkResults.map((n, idx, arr) => (
+                        <button
+                          key={n.id}
+                          type="button"
+                          onMouseDown={(e) => {
+                            e.preventDefault();
+                            handleLinkNote(n);
+                            setTimeout(() => noteLinkSearchRef.current?.focus(), 0);
+                          }}
+                          className="w-full text-left px-1.5 py-1 transition-all text-xs hover:bg-primary/20 truncate"
+                          style={{
+                            borderBottom: idx < arr.length - 1 ? "1px solid var(--color-border)" : "none",
+                            color: "var(--color-foreground)",
+                          }}
+                        >
+                          {n.title}
+                        </button>
+                      ))}
+                      {noteLinkResults.length === 0 && (
+                        <div className="px-1.5 py-0.5 text-xs text-center" style={{ color: "var(--color-text-muted)" }}>
+                          {noteLinkSearch ? "No results" : "No other notes"}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+        </div>
+
         <GamificationFooter wordCount={wordCount} hasStreak={false} />
       </div>
     </div>
