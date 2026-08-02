@@ -8,6 +8,7 @@ import { Prisma, type Task } from "@/generated/prisma/client";
 import type { ActionResult } from "@/lib/actions/types";
 import { generateTaskCode, getNextTaskCodeNumber } from "@/lib/task-code";
 import type { TaskComment, TaskStatus, TaskStatusLogEntry } from "@/types/task";
+import { getCharacterSheetData, type CharacterSheetData } from "@/lib/character-sheet-data";
 
 function toDate(value: string | null | undefined) {
   if (value === undefined) return undefined;
@@ -17,7 +18,9 @@ function toDate(value: string | null | undefined) {
 }
 
 
-export async function createTask(input: unknown): Promise<ActionResult<Task>> {
+export async function createTask(
+  input: unknown
+): Promise<ActionResult<{ task: Task } & Partial<CharacterSheetData>>> {
   const session = await auth();
   if (!session?.user?.email) {
     return { success: false, error: { code: "UNAUTHORIZED", message: "Sign in required." } };
@@ -87,7 +90,13 @@ export async function createTask(input: unknown): Promise<ActionResult<Task>> {
 
         return created;
       });
-      return { success: true, data: task };
+      let sheetData: CharacterSheetData | undefined;
+      try {
+        sheetData = await getCharacterSheetData(owner.id);
+      } catch (sheetErr) {
+        console.error("Failed to compute character sheet after task create:", sheetErr);
+      }
+      return { success: true, data: { task, ...sheetData } };
     } catch (err) {
       if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2003") {
         return { success: false, error: { code: "NOT_FOUND", message: "Related project or sprint not found." } };
@@ -106,7 +115,10 @@ export async function createTask(input: unknown): Promise<ActionResult<Task>> {
   return { success: false, error: { code: "INTERNAL", message: "Failed to create task." } };
 }
 
-export async function updateTask(id: string, input: unknown): Promise<ActionResult<Task>> {
+export async function updateTask(
+  id: string,
+  input: unknown
+): Promise<ActionResult<{ task: Task } & Partial<CharacterSheetData>>> {
   const session = await auth();
   if (!session?.user?.email) {
     return { success: false, error: { code: "UNAUTHORIZED", message: "Sign in required." } };
@@ -200,7 +212,14 @@ export async function updateTask(id: string, input: unknown): Promise<ActionResu
 
       return updated;
     });
-    return { success: true, data: task };
+
+    let sheetData: CharacterSheetData | undefined;
+    try {
+      sheetData = await getCharacterSheetData(owner.id);
+    } catch (sheetErr) {
+      console.error("Failed to compute character sheet after task update:", sheetErr);
+    }
+    return { success: true, data: { task, ...sheetData } };
   } catch (err) {
     if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2003") {
       return { success: false, error: { code: "NOT_FOUND", message: "Related project or sprint not found." } };
