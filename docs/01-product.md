@@ -265,7 +265,7 @@ On opening the app, surface:
 - Recent wins (XP gained)
 - This week: completed vs. estimated vs. actual story points
 
-**Status:** first four built and dynamic, real DB data. "This week: completed vs. estimated vs. actual story points" is missing from the Dashboard — the underlying calculation exists (`calcEstimatedVsActualStoryPoints`, used by the Statistics page) but isn't surfaced here. See `05-backlog.md` §6.
+**Status:** all built and dynamic, real DB data. Dashboard now includes weekly story point comparison (quests completed, SP estimated vs. actual hours, trailing 7 days) surfaced via the existing `calcEstimatedVsActualStoryPoints` calculation — closed EPIC-13 gap 2026-08-02.
 
 ### 9.5 Work Sessions (Focus Timer)
 - Start/stop a focus session on a task; log actual time spent automatically, feeding statistics (estimated vs. actual).
@@ -367,7 +367,7 @@ Workspace
 
 **v2 candidates:**
 - ~~**Notes** — free-form notes that can reference a task, or reference other notes (many-to-many linking).~~ → **Built** (built ahead of schedule, outside the phased plan — see `05-backlog.md` EPIC-28). Task-linked notes, attachments, tags, pinning, and note-to-note linking all ship.
-- **Knowledge Base** — networked/backlinked notes, second-brain style (Obsidian-like), for durable knowledge rather than task-scoped notes.
+- ~~**Knowledge Base** — networked/backlinked notes, second-brain style (Obsidian-like), for durable knowledge rather than task-scoped notes.~~ → **Built** as **Knowledge Map** (see `05-backlog.md` EPIC-30): force-directed graph view over existing `Note`/`NoteLink` data, with Focus Mode, breadcrumb drill-down, search fly-to-focus, tag-filter dimming, and minimap. Design in `docs/superpowers/specs/2026-08-02-knowledge-base-graph-design.md`.
 - **Team Load Tracking** — read-only visibility into your team members' task load/capacity, as a squad lead. Observational only — no shared editing, permissions, or notifications to others (see §6 note).
 - **Calendar (free-time tracking)** — beyond deadline tracking, surface your own open/available time blocks, not just due dates.
 - AI task breakdown, AI daily planning & end-of-day review, brain-dump auto-sorting.

@@ -64,6 +64,7 @@ Rather than the original "notes/journal first" brainstorm, this reflects what yo
 | EPIC-27 | Weekly/Monthly Recap Cutscene | v0.3 | Done (recap grade formula, trigger, and stats calculations are fully dynamic without mock dependencies) |
 | EPIC-28 | Notes (task-linked notes, attachments, tags, pinning, note-to-note linking) | v2 idea, built ahead of schedule | Done. Not previously tracked as an epic; pulled out of the icebox in `01-product.md` §14 because it already shipped. |
 | EPIC-29 | In-App Notifications (toast queue + sound + undo) | not in original scope | Done — `task:overdue`/`task:due-soon` now checked once/day and `task:completed` emitted on completion 2026-08-02 (see §6). Undocumented until this review; see `01-product.md` §9.8. |
+| EPIC-30 | Knowledge Map (networked/backlinked notes graph) | v2 idea, built ahead of schedule | Done — force-directed graph over `Note`/`NoteLink`, Focus Mode + breadcrumb, search fly-to-focus, tag-filter dimming, minimap. Design: `docs/superpowers/specs/2026-08-02-knowledge-base-graph-design.md`. See `01-product.md` §14. |
 
 
 ---
@@ -130,7 +131,7 @@ Detailed story breakdowns for these get written when v0.1 is actually done — w
 
 Straight from `01-product.md` §14 — kept here too so new ideas land in one obvious place instead of interrupting whatever phase is active:
 
-**v2 candidates:** ~~Notes (task/note-linked)~~ — built, see EPIC-28. Knowledge Base, Team Load Tracking (read-only), Calendar free-time tracking, AI task breakdown/planning, GitHub integration, calendar sync.
+**v2 candidates:** ~~Notes (task/note-linked)~~ — built, see EPIC-28. ~~Knowledge Base~~ — built, see EPIC-30. Team Load Tracking (read-only), Calendar free-time tracking, AI task breakdown/planning, GitHub integration, calendar sync.
 
 **v3 candidates:** Life journal, habit tracker, personal wiki, desktop/terminal widgets.
 
@@ -157,5 +158,5 @@ A code review found every epic above genuinely wired to real DB data (no mock/ha
 
 **Found in a follow-up pass (2026-08-02):**
 
-- **Dashboard is missing the story-point comparison from §9.4** — "this week: completed vs. estimated vs. actual story points" isn't rendered on the Dashboard at all. `calcEstimatedVsActualStoryPoints` (`src/lib/statistics.ts`) already computes it for the Statistics page; the Dashboard just never calls it (EPIC-13). Not yet fixed.
+- ~~**Dashboard is missing the story-point comparison from §9.4**~~ → **Fixed 2026-08-02**: "this week: completed vs. estimated vs. actual story points" now rendered on Dashboard as new "THIS WEEK" panel after Active Sprint. Calls `calcEstimatedVsActualStoryPoints` on `doneThisWeek` filter (trailing 7 days). (EPIC-13).
 - ~~"Kanban" as Default View 404s~~ → **Fixed 2026-08-02**: Kanban is the default tab shown at `/tasks` itself, not a route of its own (`src/app/(dashboard)/tasks/page.tsx` defaults its tab state to `"kanban"`). `DefaultViewRedirect` (`src/components/layout/DefaultViewRedirect.tsx`) now special-cases `defaultView === "kanban"` to push `/tasks` instead of the nonexistent `/tasks/kanban` (EPIC-18).
