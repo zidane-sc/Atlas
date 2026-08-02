@@ -158,5 +158,5 @@ A code review found every epic above genuinely wired to real DB data (no mock/ha
 
 **Found in a follow-up pass (2026-08-02):**
 
-- ~~**Dashboard is missing the story-point comparison from §9.4**~~ → **Fixed 2026-08-02**: "this week: completed vs. estimated vs. actual story points" now rendered on Dashboard as new "THIS WEEK" panel after Active Sprint. Calls `calcEstimatedVsActualStoryPoints` on `doneThisWeek` filter (trailing 7 days). (EPIC-13).
+- ~~**Dashboard is missing the story-point comparison from §9.4**~~ → **Fixed 2026-08-02**: "this week: completed vs. estimated vs. actual story points" now rendered on Statistics page PRODUCTIVITY panel. Calls `calcEstimatedVsActualStoryPoints` on `doneThisWeek` filter (trailing 7 days). (EPIC-13).
 - ~~"Kanban" as Default View 404s~~ → **Fixed 2026-08-02**: Kanban is the default tab shown at `/tasks` itself, not a route of its own (`src/app/(dashboard)/tasks/page.tsx` defaults its tab state to `"kanban"`). `DefaultViewRedirect` (`src/components/layout/DefaultViewRedirect.tsx`) now special-cases `defaultView === "kanban"` to push `/tasks` instead of the nonexistent `/tasks/kanban` (EPIC-18).

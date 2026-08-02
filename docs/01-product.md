@@ -265,7 +265,7 @@ On opening the app, surface:
 - Recent wins (XP gained)
 - This week: completed vs. estimated vs. actual story points
 
-**Status:** all built and dynamic, real DB data. Dashboard now includes weekly story point comparison (quests completed, SP estimated vs. actual hours, trailing 7 days) surfaced via the existing `calcEstimatedVsActualStoryPoints` calculation — closed EPIC-13 gap 2026-08-02.
+**Status:** all built and dynamic, real DB data. Statistics page PRODUCTIVITY panel now includes weekly story point comparison (quests completed, SP estimated vs. actual hours, trailing 7 days) surfaced via the existing `calcEstimatedVsActualStoryPoints` calculation — closed EPIC-13 gap 2026-08-02.
 
 ### 9.5 Work Sessions (Focus Timer)
 - Start/stop a focus session on a task; log actual time spent automatically, feeding statistics (estimated vs. actual).
