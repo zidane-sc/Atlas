@@ -163,7 +163,12 @@ export function KnowledgeMap({ selectedTags, onOpenNote }: KnowledgeMapProps) {
   };
 
   const enterFocus = (node: MapNode) => {
+    if (focusedNoteId === node.id) return;
     setBreadcrumbPath((prev) => {
+      const existingIndex = prev.findIndex((p) => p.id === node.id);
+      if (existingIndex !== -1) {
+        return prev.slice(0, existingIndex + 1);
+      }
       const continuingDrillDown = focusedNoteId !== null && prev.some((p) => p.id === focusedNoteId);
       return continuingDrillDown ? [...prev, { id: node.id, title: node.title }] : [{ id: node.id, title: node.title }];
     });
@@ -320,33 +325,43 @@ export function KnowledgeMap({ selectedTags, onOpenNote }: KnowledgeMapProps) {
               ref={(el) => {
                 if (el) edgeElRefs.current.set(i, el);
               }}
-              stroke="var(--color-border)"
-              strokeWidth={1}
-              opacity={0.6}
+              stroke="var(--color-foreground)"
+              strokeWidth={1.5}
+              opacity={0.5}
             />
           ))}
-          {renderNodes.map((node) => (
-            <g
-              key={node.id}
-              ref={(el) => {
-                if (el) nodeElRefs.current.set(node.id, el);
-              }}
-              transform={`translate(${node.x}, ${node.y})`}
-              onClick={() => enterFocus(node)}
-              onDoubleClick={() => onOpenNote(node.id)}
-              style={{ cursor: "pointer" }}
-            >
-              <circle
-                r={nodeRadius(node.linkCount)}
-                fill="var(--color-bg-panel)"
-                stroke={node.pinned ? "var(--color-primary-gold)" : "var(--color-border)"}
-                strokeWidth={2}
-              />
-              <text y={nodeRadius(node.linkCount) + 14} textAnchor="middle" fontSize={11} fill="var(--color-text-muted)">
-                {node.title.length > 20 ? node.title.slice(0, 20) + "…" : node.title}
-              </text>
-            </g>
-          ))}
+          {renderNodes.map((node) => {
+            const isFocused = node.id === focusedNoteId;
+            return (
+              <g
+                key={node.id}
+                ref={(el) => {
+                  if (el) nodeElRefs.current.set(node.id, el);
+                }}
+                transform={`translate(${node.x}, ${node.y})`}
+                onClick={() => enterFocus(node)}
+                onDoubleClick={() => onOpenNote(node.id)}
+                style={{ cursor: "pointer" }}
+              >
+                <title>Double-click to open</title>
+                <circle
+                  r={nodeRadius(node.linkCount)}
+                  fill="var(--color-bg-panel)"
+                  stroke={
+                    isFocused
+                      ? "white"
+                      : node.pinned
+                        ? "var(--color-primary-gold)"
+                        : "var(--color-border)"
+                  }
+                  strokeWidth={isFocused ? 3 : 2}
+                />
+                <text y={nodeRadius(node.linkCount) + 14} textAnchor="middle" fontSize={11} fill="var(--color-text-muted)">
+                  {node.title.length > 20 ? node.title.slice(0, 20) + "…" : node.title}
+                </text>
+              </g>
+            );
+          })}
         </g>
       </svg>
       {!focusedNoteId && (

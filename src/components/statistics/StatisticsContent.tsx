@@ -168,6 +168,17 @@ export default function StatisticsContent() {
   const longestStreak = useMemo(() => calculateLongestStreak(allTasks), [allTasks]);
   const storyPointComparison = useMemo(() => calcEstimatedVsActualStoryPoints(allTasks), [allTasks]);
 
+  const doneThisWeekTasks = useMemo(
+    () => allTasks.filter((t) => {
+      const c = completedAt(t);
+      if (!c) return false;
+      const ts = new Date(c).getTime();
+      return ts >= nowTime - 7 * 86_400_000 && ts <= nowTime;
+    }),
+    [allTasks, nowTime]
+  );
+  const weeklyStoryPointComparison = useMemo(() => calcEstimatedVsActualStoryPoints(doneThisWeekTasks), [doneThisWeekTasks]);
+
   const doneThisWeek = weeklyThroughput.reduce((s, d) => s + d.done, 0);
   const donePrevWeek = weeklyThroughput.reduce((s, d) => s + d.prevDone, 0);
   const wow = [
@@ -317,10 +328,17 @@ export default function StatisticsContent() {
               <StatTile label="BEST TIME" value={productivityProfile.bestPeriod ?? "—"} />
             </div>
             <div className="mt-4 flex items-center gap-3 border-t pt-4 text-sm" style={{ borderColor: "var(--color-border)" }}>
-              <span style={{ color: "var(--color-dim)" }}>SP EST. VS. ACTUAL</span>
+              <span style={{ color: "var(--color-dim)" }}>SP EST. VS. ACTUAL (all-time)</span>
               <span style={{ color: "var(--color-text-primary)" }}>{storyPointComparison.estimated} SP estimated</span>
               <span style={{ color: "var(--color-dim)" }}>vs</span>
               <span style={{ color: "var(--color-text-primary)" }}>{storyPointComparison.actualHours}h actual</span>
+            </div>
+            <div className="mt-3 flex items-center gap-3 text-sm">
+              <span style={{ color: "var(--color-dim)" }}>◆ THIS WEEK</span>
+              <span className="text-muted-foreground">{doneThisWeekTasks.length} quests</span>
+              <span style={{ color: "var(--color-text-primary)" }}>{weeklyStoryPointComparison.estimated} SP est.</span>
+              <span style={{ color: "var(--color-dim)" }}>vs</span>
+              <span style={{ color: "var(--color-text-primary)" }}>{weeklyStoryPointComparison.actualHours}h</span>
             </div>
           </div>
         </div>
