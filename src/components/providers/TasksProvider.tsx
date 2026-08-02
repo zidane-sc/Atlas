@@ -29,6 +29,7 @@ import {
   checkAndEmitAchievementUnlocks,
   checkAndEmitStreakMilestone,
   checkAndEmitDueDateNotifications,
+  type CharacterSheet,
 } from "@/lib/gamification";
 import { getTodayDate } from "@/lib/mock-data";
 import { purchaseDecoration as apiPurchaseDecoration, placeDecoration as apiPlaceDecoration } from "@/lib/actions/decorations";
@@ -88,12 +89,18 @@ export function playChime() {
 interface TasksContextValue {
   tasks: Task[];
   /**
-   * Lifetime task set (every non-deleted task ever, not just the 200-cap interactive window) —
-   * use this for anything that claims to be an all-time total: Character Sheet XP/level/skills,
-   * achievement tiers, longest-ever streak, completion rate, focus hours. Anything genuinely
-   * windowed (current streak, this-week recap, trailing throughput) should keep using `tasks`.
+   * Lifetime task set (every non-deleted task ever, not just the 200-cap interactive window).
+   * As of Phase 2, its only remaining consumer is TaskFormSheet's relation-trashed check —
+   * Character Sheet, achievements, and statistics all get their lifetime totals server-computed
+   * now (see character-sheet-data.ts / statistics-data.ts / achievements-data.ts) and no longer
+   * read this array. Anything genuinely windowed (current streak, this-week recap, trailing
+   * throughput) already correctly used `tasks` instead, unaffected by this.
    */
   allTimeTasks: Task[];
+  /** Server-computed, kept fresh by every mutation response that can change it (see updateTask/
+   * createTask/claimDailyQuest below) — never recomputed client-side from a task array. */
+  characterSheet: CharacterSheet;
+  unlockedAchievements: Record<string, { unlocked: boolean; unlockedAt: string | null }>;
   activityLogs: ActivityLogClient[];
   createTask: (values: TaskFormValues) => void;
   updateTask: (id: string, values: TaskFormValues) => Promise<boolean>;
@@ -144,6 +151,8 @@ export function TasksProvider({
   initialActivityLogs,
   initialBonusXp,
   initialBonusCoins,
+  initialCharacterSheet,
+  initialUnlockedAchievements,
   initialPurchasedDecorations = [],
   initialPlacedDecorations = {},
   initialSavedFilters = [],
@@ -156,6 +165,8 @@ export function TasksProvider({
   initialActivityLogs: ActivityLogClient[];
   initialBonusXp: number;
   initialBonusCoins: number;
+  initialCharacterSheet: CharacterSheet;
+  initialUnlockedAchievements: Record<string, { unlocked: boolean; unlockedAt: string | null }>;
   initialPurchasedDecorations?: string[];
   initialPlacedDecorations?: Record<string, string | null>;
   initialSavedFilters?: SavedFilterClient[];
@@ -182,6 +193,8 @@ export function TasksProvider({
   const [justCompletedAt, setJustCompletedAt] = useState<number | null>(null);
   const [bonusXp, setBonusXp] = useState(initialBonusXp);
   const [bonusCoins, setBonusCoins] = useState(initialBonusCoins);
+  const [characterSheet, setCharacterSheet] = useState<CharacterSheet>(initialCharacterSheet);
+  const [unlockedAchievements, setUnlockedAchievements] = useState(initialUnlockedAchievements);
   const [purchasedDecorations, setPurchasedDecorations] = useState<string[]>(initialPurchasedDecorations);
   const [placedDecorations, setPlacedDecorations] = useState<Record<string, string | null>>(initialPlacedDecorations);
   const [activeTimer, setActiveTimer] = useState<ActiveTimer | null>(initialActiveTimer);
@@ -215,6 +228,8 @@ export function TasksProvider({
     () => ({
       tasks,
       allTimeTasks,
+      characterSheet,
+      unlockedAchievements,
       createTask: async (values) => {
         const input = {
           title: values.title,
@@ -241,8 +256,16 @@ export function TasksProvider({
         } else {
           const dbProjects = projects as any[];
           const dbSprints = sprints as any[];
-          const clientTask = mapDbTaskToClient(result.data, dbProjects, dbSprints);
+          const clientTask = mapDbTaskToClient(result.data.task, dbProjects, dbSprints);
           dispatch({ type: "restore", task: clientTask });
+          if (result.data.characterSheet) {
+            checkAndEmitLevelUp(characterSheet.globalXP, result.data.characterSheet.globalXP);
+            setCharacterSheet(result.data.characterSheet);
+          }
+          if (result.data.unlockedAchievements) {
+            checkAndEmitAchievementUnlocks(unlockedAchievements, result.data.unlockedAchievements);
+            setUnlockedAchievements(result.data.unlockedAchievements);
+          }
         }
       },
       updateTask: async (id, values) => {
@@ -285,21 +308,10 @@ export function TasksProvider({
           const newStreak = calculateStreak(updatedTasks);
           const streakExtended = newStreak > oldStreak;
 
-          // Calculate old and new character sheets to detect level-up — uses the lifetime task
-          // set (not just the 200-cap window) so level/XP totals aren't missing older completions.
-          const updatedAllTimeTasks = allTimeTasks.map((t) => t.id === id ? { ...t, status: "done" as const } : t);
-          const oldSheet = computeCharacterSheet(allTimeTasks, bonusXp);
-          const newSheet = computeCharacterSheet(updatedAllTimeTasks, bonusXp);
-          checkAndEmitLevelUp(oldSheet.globalXP, newSheet.globalXP);
-
-          // Calculate old and new achievements to detect unlocks
-          const dbProjects = projects as any[];
-          const dbSprints = sprints as any[];
-          const oldAchievements = computeUnlockedAchievements(allTimeTasks, dbProjects, dbSprints);
-          const newAchievements = computeUnlockedAchievements(updatedAllTimeTasks, dbProjects, dbSprints);
-          checkAndEmitAchievementUnlocks(oldAchievements, newAchievements);
-
-          // Emit streak milestone notification
+          // Level-up/achievement-unlock detection happens after the server round-trip below
+          // (it needs the server's authoritative post-mutation values) — see the `apiUpdateTask`
+          // response handling further down. Current-streak-milestone detection stays here,
+          // unchanged: it only ever needed the recent-window `tasks`, never full history.
           checkAndEmitStreakMilestone(oldStreak, newStreak);
           emit({ type: "task:completed", taskId: id, title: values.title });
 
@@ -364,8 +376,19 @@ export function TasksProvider({
         if (lastSyncTimeRef.current[id] === requestTime) {
           const dbProjects = projects as any[];
           const dbSprints = sprints as any[];
-          const syncedTask = mapDbTaskToClient(result.data, dbProjects, dbSprints);
+          const syncedTask = mapDbTaskToClient(result.data.task, dbProjects, dbSprints);
           dispatch({ type: "sync", task: syncedTask });
+        }
+        // Level-up/achievement-unlock detection: "old" is whatever the client currently holds
+        // (from before this mutation resolved), "new" is the server's authoritative post-mutation
+        // value — no client-side array scanning needed anymore.
+        if (result.data.characterSheet) {
+          checkAndEmitLevelUp(characterSheet.globalXP, result.data.characterSheet.globalXP);
+          setCharacterSheet(result.data.characterSheet);
+        }
+        if (result.data.unlockedAchievements) {
+          checkAndEmitAchievementUnlocks(unlockedAchievements, result.data.unlockedAchievements);
+          setUnlockedAchievements(result.data.unlockedAchievements);
         }
         return true;
       },
@@ -433,12 +456,20 @@ export function TasksProvider({
           dispatch({ type: "delete", id: tempId });
           setSheet((s) => (s.task?.id === tempId ? { ...s, open: false } : s));
         } else {
-          dispatch({ type: "replaceId", tempId, realId: result.data.id });
+          dispatch({ type: "replaceId", tempId, realId: result.data.task.id });
           setSheet((s) =>
             s.task?.id === tempId
-              ? { ...s, task: { ...s.task, id: result.data.id } }
+              ? { ...s, task: { ...s.task, id: result.data.task.id } }
               : s
           );
+          if (result.data.characterSheet) {
+            checkAndEmitLevelUp(characterSheet.globalXP, result.data.characterSheet.globalXP);
+            setCharacterSheet(result.data.characterSheet);
+          }
+          if (result.data.unlockedAchievements) {
+            checkAndEmitAchievementUnlocks(unlockedAchievements, result.data.unlockedAchievements);
+            setUnlockedAchievements(result.data.unlockedAchievements);
+          }
         }
       },
       sheet,
@@ -452,17 +483,14 @@ export function TasksProvider({
       claimDailyQuest: async (dateStr, xp, coins) => {
         const res = await apiClaimDailyQuest({ dateStr, xp, coins });
         if (res.success) {
-          // Check for level-up before updating bonusXp state
-          const dbProjects = projects as any[];
-          const dbSprints = sprints as any[];
-          const oldSheet = computeCharacterSheet(allTimeTasks, bonusXp);
-          const newSheet = computeCharacterSheet(allTimeTasks, res.data.bonusXp);
-          checkAndEmitLevelUp(oldSheet.globalXP, newSheet.globalXP);
-
-          // Check for achievement unlocks
-          const oldAchievements = computeUnlockedAchievements(allTimeTasks, dbProjects, dbSprints);
-          const newAchievements = computeUnlockedAchievements(allTimeTasks, dbProjects, dbSprints);
-          checkAndEmitAchievementUnlocks(oldAchievements, newAchievements);
+          if (res.data.characterSheet) {
+            checkAndEmitLevelUp(characterSheet.globalXP, res.data.characterSheet.globalXP);
+            setCharacterSheet(res.data.characterSheet);
+          }
+          if (res.data.unlockedAchievements) {
+            checkAndEmitAchievementUnlocks(unlockedAchievements, res.data.unlockedAchievements);
+            setUnlockedAchievements(res.data.unlockedAchievements);
+          }
 
           setBonusXp(res.data.bonusXp);
           setBonusCoins(res.data.bonusCoins);
@@ -591,6 +619,8 @@ export function TasksProvider({
         setJustCompletedAt(null);
         setBonusXp(0);
         setBonusCoins(0);
+        setCharacterSheet(computeCharacterSheet([], 0, 0));
+        setUnlockedAchievements(computeUnlockedAchievements([], projects as any[], sprints as any[]));
         setPurchasedDecorations([]);
         setPlacedDecorations({});
         setSavedFilters([]);
@@ -672,6 +702,8 @@ export function TasksProvider({
     [
       tasks,
       allTimeTasks,
+      characterSheet,
+      unlockedAchievements,
       activityLogs,
       sheet,
       justCompletedAt,
