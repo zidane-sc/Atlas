@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { getNoteGraphAction } from "@/lib/actions/notes";
-import { stepSimulation, type GraphNode, type GraphEdge } from "@/lib/note-graph";
+import { stepSimulation, getNeighborhood, layoutRadial, type GraphNode, type GraphEdge } from "@/lib/note-graph";
 
 type MapNode = GraphNode & { title: string };
 
@@ -36,6 +36,9 @@ export function KnowledgeMap({ onOpenNote }: KnowledgeMapProps) {
   const [bounds, setBounds] = useState({ width: 800, height: 600 });
   const [status, setStatus] = useState<"loading" | "error" | "ready">("loading");
   const [transform, setTransform] = useState({ x: 0, y: 0, scale: 1 });
+  const [focusedNoteId, setFocusedNoteId] = useState<string | null>(null);
+  const [breadcrumbPath, setBreadcrumbPath] = useState<{ id: string; title: string }[]>([]);
+  const focusTransitionRef = useRef<number | undefined>(undefined);
 
   useEffect(() => {
     const update = () => {
@@ -78,7 +81,7 @@ export function KnowledgeMap({ onOpenNote }: KnowledgeMapProps) {
   }, []);
 
   useEffect(() => {
-    if (status !== "ready") return;
+    if (status !== "ready" || focusedNoteId) return;
 
     const tick = () => {
       const updated = stepSimulation(nodesRef.current, edgesRef.current, bounds);
@@ -112,7 +115,7 @@ export function KnowledgeMap({ onOpenNote }: KnowledgeMapProps) {
     return () => {
       if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
     };
-  }, [status, bounds]);
+  }, [status, bounds, focusedNoteId]);
 
   const handleWheel = (e: React.WheelEvent) => {
     e.preventDefault();
@@ -135,6 +138,86 @@ export function KnowledgeMap({ onOpenNote }: KnowledgeMapProps) {
     dragRef.current = null;
   };
 
+  const enterFocus = (node: MapNode) => {
+    setBreadcrumbPath((prev) => {
+      const continuingDrillDown = focusedNoteId !== null && prev.some((p) => p.id === focusedNoteId);
+      return continuingDrillDown ? [...prev, { id: node.id, title: node.title }] : [{ id: node.id, title: node.title }];
+    });
+    setFocusedNoteId(node.id);
+  };
+
+  const exitFocus = () => {
+    setFocusedNoteId(null);
+    setBreadcrumbPath([]);
+  };
+
+  const jumpToBreadcrumb = (index: number) => {
+    const target = breadcrumbPath[index];
+    setBreadcrumbPath(breadcrumbPath.slice(0, index + 1));
+    setFocusedNoteId(target.id);
+  };
+
+  useEffect(() => {
+    if (status !== "ready") return;
+
+    const startPositions = new Map(nodesRef.current.map((n) => [n.id, { x: n.x, y: n.y }]));
+    const neighborhood = focusedNoteId ? getNeighborhood(focusedNoteId, edgesRef.current, 2) : null;
+    const targetPositions = focusedNoteId && neighborhood ? layoutRadial(focusedNoteId, neighborhood, edgesRef.current, bounds) : null;
+
+    const duration = 300;
+    const startTime = performance.now();
+
+    const animate = (now: number) => {
+      const t = Math.min(1, (now - startTime) / duration);
+      const eased = 1 - (1 - t) * (1 - t);
+
+      for (const n of nodesRef.current) {
+        const start = startPositions.get(n.id)!;
+        const target = targetPositions?.get(n.id) ?? start;
+        n.x = start.x + (target.x - start.x) * eased;
+        n.y = start.y + (target.y - start.y) * eased;
+
+        const el = nodeElRefs.current.get(n.id);
+        if (el) {
+          el.setAttribute("transform", `translate(${n.x}, ${n.y})`);
+          const inFocusSet = !focusedNoteId || (neighborhood?.has(n.id) ?? false);
+          el.style.opacity = inFocusSet ? "1" : "0.05";
+        }
+      }
+      edgesRef.current.forEach((edge, i) => {
+        const line = edgeElRefs.current.get(i);
+        if (!line) return;
+        const a = nodesRef.current.find((n) => n.id === edge.source);
+        const b = nodesRef.current.find((n) => n.id === edge.target);
+        if (a && b) {
+          line.setAttribute("x1", String(a.x));
+          line.setAttribute("y1", String(a.y));
+          line.setAttribute("x2", String(b.x));
+          line.setAttribute("y2", String(b.y));
+        }
+      });
+
+      if (t < 1) {
+        focusTransitionRef.current = requestAnimationFrame(animate);
+      }
+    };
+    focusTransitionRef.current = requestAnimationFrame(animate);
+    return () => {
+      if (focusTransitionRef.current) cancelAnimationFrame(focusTransitionRef.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusedNoteId]);
+
+  useEffect(() => {
+    if (!focusedNoteId) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") exitFocus();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusedNoteId]);
+
   if (status === "loading") {
     return <div className="flex h-full items-center justify-center text-sm text-muted-foreground">Loading knowledge map…</div>;
   }
@@ -147,6 +230,24 @@ export function KnowledgeMap({ onOpenNote }: KnowledgeMapProps) {
 
   return (
     <div ref={containerRef} className="relative h-full w-full overflow-hidden" style={{ backgroundColor: "var(--color-bg-deep)" }}>
+      {breadcrumbPath.length > 0 && (
+        <div className="absolute top-2 left-2 z-10 flex items-center gap-1 rounded border border-border bg-card px-2 py-1 text-xs">
+          <button onClick={exitFocus} className="text-muted-foreground hover:text-foreground">
+            Knowledge Map
+          </button>
+          {breadcrumbPath.map((crumb, i) => (
+            <span key={crumb.id} className="flex items-center gap-1">
+              <span className="text-muted-foreground">/</span>
+              <button
+                onClick={() => jumpToBreadcrumb(i)}
+                className={i === breadcrumbPath.length - 1 ? "text-foreground" : "text-muted-foreground hover:text-foreground"}
+              >
+                {crumb.title}
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
       <svg
         width="100%"
         height="100%"
@@ -155,6 +256,9 @@ export function KnowledgeMap({ onOpenNote }: KnowledgeMapProps) {
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
+        onClick={(e) => {
+          if (e.target === e.currentTarget && focusedNoteId) exitFocus();
+        }}
         style={{ cursor: "grab" }}
       >
         <g transform={`translate(${transform.x}, ${transform.y}) scale(${transform.scale})`}>
@@ -176,6 +280,7 @@ export function KnowledgeMap({ onOpenNote }: KnowledgeMapProps) {
                 if (el) nodeElRefs.current.set(node.id, el);
               }}
               transform={`translate(${node.x}, ${node.y})`}
+              onClick={() => enterFocus(node)}
               onDoubleClick={() => onOpenNote(node.id)}
               style={{ cursor: "pointer" }}
             >
