@@ -2,9 +2,9 @@
 
 import { useEffect, useRef, useState } from "react";
 import { getNoteGraphAction } from "@/lib/actions/notes";
-import { stepSimulation, getNeighborhood, layoutRadial, type GraphNode, type GraphEdge } from "@/lib/note-graph";
+import { stepSimulation, getNeighborhood, layoutRadial, matchesSearchQuery, type GraphNode, type GraphEdge } from "@/lib/note-graph";
 
-type MapNode = GraphNode & { title: string };
+type MapNode = GraphNode & { title: string; tags: string[] };
 
 const MIN_RADIUS = 6;
 const MAX_RADIUS = 22;
@@ -24,7 +24,7 @@ export interface KnowledgeMapProps {
   onOpenNote: (noteId: string) => void;
 }
 
-export function KnowledgeMap({ onOpenNote }: KnowledgeMapProps) {
+export function KnowledgeMap({ selectedTags, onOpenNote }: KnowledgeMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const nodesRef = useRef<MapNode[]>([]);
   const edgesRef = useRef<GraphEdge[]>([]);
@@ -39,6 +39,13 @@ export function KnowledgeMap({ onOpenNote }: KnowledgeMapProps) {
   const [focusedNoteId, setFocusedNoteId] = useState<string | null>(null);
   const [breadcrumbPath, setBreadcrumbPath] = useState<{ id: string; title: string }[]>([]);
   const focusTransitionRef = useRef<number | undefined>(undefined);
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const isDimmed = (node: MapNode): boolean => {
+    const passesTagFilter = selectedTags.length === 0 || selectedTags.some((t) => node.tags.includes(t));
+    const passesSearch = matchesSearchQuery(node.title, searchQuery);
+    return !(passesTagFilter && passesSearch);
+  };
 
   useEffect(() => {
     const update = () => {
@@ -64,6 +71,7 @@ export function KnowledgeMap({ onOpenNote }: KnowledgeMapProps) {
         id: n.id,
         title: n.title,
         pinned: n.pinned,
+        tags: n.tags,
         linkCount: n.linkCount,
         x: bounds.width / 2 + (Math.random() - 0.5) * 200,
         y: bounds.height / 2 + (Math.random() - 0.5) * 200,
@@ -85,14 +93,21 @@ export function KnowledgeMap({ onOpenNote }: KnowledgeMapProps) {
 
     const tick = () => {
       const updated = stepSimulation(nodesRef.current, edgesRef.current, bounds);
-      nodesRef.current = updated.map((n, i) => ({ ...n, title: nodesRef.current[i].title }));
+      nodesRef.current = updated.map((n, i) => ({
+        ...n,
+        title: nodesRef.current[i].title,
+        tags: nodesRef.current[i].tags,
+      }));
 
       let kineticEnergy = 0;
       for (const n of nodesRef.current) kineticEnergy += n.vx * n.vx + n.vy * n.vy;
 
       for (const n of nodesRef.current) {
         const el = nodeElRefs.current.get(n.id);
-        if (el) el.setAttribute("transform", `translate(${n.x}, ${n.y})`);
+        if (el) {
+          el.setAttribute("transform", `translate(${n.x}, ${n.y})`);
+          el.style.opacity = isDimmed(n) ? "0.15" : "1";
+        }
       }
       edgesRef.current.forEach((edge, i) => {
         const line = edgeElRefs.current.get(i);
@@ -181,7 +196,7 @@ export function KnowledgeMap({ onOpenNote }: KnowledgeMapProps) {
         if (el) {
           el.setAttribute("transform", `translate(${n.x}, ${n.y})`);
           const inFocusSet = !focusedNoteId || (neighborhood?.has(n.id) ?? false);
-          el.style.opacity = inFocusSet ? "1" : "0.05";
+          el.style.opacity = inFocusSet && !isDimmed(n) ? "1" : "0.05";
         }
       }
       edgesRef.current.forEach((edge, i) => {
@@ -218,6 +233,21 @@ export function KnowledgeMap({ onOpenNote }: KnowledgeMapProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [focusedNoteId]);
 
+  // The organic tick loop stops once the layout settles (no more animation frames), and the
+  // focus-mode transition only runs for ~300ms — neither picks up a search/tag change made
+  // afterward. Apply dimming directly here so it updates immediately regardless of loop state.
+  useEffect(() => {
+    if (status !== "ready") return;
+    const neighborhood = focusedNoteId ? getNeighborhood(focusedNoteId, edgesRef.current, 2) : null;
+    for (const n of nodesRef.current) {
+      const el = nodeElRefs.current.get(n.id);
+      if (!el) continue;
+      const inFocusSet = !focusedNoteId || (neighborhood?.has(n.id) ?? false);
+      el.style.opacity = inFocusSet && !isDimmed(n) ? "1" : focusedNoteId ? "0.05" : "0.15";
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedTags, searchQuery, focusedNoteId, status]);
+
   if (status === "loading") {
     return <div className="flex h-full items-center justify-center text-sm text-muted-foreground">Loading knowledge map…</div>;
   }
@@ -248,6 +278,20 @@ export function KnowledgeMap({ onOpenNote }: KnowledgeMapProps) {
           ))}
         </div>
       )}
+      <div className="absolute top-2 right-2 z-10 w-48">
+        <input
+          type="text"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key !== "Enter") return;
+            const match = nodesRef.current.find((n) => matchesSearchQuery(n.title, searchQuery));
+            if (match) enterFocus(match);
+          }}
+          placeholder="Search notes..."
+          className="w-full rounded border border-border bg-card px-2 py-1 text-xs"
+        />
+      </div>
       <svg
         width="100%"
         height="100%"

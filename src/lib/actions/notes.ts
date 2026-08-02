@@ -513,7 +513,7 @@ export async function unlinkNotesAction(noteId: string, targetNoteId: string): P
 
 export async function getNoteGraphAction(): Promise<
   ActionResult<{
-    nodes: { id: string; title: string; pinned: boolean; linkCount: number }[];
+    nodes: { id: string; title: string; pinned: boolean; tags: string[]; linkCount: number }[];
     edges: { source: string; target: string }[];
   }>
 > {
@@ -529,7 +529,7 @@ export async function getNoteGraphAction(): Promise<
     }
 
     const [notes, links] = await Promise.all([
-      db.note.findMany({ where: { userId: user.id }, select: { id: true, title: true, pinned: true } }),
+      db.note.findMany({ where: { userId: user.id }, select: { id: true, title: true, pinned: true, tags: true } }),
       db.noteLink.findMany({ where: { noteA: { userId: user.id } }, select: { noteAId: true, noteBId: true } }),
     ]);
 
@@ -546,6 +546,7 @@ export async function getNoteGraphAction(): Promise<
           id: n.id,
           title: n.title,
           pinned: n.pinned,
+          tags: n.tags,
           linkCount: linkCounts.get(n.id) ?? 0,
         })),
         edges: links.map((l) => ({ source: l.noteAId, target: l.noteBId })),
