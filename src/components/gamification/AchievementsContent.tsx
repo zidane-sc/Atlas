@@ -2,11 +2,7 @@
 
 import { useState } from "react";
 import { Lock } from "lucide-react";
-import { useTasks } from "@/components/providers/TasksProvider";
-import { useProjects } from "@/components/providers/ProjectsProvider";
-import { useSprints } from "@/components/providers/SprintsProvider";
-import { computeAchievementProgress, computeUnlockedAchievements } from "@/lib/gamification";
-import { mockAchievements } from "@/lib/mock-data";
+import type { AchievementDisplay } from "@/lib/achievements-data";
 import type { AchievementCategory } from "@/types/gamification";
 
 const CATEGORIES: { key: AchievementCategory; label: string; colorVar: string }[] = [
@@ -18,13 +14,8 @@ const CATEGORIES: { key: AchievementCategory; label: string; colorVar: string }[
 
 type Filter = "all" | "unlocked" | "locked";
 
-export default function AchievementsContent() {
-  const { tasks } = useTasks();
-  const { projects } = useProjects();
-  const { sprints } = useSprints();
+export default function AchievementsContent({ achievements }: { achievements: AchievementDisplay[] }) {
   const [filter, setFilter] = useState<Filter>("all");
-  const unlockStatus = computeUnlockedAchievements(tasks, projects, sprints);
-  const achievements = mockAchievements.map((a) => ({ ...a, ...unlockStatus[a.id] }));
   const unlocked = achievements.filter((a) => a.unlocked).length;
   const earnedXP = achievements.filter((a) => a.unlocked).reduce((s, a) => s + a.xp, 0);
   const filtered = achievements.filter((a) => (filter === "all" ? true : filter === "unlocked" ? a.unlocked : !a.unlocked));
@@ -76,7 +67,7 @@ export default function AchievementsContent() {
               </div>
               <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4">
                 {items.map((a) => {
-                  const progress = !a.unlocked ? computeAchievementProgress(a.id, tasks, projects, sprints) : null;
+                  const progress = a.progress;
                   const progressPct = progress ? Math.min(1, progress.current / progress.max) : 0;
                   return (
                     <div

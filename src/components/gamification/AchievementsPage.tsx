@@ -2,6 +2,7 @@
 
 import { Suspense } from "react";
 import dynamic from "next/dynamic";
+import type { AchievementDisplay } from "@/lib/achievements-data";
 
 const AchievementsContent = dynamic(
   () => import("./AchievementsContent"),
@@ -22,10 +23,10 @@ const AchievementsContent = dynamic(
   }
 );
 
-export function AchievementsPage() {
+export function AchievementsPage({ achievements }: { achievements: AchievementDisplay[] }) {
   return (
     <Suspense fallback={<div className="p-8">Loading achievements...</div>}>
-      <AchievementsContent />
+      <AchievementsContent achievements={achievements} />
     </Suspense>
   );
 }
