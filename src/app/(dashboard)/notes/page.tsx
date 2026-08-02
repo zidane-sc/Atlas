@@ -119,13 +119,17 @@ export default function NotesPage() {
 
       <div className="flex-1 flex flex-col gap-4 p-6 overflow-hidden">
         <div className="flex gap-2">
-          <input
-            type="text"
-            placeholder="Search notes..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="flex-1 px-3 py-2 border border-border rounded bg-card text-sm"
-          />
+          {viewMode === "list" ? (
+            <input
+              type="text"
+              placeholder="Search notes..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="flex-1 px-3 py-2 border border-border rounded bg-card text-sm"
+            />
+          ) : (
+            <div className="flex-1" />
+          )}
           <div className="flex items-center border border-border rounded overflow-hidden">
             <button
               onClick={() => setViewMode("list")}
