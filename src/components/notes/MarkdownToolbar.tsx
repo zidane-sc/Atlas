@@ -48,7 +48,7 @@ export function MarkdownToolbar({ onInsert }: MarkdownToolbarProps) {
   const [tableCols, setTableCols] = useState(3);
   const [tableRows, setTableRows] = useState(3);
   const buttonClass =
-    "px-2.5 py-1.5 md:px-2 md:py-1 border-2 border-gray-400 bg-panel text-foreground hover:bg-panel-alt active:border-primary-gold active:text-primary-gold text-xs font-display transition-colors";
+    "px-1.5 py-1 md:px-2 md:py-1 border-2 border-gray-400 bg-panel text-foreground hover:bg-panel-alt active:border-primary-gold active:text-primary-gold text-[10px] md:text-xs font-display transition-colors";
 
   return (
     <div className="flex gap-1 flex-wrap p-2 border-b border-gray-600 bg-panel">

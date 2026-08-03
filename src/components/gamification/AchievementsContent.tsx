@@ -65,7 +65,7 @@ export default function AchievementsContent({ achievements }: { achievements: Ac
                 </span>
                 <div className="h-px flex-1" style={{ backgroundColor: "var(--color-border)" }} />
               </div>
-              <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
                 {items.map((a) => {
                   const progress = a.progress;
                   const progressPct = progress ? Math.min(1, progress.current / progress.max) : 0;

@@ -51,6 +51,7 @@ export function NoteEditor({ noteId, initialData, onSave, onClose }: NoteEditorP
   // Mirrors noteCreatedRef into state — reading a ref's .current during render (for
   // currentNoteId below) breaks React's rules and won't re-render when it changes.
   const [createdNoteId, setCreatedNoteId] = useState<string | null>(null);
+  const [showFooterDetails, setShowFooterDetails] = useState(false);
 
   const handleAutoSave = useCallback(async () => {
     if (!title.trim() || !content.trim()) return;
@@ -303,7 +304,7 @@ export function NoteEditor({ noteId, initialData, onSave, onClose }: NoteEditorP
             debouncedSave();
           }}
           placeholder="Note title..."
-          className="flex-1 min-w-0 font-display text-lg bg-transparent border-none outline-none"
+          className="flex-1 min-w-0 font-display text-sm sm:text-base md:text-lg bg-transparent border-none outline-none"
           style={{ color: "var(--color-foreground)" }}
         />
         <div className="hidden sm:block text-xs text-muted-foreground ml-2 flex-shrink-0 whitespace-nowrap">
@@ -367,7 +368,7 @@ export function NoteEditor({ noteId, initialData, onSave, onClose }: NoteEditorP
             }}
             onBlur={handleAutoSave}
             placeholder="Write markdown..."
-            className="flex-1 min-h-[200px] p-4 font-mono text-sm bg-panel text-foreground border-none outline-none resize-none"
+            className="flex-1 min-h-[200px] p-4 font-mono text-lg md:text-sm bg-panel text-foreground border-none outline-none resize-none"
           />
         </div>
 
@@ -382,310 +383,318 @@ export function NoteEditor({ noteId, initialData, onSave, onClose }: NoteEditorP
         </div>
       </div>
 
-      {/* Footer with Tags & Gamification */}
       <div className="border-t-2" style={{ borderColor: "var(--color-primary-gold)" }}>
-        <div className="px-3 py-2 border-b border-gray-600" style={{ backgroundColor: "var(--color-bg-panel-alt)" }}>
+        <button
+          type="button"
+          onClick={() => setShowFooterDetails(!showFooterDetails)}
+          className="w-full flex justify-between items-center px-3 py-2 border-b border-gray-600 bg-panel-alt cursor-pointer text-left md:cursor-default"
+        >
           <span className="text-xs font-display" style={{ color: "var(--color-primary-gold)" }}>
             🏷️ TAGS & LINKS
           </span>
-        </div>
-        <div className="p-3 text-xs grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {/* Tags Column */}
-          <div className="flex flex-col">
-            <div className="flex gap-1 flex-wrap mb-2 max-h-12 overflow-y-auto flex-1">
-              {tags.map((tag) => (
-                <span
-                  key={tag}
-                  className="px-2 py-0.5 rounded border border-gray-500 text-xs flex items-center gap-1 group hover:border-primary-gold transition-colors flex-shrink-0"
+          <span className="text-xs font-display md:hidden" style={{ color: "var(--color-primary-gold)" }}>
+            {showFooterDetails ? "▲ Collapse" : "▼ Expand"}
+          </span>
+        </button>
+        <div className={`${showFooterDetails ? "block" : "hidden"} md:block`}>
+          <div className="p-3 text-xs grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {/* Tags Column */}
+            <div className="flex flex-col">
+              <div className="flex gap-1 flex-wrap mb-2 max-h-12 overflow-y-auto flex-1">
+                {tags.map((tag) => (
+                  <span
+                    key={tag}
+                    className="px-2 py-0.5 rounded border border-gray-500 text-xs flex items-center gap-1 group hover:border-primary-gold transition-colors flex-shrink-0"
+                    style={{ color: "var(--color-foreground)" }}
+                  >
+                    {tag}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setTags(tags.filter((t) => t !== tag));
+                        debouncedSave();
+                      }}
+                      className="opacity-50 group-hover:opacity-100"
+                    >
+                      ✕
+                    </button>
+                  </span>
+                ))}
+              </div>
+              <div className="flex gap-1">
+                <input
+                  type="text"
+                  value={tagInput}
+                  onChange={(e) => setTagInput(e.target.value)}
+                  onKeyPress={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      handleAddTag();
+                    }
+                  }}
+                  placeholder="tag"
+                  className="px-2 py-0.5 border border-gray-500 rounded bg-panel text-xs flex-1"
                   style={{ color: "var(--color-foreground)" }}
+                />
+                <button
+                  type="button"
+                  onClick={handleAddTag}
+                  className="px-2 py-0.5 border border-primary-gold rounded text-xs font-display"
+                  style={{ color: "var(--color-primary-gold)" }}
                 >
-                  {tag}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setTags(tags.filter((t) => t !== tag));
-                      debouncedSave();
-                    }}
-                    className="opacity-50 group-hover:opacity-100"
-                  >
-                    ✕
-                  </button>
-                </span>
-              ))}
-            </div>
-            <div className="flex gap-1">
-              <input
-                type="text"
-                value={tagInput}
-                onChange={(e) => setTagInput(e.target.value)}
-                onKeyPress={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    handleAddTag();
-                  }
-                }}
-                placeholder="tag"
-                className="px-2 py-0.5 border border-gray-500 rounded bg-panel text-xs flex-1"
-                style={{ color: "var(--color-foreground)" }}
-              />
-              <button
-                type="button"
-                onClick={handleAddTag}
-                className="px-2 py-0.5 border border-primary-gold rounded text-xs font-display"
-                style={{ color: "var(--color-primary-gold)" }}
-              >
-                +
-              </button>
-            </div>
-            {tagError && (
-              <div className="text-xs mt-1 px-1 py-0.5 rounded" style={{ backgroundColor: "rgba(239, 68, 68, 0.1)", color: "#ef4444", border: "1px solid #ef4444" }}>
-                ⚠️ {tagError}
+                  +
+                </button>
               </div>
-            )}
-          </div>
-
-          {/* Linked Tasks Column */}
-          <div className="flex flex-col">
-            {linkedTasks.length > 0 && (
-              <div className="flex gap-1 flex-wrap mb-2 max-h-12 overflow-y-auto">
-                {linkedTasks.map((task) => {
-                  const linkedTask = tasks.find((t) => t.id === task.id);
-                  const statusEmoji =
-                    linkedTask?.status === "done"
-                      ? "✓"
-                      : linkedTask?.status === "in_progress"
-                        ? "▶"
-                        : linkedTask?.status === "blocked"
-                          ? "⊘"
-                          : "○";
-
-                  return (
-                    <div
-                      key={task.id}
-                      className="px-1.5 py-0.5 rounded border border-gray-500 flex items-center gap-0.5 text-xs group hover:border-primary-gold transition-colors flex-shrink-0"
-                      style={{ color: "var(--color-foreground)" }}
-                    >
-                      <span className="text-xs">{statusEmoji}</span>
-                      <span className="truncate max-w-[80px] text-xs">{task.title}</span>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const newTaskIds = taskIds.filter((id) => id !== task.id);
-                          setTaskIds(newTaskIds);
-                          setLinkedTasks(linkedTasks.filter((t) => t.id !== task.id));
-                          debouncedSave();
-                        }}
-                        className="opacity-50 group-hover:opacity-100 text-xs"
-                      >
-                        ✕
-                      </button>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-
-            {/* Task Search Input */}
-            <div className="relative">
-              <input
-                ref={taskSearchRef}
-                type="text"
-                value={taskSearch}
-                onChange={(e) => setTaskSearch(e.target.value)}
-                onFocus={() => setShowTaskPicker(true)}
-                onBlur={() => setTimeout(() => setShowTaskPicker(false), 150)}
-                placeholder="quest"
-                className="w-full px-1.5 py-0.25 border border-gray-500 rounded bg-panel text-xs transition-all"
-                style={{
-                  borderColor: showTaskPicker ? "var(--color-primary-gold)" : "var(--color-border)",
-                  color: "var(--color-foreground)",
-                }}
-              />
-
-              {/* Task Picker Dropdown */}
-              {showTaskPicker && (
-                <div
-                  className="absolute bottom-full left-0 right-0 mb-0.5 border border-gray-500 rounded bg-panel overflow-hidden z-50"
-                  style={{ borderColor: "var(--color-primary-gold)" }}
-                >
-                  <div
-                    className="max-h-48 overflow-y-auto"
-                    style={{ backgroundColor: "var(--color-bg-panel)" }}
-                  >
-                    {tasks
-                      .filter(
-                        (task) =>
-                          !taskIds.includes(task.id) &&
-                          task.title.toLowerCase().includes(taskSearch.toLowerCase())
-                      )
-                      .slice(0, 6)
-                      .map((task, idx, arr) => {
-                        const priorityColor =
-                          task.priority === "p0"
-                            ? "--color-priority-p0"
-                            : task.priority === "p1"
-                              ? "--color-priority-p1"
-                              : "--color-primary-gold";
-
-                        const statusLabel =
-                          task.status === "done"
-                            ? "Done"
-                            : task.status === "in_progress"
-                              ? "In Progress"
-                              : task.status === "blocked"
-                                ? "Blocked"
-                                : task.status === "ready"
-                                  ? "Ready"
-                                  : task.status === "inbox"
-                                    ? "Inbox"
-                                    : task.status.charAt(0).toUpperCase() + task.status.slice(1);
-
-                        return (
-                          <button
-                            key={task.id}
-                            type="button"
-                            onMouseDown={(e) => {
-                              e.preventDefault();
-                              setTaskIds([...taskIds, task.id]);
-                              setLinkedTasks([...linkedTasks, { id: task.id, title: task.title }]);
-                              setTaskSearch("");
-                              debouncedSave();
-                              setTimeout(() => taskSearchRef.current?.focus(), 0);
-                            }}
-                            className="w-full text-left px-1.5 py-1 transition-all text-xs hover:bg-primary/20 flex items-center gap-1.5"
-                            style={{
-                              borderBottom:
-                                idx < arr.length - 1
-                                  ? "1px solid var(--color-border)"
-                                  : "none",
-                              color: "var(--color-foreground)",
-                            }}
-                          >
-                            <span className="text-xs flex-shrink-0 px-1 rounded" style={{ backgroundColor: `var(${priorityColor})/20`, color: `var(${priorityColor})` }}>
-                              {statusLabel}
-                            </span>
-                            <span className="truncate flex-1">{task.title}</span>
-                            {task.project && (
-                              <span className="text-xs text-muted-foreground flex-shrink-0">
-                                {task.project}
-                              </span>
-                            )}
-                            {task.dueDate && (
-                              <span className="text-xs text-muted-foreground flex-shrink-0">
-                                {new Date(task.dueDate).toLocaleDateString("en-US", {
-                                  month: "short",
-                                  day: "numeric",
-                                })}
-                              </span>
-                            )}
-                            <span
-                              className="px-0.5 rounded text-xs flex-shrink-0"
-                              style={{
-                                backgroundColor: `var(${priorityColor})/20`,
-                                color: `var(${priorityColor})`,
-                              }}
-                            >
-                              {task.priority.toUpperCase()}
-                            </span>
-                          </button>
-                        );
-                      })}
-                    {tasks.filter(
-                      (task) =>
-                        !taskIds.includes(task.id) &&
-                        task.title.toLowerCase().includes(taskSearch.toLowerCase())
-                    ).length === 0 && (
-                      <div
-                        className="px-1.5 py-0.5 text-xs text-center"
-                        style={{ color: "var(--color-text-muted)" }}
-                      >
-                        {taskSearch ? "No results" : "No quests"}
-                      </div>
-                    )}
-                  </div>
+              {tagError && (
+                <div className="text-xs mt-1 px-1 py-0.5 rounded" style={{ backgroundColor: "rgba(239, 68, 68, 0.1)", color: "#ef4444", border: "1px solid #ef4444" }}>
+                  ⚠️ {tagError}
                 </div>
               )}
             </div>
-          </div>
-        </div>
 
-        {/* Linked Notes — docs/01-product.md §14 note-to-note linking */}
-        <div className="px-3 pb-3 text-xs">
-          <div className="mb-1" style={{ color: "var(--color-text-muted)" }}>🔗 Linked Notes</div>
-          {!currentNoteId ? (
-            <div className="text-xs" style={{ color: "var(--color-text-muted)" }}>Save this note first to link it to others.</div>
-          ) : (
-            <>
-              {linkedNotes.length > 0 && (
+            {/* Linked Tasks Column */}
+            <div className="flex flex-col">
+              {linkedTasks.length > 0 && (
                 <div className="flex gap-1 flex-wrap mb-2 max-h-12 overflow-y-auto">
-                  {linkedNotes.map((n) => (
-                    <div
-                      key={n.id}
-                      className="px-1.5 py-0.5 rounded border border-gray-500 flex items-center gap-0.5 text-xs group hover:border-primary-gold transition-colors flex-shrink-0"
-                      style={{ color: "var(--color-foreground)" }}
-                    >
-                      <span className="truncate max-w-[120px] text-xs">{n.title}</span>
-                      <button
-                        type="button"
-                        onClick={() => handleUnlinkNote(n.id)}
-                        className="opacity-50 group-hover:opacity-100 text-xs"
+                  {linkedTasks.map((task) => {
+                    const linkedTask = tasks.find((t) => t.id === task.id);
+                    const statusEmoji =
+                      linkedTask?.status === "done"
+                        ? "✓"
+                        : linkedTask?.status === "in_progress"
+                          ? "▶"
+                          : linkedTask?.status === "blocked"
+                            ? "⊘"
+                            : "○";
+
+                    return (
+                      <div
+                        key={task.id}
+                        className="px-1.5 py-0.5 rounded border border-gray-500 flex items-center gap-0.5 text-xs group hover:border-primary-gold transition-colors flex-shrink-0"
+                        style={{ color: "var(--color-foreground)" }}
                       >
-                        ✕
-                      </button>
-                    </div>
-                  ))}
+                        <span className="text-xs">{statusEmoji}</span>
+                        <span className="truncate max-w-[80px] text-xs">{task.title}</span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const newTaskIds = taskIds.filter((id) => id !== task.id);
+                            setTaskIds(newTaskIds);
+                            setLinkedTasks(linkedTasks.filter((t) => t.id !== task.id));
+                            debouncedSave();
+                          }}
+                          className="opacity-50 group-hover:opacity-100 text-xs"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
+
+              {/* Task Search Input */}
               <div className="relative">
                 <input
-                  ref={noteLinkSearchRef}
+                  ref={taskSearchRef}
                   type="text"
-                  value={noteLinkSearch}
-                  onChange={(e) => setNoteLinkSearch(e.target.value)}
-                  onFocus={() => setShowNoteLinkPicker(true)}
-                  onBlur={() => setTimeout(() => setShowNoteLinkPicker(false), 150)}
-                  placeholder="link a note..."
-                  className="w-full max-w-xs px-1.5 py-0.25 border border-gray-500 rounded bg-panel text-xs transition-all"
+                  value={taskSearch}
+                  onChange={(e) => setTaskSearch(e.target.value)}
+                  onFocus={() => setShowTaskPicker(true)}
+                  onBlur={() => setTimeout(() => setShowTaskPicker(false), 150)}
+                  placeholder="quest"
+                  className="w-full px-1.5 py-0.25 border border-gray-500 rounded bg-panel text-xs transition-all"
                   style={{
-                    borderColor: showNoteLinkPicker ? "var(--color-primary-gold)" : "var(--color-border)",
+                    borderColor: showTaskPicker ? "var(--color-primary-gold)" : "var(--color-border)",
                     color: "var(--color-foreground)",
                   }}
                 />
-                {showNoteLinkPicker && (
+
+                {/* Task Picker Dropdown */}
+                {showTaskPicker && (
                   <div
-                    className="absolute bottom-full left-0 w-full max-w-xs mb-0.5 border border-gray-500 rounded bg-panel overflow-hidden z-50"
+                    className="absolute bottom-full left-0 right-0 mb-0.5 border border-gray-500 rounded bg-panel overflow-hidden z-50"
                     style={{ borderColor: "var(--color-primary-gold)" }}
                   >
-                    <div className="max-h-48 overflow-y-auto" style={{ backgroundColor: "var(--color-bg-panel)" }}>
-                      {noteLinkResults.map((n, idx, arr) => (
-                        <button
-                          key={n.id}
-                          type="button"
-                          onMouseDown={(e) => {
-                            e.preventDefault();
-                            handleLinkNote(n);
-                            setTimeout(() => noteLinkSearchRef.current?.focus(), 0);
-                          }}
-                          className="w-full text-left px-1.5 py-1 transition-all text-xs hover:bg-primary/20 truncate"
-                          style={{
-                            borderBottom: idx < arr.length - 1 ? "1px solid var(--color-border)" : "none",
-                            color: "var(--color-foreground)",
-                          }}
+                    <div
+                      className="max-h-48 overflow-y-auto"
+                      style={{ backgroundColor: "var(--color-bg-panel)" }}
+                    >
+                      {tasks
+                        .filter(
+                          (task) =>
+                            !taskIds.includes(task.id) &&
+                            task.title.toLowerCase().includes(taskSearch.toLowerCase())
+                        )
+                        .slice(0, 6)
+                        .map((task, idx, arr) => {
+                          const priorityColor =
+                            task.priority === "p0"
+                              ? "--color-priority-p0"
+                              : task.priority === "p1"
+                                ? "--color-priority-p1"
+                                : "--color-primary-gold";
+
+                          const statusLabel =
+                            task.status === "done"
+                              ? "Done"
+                              : task.status === "in_progress"
+                                ? "In Progress"
+                                : task.status === "blocked"
+                                  ? "Blocked"
+                                  : task.status === "ready"
+                                    ? "Ready"
+                                    : task.status === "inbox"
+                                      ? "Inbox"
+                                      : task.status.charAt(0).toUpperCase() + task.status.slice(1);
+
+                          return (
+                            <button
+                              key={task.id}
+                              type="button"
+                              onMouseDown={(e) => {
+                                e.preventDefault();
+                                setTaskIds([...taskIds, task.id]);
+                                setLinkedTasks([...linkedTasks, { id: task.id, title: task.title }]);
+                                setTaskSearch("");
+                                debouncedSave();
+                                setTimeout(() => taskSearchRef.current?.focus(), 0);
+                              }}
+                              className="w-full text-left px-1.5 py-1 transition-all text-xs hover:bg-primary/20 flex items-center gap-1.5"
+                              style={{
+                                borderBottom:
+                                  idx < arr.length - 1
+                                    ? "1px solid var(--color-border)"
+                                    : "none",
+                                color: "var(--color-foreground)",
+                              }}
+                            >
+                              <span className="text-xs flex-shrink-0 px-1 rounded" style={{ backgroundColor: `var(${priorityColor})/20`, color: `var(${priorityColor})` }}>
+                                {statusLabel}
+                              </span>
+                              <span className="truncate flex-1">{task.title}</span>
+                              {task.project && (
+                                <span className="text-xs text-muted-foreground flex-shrink-0">
+                                  {task.project}
+                                </span>
+                              )}
+                              {task.dueDate && (
+                                <span className="text-xs text-muted-foreground flex-shrink-0">
+                                  {new Date(task.dueDate).toLocaleDateString("en-US", {
+                                    month: "short",
+                                    day: "numeric",
+                                  })}
+                                </span>
+                              )}
+                              <span
+                                className="px-0.5 rounded text-xs flex-shrink-0"
+                                style={{
+                                  backgroundColor: `var(${priorityColor})/20`,
+                                  color: `var(${priorityColor})`,
+                                }}
+                              >
+                                {task.priority.toUpperCase()}
+                              </span>
+                            </button>
+                          );
+                        })}
+                      {tasks.filter(
+                        (task) =>
+                          !taskIds.includes(task.id) &&
+                          task.title.toLowerCase().includes(taskSearch.toLowerCase())
+                      ).length === 0 && (
+                        <div
+                          className="px-1.5 py-0.5 text-xs text-center"
+                          style={{ color: "var(--color-text-muted)" }}
                         >
-                          {n.title}
-                        </button>
-                      ))}
-                      {noteLinkResults.length === 0 && (
-                        <div className="px-1.5 py-0.5 text-xs text-center" style={{ color: "var(--color-text-muted)" }}>
-                          {noteLinkSearch ? "No results" : "No other notes"}
+                          {taskSearch ? "No results" : "No quests"}
                         </div>
                       )}
                     </div>
                   </div>
                 )}
               </div>
-            </>
-          )}
+            </div>
+          </div>
+
+          {/* Linked Notes — docs/01-product.md §14 note-to-note linking */}
+          <div className="px-3 pb-3 text-xs">
+            <div className="mb-1" style={{ color: "var(--color-text-muted)" }}>🔗 Linked Notes</div>
+            {!currentNoteId ? (
+              <div className="text-xs" style={{ color: "var(--color-text-muted)" }}>Save this note first to link it to others.</div>
+            ) : (
+              <>
+                {linkedNotes.length > 0 && (
+                  <div className="flex gap-1 flex-wrap mb-2 max-h-12 overflow-y-auto">
+                    {linkedNotes.map((n) => (
+                      <div
+                        key={n.id}
+                        className="px-1.5 py-0.5 rounded border border-gray-500 flex items-center gap-0.5 text-xs group hover:border-primary-gold transition-colors flex-shrink-0"
+                        style={{ color: "var(--color-foreground)" }}
+                      >
+                        <span className="truncate max-w-[120px] text-xs">{n.title}</span>
+                        <button
+                          type="button"
+                          onClick={() => handleUnlinkNote(n.id)}
+                          className="opacity-50 group-hover:opacity-100 text-xs"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <div className="relative">
+                  <input
+                    ref={noteLinkSearchRef}
+                    type="text"
+                    value={noteLinkSearch}
+                    onChange={(e) => setNoteLinkSearch(e.target.value)}
+                    onFocus={() => setShowNoteLinkPicker(true)}
+                    onBlur={() => setTimeout(() => setShowNoteLinkPicker(false), 150)}
+                    placeholder="link a note..."
+                    className="w-full max-w-xs px-1.5 py-0.25 border border-gray-500 rounded bg-panel text-xs transition-all"
+                    style={{
+                      borderColor: showNoteLinkPicker ? "var(--color-primary-gold)" : "var(--color-border)",
+                      color: "var(--color-foreground)",
+                    }}
+                  />
+                  {showNoteLinkPicker && (
+                    <div
+                      className="absolute bottom-full left-0 w-full max-w-xs mb-0.5 border border-gray-500 rounded bg-panel overflow-hidden z-50"
+                      style={{ borderColor: "var(--color-primary-gold)" }}
+                    >
+                      <div className="max-h-48 overflow-y-auto" style={{ backgroundColor: "var(--color-bg-panel)" }}>
+                        {noteLinkResults.map((n, idx, arr) => (
+                          <button
+                            key={n.id}
+                            type="button"
+                            onMouseDown={(e) => {
+                              e.preventDefault();
+                              handleLinkNote(n);
+                              setTimeout(() => noteLinkSearchRef.current?.focus(), 0);
+                            }}
+                            className="w-full text-left px-1.5 py-1 transition-all text-xs hover:bg-primary/20 truncate"
+                            style={{
+                              borderBottom: idx < arr.length - 1 ? "1px solid var(--color-border)" : "none",
+                              color: "var(--color-foreground)",
+                            }}
+                          >
+                            {n.title}
+                          </button>
+                        ))}
+                        {noteLinkResults.length === 0 && (
+                          <div className="px-1.5 py-0.5 text-xs text-center" style={{ color: "var(--color-text-muted)" }}>
+                            {noteLinkSearch ? "No results" : "No other notes"}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
         </div>
 
         <GamificationFooter wordCount={wordCount} hasStreak={false} />
