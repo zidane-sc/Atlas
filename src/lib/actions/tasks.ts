@@ -503,3 +503,41 @@ export async function getTaskDetails(
     },
   };
 }
+
+export async function resetAllTasksAction(): Promise<ActionResult<Partial<CharacterSheetData>>> {
+  const session = await auth();
+  if (!session?.user?.email) {
+    return { success: false, error: { code: "UNAUTHORIZED", message: "Sign in required." } };
+  }
+
+  const user = await db.user.findUnique({
+    where: { email: session.user.email },
+    select: { id: true },
+  });
+
+  if (!user) {
+    return { success: false, error: { code: "NOT_FOUND", message: "User not found." } };
+  }
+
+  try {
+    await db.task.updateMany({
+      where: { ownerId: user.id, deletedAt: null },
+      data: { deletedAt: new Date() },
+    });
+
+    let sheetData: CharacterSheetData | undefined;
+    try {
+      sheetData = await getCharacterSheetData(user.id);
+    } catch (sheetErr) {
+      console.error("Failed to compute character sheet after reset:", sheetErr);
+    }
+
+    return {
+      success: true,
+      data: sheetData ?? {},
+    };
+  } catch (error) {
+    console.error("Failed to reset tasks:", error);
+    return { success: false, error: { code: "INTERNAL", message: "Failed to reset tasks." } };
+  }
+}

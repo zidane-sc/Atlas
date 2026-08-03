@@ -17,6 +17,7 @@ import {
   logWorkSession as apiLogWorkSession,
   startFocusTimerAction as apiStartFocusTimer,
   stopFocusTimerAction as apiStopFocusTimer,
+  resetAllTasksAction as apiResetAllTasks,
 } from "@/lib/actions/tasks";
 import { togglePin as apiTogglePin } from "@/lib/actions/pinned";
 import { loadMoreTasks as apiLoadMoreTasks } from "@/lib/actions/tasks-load-more";
@@ -614,19 +615,26 @@ export function TasksProvider({
         }
       },
       reset: async () => {
-        dispatch({ type: "reset", tasks: initialTasksRef.current });
+        dispatch({ type: "reset", tasks: [] });
         setSheet({ open: false, mode: "create", task: null });
         setJustCompletedAt(null);
         setBonusXp(0);
         setBonusCoins(0);
-        setCharacterSheet(computeCharacterSheet([], 0, 0));
         setUnlockedAchievements(computeUnlockedAchievements([], projects as any[], sprints as any[]));
         setPurchasedDecorations([]);
         setPlacedDecorations({});
         setSavedFilters([]);
         setLastQuestClaimedAt(null);
         setActiveTimer(null);
-        await apiUpdateUserStats({ bonusXp: 0, bonusCoins: 0 });
+        const [tasksRes, statsRes] = await Promise.all([
+          apiResetAllTasks(),
+          apiUpdateUserStats({ bonusXp: 0, bonusCoins: 0 }),
+        ]);
+        if (tasksRes.success && tasksRes.data.characterSheet) {
+          setCharacterSheet(tasksRes.data.characterSheet);
+        } else if (statsRes.success && statsRes.data.characterSheet) {
+          setCharacterSheet(statsRes.data.characterSheet);
+        }
       },
       loadMore: async (lastTaskId) => {
         const result = await apiLoadMoreTasks({ cursor: lastTaskId, limit: 100 });

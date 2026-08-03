@@ -12,7 +12,7 @@ const updateStatsSchema = z.object({
   bonusCoins: z.number().int().min(0),
 });
 
-export async function updateUserStats(input: unknown): Promise<ActionResult<{ bonusXp: number; bonusCoins: number }>> {
+export async function updateUserStats(input: unknown): Promise<ActionResult<{ bonusXp: number; bonusCoins: number } & Partial<CharacterSheetData>>> {
   const session = await auth();
   if (!session?.user?.email) {
     return { success: false, error: { code: "UNAUTHORIZED", message: "Sign in required." } };
@@ -27,6 +27,15 @@ export async function updateUserStats(input: unknown): Promise<ActionResult<{ bo
   }
 
   try {
+    const user = await db.user.findUnique({
+      where: { email: session.user.email },
+      select: { id: true },
+    });
+
+    if (!user) {
+      return { success: false, error: { code: "NOT_FOUND", message: "User not found." } };
+    }
+
     const updated = await db.user.update({
       where: { email: session.user.email },
       data: {
@@ -35,11 +44,19 @@ export async function updateUserStats(input: unknown): Promise<ActionResult<{ bo
       },
     });
 
+    let sheetData: CharacterSheetData | undefined;
+    try {
+      sheetData = await getCharacterSheetData(user.id);
+    } catch (sheetErr) {
+      console.error("Failed to compute character sheet after updating user stats:", sheetErr);
+    }
+
     return {
       success: true,
       data: {
         bonusXp: updated.bonusXp,
         bonusCoins: updated.bonusCoins,
+        ...sheetData,
       },
     };
   } catch {
