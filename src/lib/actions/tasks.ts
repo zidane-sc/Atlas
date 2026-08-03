@@ -520,9 +520,8 @@ export async function resetAllTasksAction(): Promise<ActionResult<Partial<Charac
   }
 
   try {
-    await db.task.updateMany({
-      where: { ownerId: user.id, deletedAt: null },
-      data: { deletedAt: new Date() },
+    await db.task.deleteMany({
+      where: { ownerId: user.id },
     });
 
     let sheetData: CharacterSheetData | undefined;
