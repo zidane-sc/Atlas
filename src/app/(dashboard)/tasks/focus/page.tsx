@@ -7,7 +7,9 @@ import { useTasks } from "@/components/providers/TasksProvider";
 export default function Page() {
   const { tasks: allTasks } = useTasks();
   const tasks = allTasks.filter(
-    (t) => t.status === "ready" && (t.priority === "p0" || t.priority === "p1")
+    (t) =>
+      (t.status === "ready" || t.status === "in_progress") &&
+      (t.priority === "p0" || t.priority === "p1")
   );
 
   return (
@@ -15,7 +17,7 @@ export default function Page() {
       title="FOCUS MODE"
       colorVar="--color-status-ready"
       icon={Crosshair}
-      desc="P0+P1 priority AND Ready status — work that matters most"
+      desc="P0+P1 priority AND Ready or In Progress status — work that matters most"
       tasks={tasks}
       empty="[ ALL DONE — REST ]"
     />
