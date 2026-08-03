@@ -2,7 +2,7 @@ import type { ImportPayload, ValidationError, ImportValidationResult } from "@/l
 
 // Re-export for convenience
 const validTaskStatuses = new Set(["inbox", "todo", "ready", "in_progress", "blocked", "waiting_external", "testing", "done"]);
-const validTaskTypes = new Set(["coding", "design", "documentation", "testing", "devops", "other"]);
+const validTaskTypes = new Set(["coding", "design", "documentation", "testing", "devops", "study", "other"]);
 const validTaskPriorities = new Set(["p0", "p1", "p2", "p3"]);
 const validTaskEfforts = new Set(["xs", "s", "m", "l", "xl", "xxl"]);
 const validProjectStatuses = new Set(["active", "archived", "paused"]);
@@ -134,7 +134,7 @@ export function validateImportPayload(payload: ImportPayload): ImportValidationR
     }
   }
 
-  const result = {
+  return {
     counts: {
       tasks: payload.tasks?.length ?? 0,
       projects: payload.projects?.length ?? 0,
@@ -145,6 +145,4 @@ export function validateImportPayload(payload: ImportPayload): ImportValidationR
     },
     errors,
   };
-  console.log("Validation result:", result);
-  return result;
 }

@@ -25,7 +25,7 @@ function parseDate(dateStr: string | null | undefined): Date | null {
 }
 
 const validTaskStatuses = new Set(["inbox", "todo", "ready", "in_progress", "blocked", "waiting_external", "testing", "done"]);
-const validTaskTypes = new Set(["coding", "design", "documentation", "testing", "devops", "other"]);
+const validTaskTypes = new Set(["coding", "design", "documentation", "testing", "devops", "study", "other"]);
 const validTaskPriorities = new Set(["p0", "p1", "p2", "p3"]);
 const validTaskEfforts = new Set(["xs", "s", "m", "l", "xl", "xxl"]);
 const validProjectStatuses = new Set(["active", "archived", "paused"]);
