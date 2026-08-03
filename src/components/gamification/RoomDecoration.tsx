@@ -103,21 +103,30 @@ export function RoomDecoration() {
     }
   };
 
-  const handleDragStart = (e: React.MouseEvent, category: "desk" | "chair" | "decor" | "wallpaper" | "floor", currentX: number, currentY: number) => {
+  const getPoint = (e: React.MouseEvent | React.TouchEvent): { x: number; y: number } => {
+    if ("touches" in e) {
+      const touch = e.touches[0] ?? e.changedTouches[0];
+      return { x: touch.clientX, y: touch.clientY };
+    }
+    return { x: e.clientX, y: e.clientY };
+  };
+
+  const handleDragStart = (e: React.MouseEvent | React.TouchEvent, category: "desk" | "chair" | "decor" | "wallpaper" | "floor", currentX: number, currentY: number) => {
+    const point = getPoint(e);
     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-    const parentRect = (e.currentTarget.parentElement as HTMLElement).getBoundingClientRect();
-    const offsetX = e.clientX - rect.left;
-    const offsetY = e.clientY - rect.top;
+    const offsetX = point.x - rect.left;
+    const offsetY = point.y - rect.top;
     setDragging({ category, offsetX, offsetY });
     setDragPos({ x: currentX, y: currentY });
     e.preventDefault();
   };
 
-  const handleMouseMove = (e: React.MouseEvent) => {
+  const handleMouseMove = (e: React.MouseEvent | React.TouchEvent) => {
     if (!dragging || !dragPos) return;
+    const point = getPoint(e);
     const roomRect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-    const x = Math.max(0, Math.min(100, ((e.clientX - roomRect.left - dragging.offsetX) / roomRect.width) * 100));
-    const yFromTop = ((e.clientY - roomRect.top - dragging.offsetY) / roomRect.height) * 100;
+    const x = Math.max(0, Math.min(100, ((point.x - roomRect.left - dragging.offsetX) / roomRect.width) * 100));
+    const yFromTop = ((point.y - roomRect.top - dragging.offsetY) / roomRect.height) * 100;
     const y = Math.max(0, Math.min(100, 100 - yFromTop));
     setDragPos({ x, y });
   };
@@ -141,11 +150,15 @@ export function RoomDecoration() {
         onMouseMove={handleMouseMove}
         onMouseUp={handleDragEnd}
         onMouseLeave={handleDragEnd}
+        onTouchMove={handleMouseMove}
+        onTouchEnd={handleDragEnd}
+        onTouchCancel={handleDragEnd}
         style={{
           height: "260px",
           borderColor: "var(--color-primary-gold)",
           boxShadow: "0 0 24px rgba(240,180,41,0.15), inset 0 0 20px rgba(0,0,0,0.8)",
           cursor: dragging ? "grabbing" : "default",
+          touchAction: dragging ? "none" : undefined,
         }}
       >
         {/* Wall background */}
@@ -196,11 +209,13 @@ export function RoomDecoration() {
           <div
             className="absolute select-none cursor-grab active:cursor-grabbing"
             onMouseDown={(e) => handleDragStart(e, "chair", chairPos.x, chairPos.y)}
+            onTouchStart={(e) => handleDragStart(e, "chair", chairPos.x, chairPos.y)}
             style={{
               left: `${dragging?.category === "chair" && dragPos ? dragPos.x : chairPos.x}%`,
               bottom: `${dragging?.category === "chair" && dragPos ? dragPos.y : chairPos.y}%`,
               zIndex: 5,
               fontSize: "38px",
+              touchAction: "none",
               transition: dragging?.category === "chair" ? "none" : "all 300ms",
             }}
             title={`${chairObj.name} (drag to move)`}
@@ -214,11 +229,13 @@ export function RoomDecoration() {
           <div
             className="absolute select-none cursor-grab active:cursor-grabbing"
             onMouseDown={(e) => handleDragStart(e, "desk", deskPos.x, deskPos.y)}
+            onTouchStart={(e) => handleDragStart(e, "desk", deskPos.x, deskPos.y)}
             style={{
               left: `${dragging?.category === "desk" && dragPos ? dragPos.x : deskPos.x}%`,
               bottom: `${dragging?.category === "desk" && dragPos ? dragPos.y : deskPos.y}%`,
               zIndex: 8,
               fontSize: "44px",
+              touchAction: "none",
               transition: dragging?.category === "desk" ? "none" : "all 300ms",
             }}
             title={`${deskObj.name} (drag to move)`}
@@ -232,11 +249,13 @@ export function RoomDecoration() {
           <div
             className="absolute select-none cursor-grab active:cursor-grabbing"
             onMouseDown={(e) => handleDragStart(e, "decor", decorPos.x, decorPos.y)}
+            onTouchStart={(e) => handleDragStart(e, "decor", decorPos.x, decorPos.y)}
             style={{
               left: `${dragging?.category === "decor" && dragPos ? dragPos.x : decorPos.x}%`,
               bottom: `${dragging?.category === "decor" && dragPos ? dragPos.y : decorPos.y}%`,
               zIndex: 6,
               fontSize: "34px",
+              touchAction: "none",
               animation: decorObj.id === "decor-lava" ? "pixelPulse 2s ease-in-out infinite" : "none",
               transition: dragging?.category === "decor" ? "none" : "all 300ms",
             }}
@@ -248,20 +267,20 @@ export function RoomDecoration() {
       </div>
 
       {/* 2. COINS OVERVIEW & CATEGORY TABS */}
-      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-border pb-3">
-        <div className="flex items-center gap-2">
+      <div className="flex flex-col gap-3 border-b border-border pb-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-4">
+        <div className="flex shrink-0 items-center gap-2">
           <span className="font-display text-[9px] text-muted-foreground uppercase tracking-widest">▸ PURCHASE DECORATIONS</span>
           <div className="flex items-center gap-1 border border-border bg-card px-2.5 py-0.5 font-display text-[9px]" style={{ color: "var(--color-coin)" }}>
             🪙 {currentCoins} COINS
           </div>
         </div>
 
-        <div className="flex gap-1.5">
+        <div className="flex gap-1.5 overflow-x-auto pb-1 -mx-1 px-1 sm:mx-0 sm:px-0 sm:pb-0">
           {CATEGORIES.map((cat) => (
             <button
               key={cat.id}
               onClick={() => setActiveTab(cat.id)}
-              className="px-3 py-1 font-display text-[8px] uppercase border transition-all"
+              className="shrink-0 whitespace-nowrap px-3 py-1 font-display text-[8px] uppercase border transition-all"
               style={{
                 backgroundColor: activeTab === cat.id ? "var(--color-primary-gold)" : "var(--color-bg-panel-alt)",
                 color: activeTab === cat.id ? "var(--color-bg-deep)" : "var(--color-text-primary)",

@@ -29,17 +29,17 @@ export default function Page() {
   return (
     <div className="flex h-full flex-col">
       <div
-        className="flex items-center justify-between border-b border-border px-6 py-3"
+        className="flex items-center justify-between border-b border-border px-4 py-3 md:px-6"
         style={{ backgroundColor: "var(--color-bg-panel-alt)" }}
       >
         <h1 className="font-display" style={{ fontSize: "11px", color: "var(--color-primary-gold)" }}>
           ⚡ SPRINTS
         </h1>
-        <Button size="sm" onClick={openCreateForm}><Plus size={12} /> New Sprint</Button>
+        <Button size="sm" onClick={openCreateForm}><Plus size={12} /> <span className="hidden sm:inline">New Sprint</span></Button>
       </div>
 
-      <div className="flex flex-1 overflow-hidden">
-        <div className="w-60 shrink-0 overflow-y-auto border-r border-border">
+      <div className="flex flex-1 flex-col overflow-hidden md:flex-row">
+        <div className="flex shrink-0 overflow-x-auto border-b border-border md:w-60 md:flex-col md:overflow-x-hidden md:overflow-y-auto md:border-b-0 md:border-r">
           {sprints.map((s) => {
             const colorVar = SPRINT_STATUS_COLOR_VAR[s.status];
             const active = s.id === selectedId;
@@ -48,7 +48,7 @@ export default function Page() {
                 key={s.id}
                 type="button"
                 onClick={() => setSelectedId(s.id)}
-                className="w-full border-b border-border px-4 py-3 text-left transition-colors"
+                className="shrink-0 border-r border-border px-4 py-3 text-left transition-colors md:w-full md:border-r-0 md:border-b"
                 style={{
                   backgroundColor: active ? "var(--color-bg-panel)" : "transparent",
                   borderLeft: active ? "2px solid var(--color-primary-gold)" : "2px solid transparent",
@@ -59,17 +59,17 @@ export default function Page() {
                     {s.status.toUpperCase()}
                   </span>
                 </div>
-                <div className="text-sm text-foreground">{s.name}</div>
-                <div className="text-sm text-muted-foreground">{formatDueDate(s.startDate)} → {formatDueDate(s.endDate)}</div>
+                <div className="text-sm text-foreground whitespace-nowrap">{s.name}</div>
+                <div className="hidden text-sm text-muted-foreground whitespace-nowrap md:block">{formatDueDate(s.startDate)} → {formatDueDate(s.endDate)}</div>
               </button>
             );
           })}
         </div>
 
         {sprint && (
-          <div className="flex-1 overflow-y-auto p-6">
+          <div className="flex-1 overflow-y-auto p-4 md:p-6">
             <div className="mb-5">
-              <div className="mb-2 flex items-center gap-3">
+              <div className="mb-2 flex flex-wrap items-center gap-3">
                 <span
                   className="border px-2 py-0.5 text-sm"
                   style={{ color: `var(${SPRINT_STATUS_COLOR_VAR[sprint.status]})`, borderColor: `var(${SPRINT_STATUS_COLOR_VAR[sprint.status]})` }}
@@ -116,8 +116,8 @@ export default function Page() {
                       <StatusBadge status={t.status} />
                       <PriorityMark priority={t.priority} />
                       <span className="flex-1 truncate text-sm text-foreground">{t.title}</span>
-                      <span className="text-sm text-muted-foreground">{t.storyPoint ?? 0} SP</span>
-                      <span className="text-sm text-muted-foreground">{t.dueDate ?? "—"}</span>
+                      <span className="hidden text-sm text-muted-foreground sm:inline">{t.storyPoint ?? 0} SP</span>
+                      <span className="hidden text-sm text-muted-foreground sm:inline">{t.dueDate ?? "—"}</span>
                     </button>
                   ))}
                 </div>

@@ -20,14 +20,14 @@ export function NoteList({ notes, onSelectNote, onDeleteNote, onPinNote }: NoteL
   };
 
   return (
-    <div className="flex-1 overflow-y-auto p-4">
+    <div className="flex-1 overflow-y-auto p-3 sm:p-4">
       {notes.length === 0 ? (
         <div className="p-8 text-center">
           <div className="text-lg mb-2" style={{ color: "var(--color-primary-gold)" }}>📭</div>
           <div className="text-sm text-muted-foreground">No notes yet. Create one to get started.</div>
         </div>
       ) : (
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {notes.map((note) => (
             <div
               key={note.id}
@@ -48,7 +48,7 @@ export function NoteList({ notes, onSelectNote, onDeleteNote, onPinNote }: NoteL
                 <h3 className="font-display text-sm text-foreground flex-1 line-clamp-2" style={{ color: "var(--color-foreground)" }}>
                   {note.title}
                 </h3>
-                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                <div className="flex gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-all">
                   <Button
                     type="button"
                     variant="ghost"

@@ -40,7 +40,7 @@ export default function StatisticsContent({ stats }: { stats: StatisticsData }) 
   return (
     <main className="flex h-full flex-col">
       <div
-        className="flex items-center justify-between px-6 py-3"
+        className="flex items-center justify-between px-4 py-3 sm:px-6"
         style={{ borderBottom: "1px solid var(--color-border)", backgroundColor: "var(--color-bg-panel-alt)" }}
       >
         <h1 className="font-display" style={{ fontSize: "11px", color: "var(--color-primary-gold)" }}>📊 PROGRESS</h1>
@@ -48,10 +48,10 @@ export default function StatisticsContent({ stats }: { stats: StatisticsData }) 
       </div>
 
       <div
-        className="flex flex-wrap items-center gap-1 px-6 py-2"
+        className="flex items-center gap-1 overflow-x-auto px-4 py-2 sm:px-6"
         style={{ backgroundColor: "var(--color-bg-panel-alt)", borderBottom: "1px solid var(--color-border)" }}
       >
-        <span className="mr-3 font-display shrink-0" style={{ fontSize: "7px", color: "var(--color-dim)" }}>VS LAST WEEK</span>
+        <span className="mr-3 shrink-0 font-display" style={{ fontSize: "7px", color: "var(--color-dim)" }}>VS LAST WEEK</span>
         {wow.map(({ label, icon, now, prev }) => {
           const delta = now - prev;
           const flat = delta === 0;
@@ -59,7 +59,7 @@ export default function StatisticsContent({ stats }: { stats: StatisticsData }) 
           const pct = prev > 0 ? Math.round((Math.abs(delta) / prev) * 100) : now > 0 ? 100 : 0;
           const colorVar = flat ? "--color-text-muted" : up ? "--color-status-done" : "--color-status-blocked";
           return (
-            <div key={label} className="mr-4 flex items-center gap-1.5 text-sm" style={{ color: "var(--color-text-muted)" }}>
+            <div key={label} className="mr-4 flex shrink-0 items-center gap-1.5 whitespace-nowrap text-sm" style={{ color: "var(--color-text-muted)" }}>
               <span style={{ color: "var(--color-dim)" }}>{icon}</span>
               <span>{label}:</span>
               <span style={{ color: "var(--color-text-primary)" }}>{now}</span>
@@ -75,7 +75,7 @@ export default function StatisticsContent({ stats }: { stats: StatisticsData }) 
         })}
       </div>
 
-      <div className="flex-1 overflow-y-auto p-6">
+      <div className="flex-1 overflow-y-auto p-4 sm:p-6">
         <div className="flex flex-col gap-5">
           <ActivityHeatmap tasks={tasks} nowAnchor={nowAnchor} />
           <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
@@ -126,7 +126,7 @@ export default function StatisticsContent({ stats }: { stats: StatisticsData }) 
 
             <div className="border-2 border-border bg-card p-4">
               <div className="mb-4 text-sm tracking-widest" style={{ color: "var(--color-status-ready)" }}>▸ BY PRIORITY</div>
-              <div className="flex items-center gap-4">
+              <div className="flex flex-wrap items-center gap-4">
                 <ResponsiveContainer width={130} height={130}>
                   <PieChart>
                     <Pie data={byPriority} dataKey="value" cx="50%" cy="50%" outerRadius={60} paddingAngle={2}>
@@ -177,13 +177,13 @@ export default function StatisticsContent({ stats }: { stats: StatisticsData }) 
               <StatTile label="BEST DAY" value={productivityProfile.bestWeekday ?? "—"} />
               <StatTile label="BEST TIME" value={productivityProfile.bestPeriod ?? "—"} />
             </div>
-            <div className="mt-4 flex items-center gap-3 border-t pt-4 text-sm" style={{ borderColor: "var(--color-border)" }}>
+            <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1 border-t pt-4 text-sm" style={{ borderColor: "var(--color-border)" }}>
               <span style={{ color: "var(--color-dim)" }}>SP EST. VS. ACTUAL (all-time)</span>
               <span style={{ color: "var(--color-text-primary)" }}>{storyPointComparison.estimated} SP estimated</span>
               <span style={{ color: "var(--color-dim)" }}>vs</span>
               <span style={{ color: "var(--color-text-primary)" }}>{storyPointComparison.actualHours}h actual</span>
             </div>
-            <div className="mt-3 flex items-center gap-3 text-sm">
+            <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
               <span style={{ color: "var(--color-dim)" }}>◆ THIS WEEK</span>
               <span className="text-muted-foreground">{doneThisWeekCount} quests</span>
               <span style={{ color: "var(--color-text-primary)" }}>{weeklyStoryPointComparison.estimated} SP est.</span>

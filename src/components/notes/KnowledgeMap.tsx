@@ -38,6 +38,11 @@ export function KnowledgeMap({ selectedTags, onOpenNote }: KnowledgeMapProps) {
   const edgeElRefs = useRef<Map<number, SVGLineElement>>(new Map());
   const animationFrameRef = useRef<number | undefined>(undefined);
   const dragRef = useRef<{ startX: number; startY: number; originX: number; originY: number } | null>(null);
+  const touchRef = useRef<
+    | { mode: "pan"; startX: number; startY: number; originX: number; originY: number }
+    | { mode: "pinch"; startDist: number; startScale: number }
+    | null
+  >(null);
 
   const [bounds, setBounds] = useState({ width: 800, height: 600 });
   const [status, setStatus] = useState<"loading" | "error" | "ready">("loading");
@@ -168,6 +173,41 @@ export function KnowledgeMap({ selectedTags, onOpenNote }: KnowledgeMapProps) {
 
   const handleMouseUp = () => {
     dragRef.current = null;
+  };
+
+  const touchDistance = (a: React.Touch, b: React.Touch) => Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (e.touches.length === 1) {
+      const t = e.touches[0];
+      touchRef.current = { mode: "pan", startX: t.clientX, startY: t.clientY, originX: transform.x, originY: transform.y };
+    } else if (e.touches.length === 2) {
+      touchRef.current = { mode: "pinch", startDist: touchDistance(e.touches[0], e.touches[1]), startScale: transform.scale };
+    }
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    const state = touchRef.current;
+    if (!state) return;
+    if (state.mode === "pan" && e.touches.length === 1) {
+      const t = e.touches[0];
+      const dx = t.clientX - state.startX;
+      const dy = t.clientY - state.startY;
+      setTransform((prev) => ({ ...prev, x: state.originX + dx, y: state.originY + dy }));
+    } else if (state.mode === "pinch" && e.touches.length === 2) {
+      const dist = touchDistance(e.touches[0], e.touches[1]);
+      const scale = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, state.startScale * (dist / state.startDist)));
+      setTransform((prev) => ({ ...prev, scale }));
+    }
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (e.touches.length === 0) {
+      touchRef.current = null;
+    } else if (e.touches.length === 1) {
+      const t = e.touches[0];
+      touchRef.current = { mode: "pan", startX: t.clientX, startY: t.clientY, originX: transform.x, originY: transform.y };
+    }
   };
 
   const enterFocus = (node: MapNode) => {
@@ -321,10 +361,14 @@ export function KnowledgeMap({ selectedTags, onOpenNote }: KnowledgeMapProps) {
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        onTouchCancel={handleTouchEnd}
         onClick={(e) => {
           if (e.target === e.currentTarget && focusedNoteId) exitFocus();
         }}
-        style={{ cursor: "grab" }}
+        style={{ cursor: "grab", touchAction: "none" }}
       >
         <g transform={`translate(${transform.x}, ${transform.y}) scale(${transform.scale})`}>
           {renderEdges.map((edge, i) => (

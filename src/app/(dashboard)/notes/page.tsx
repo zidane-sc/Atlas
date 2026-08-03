@@ -111,49 +111,51 @@ export default function NotesPage() {
         onCancel={() => setDeleteModal({ isOpen: false, noteId: null, title: "" })}
       />
       <div className="flex h-full flex-col">
-        <div className="px-6 py-3 border-b-2 bg-panel-alt" style={{ borderColor: "var(--color-primary-gold)" }}>
+        <div className="px-4 sm:px-6 py-3 border-b-2 bg-panel-alt" style={{ borderColor: "var(--color-primary-gold)" }}>
           <h1 className="font-display text-sm tracking-wide" style={{ color: "var(--color-primary-gold)" }}>
             📚 NOTES
           </h1>
         </div>
 
-      <div className="flex-1 flex flex-col gap-4 p-6 overflow-hidden">
-        <div className="flex gap-2">
+      <div className="flex-1 flex flex-col gap-4 p-4 sm:p-6 overflow-hidden">
+        <div className="flex flex-col sm:flex-row gap-2">
           {viewMode === "list" ? (
             <input
               type="text"
               placeholder="Search notes..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="flex-1 px-3 py-2 border border-border rounded bg-card text-sm"
+              className="flex-1 px-3 py-2 border border-border rounded bg-card text-sm min-w-0"
             />
           ) : (
-            <div className="flex-1" />
+            <div className="flex-1 hidden sm:block" />
           )}
-          <div className="flex items-center border border-border rounded overflow-hidden">
+          <div className="flex items-center gap-2">
+            <div className="flex flex-1 sm:flex-initial items-center border border-border rounded overflow-hidden">
+              <button
+                onClick={() => setViewMode("list")}
+                className={`flex flex-1 sm:flex-initial items-center justify-center gap-1 px-3 py-2 text-sm transition-colors ${
+                  viewMode === "list" ? "bg-primary text-primary-foreground" : "bg-card text-muted-foreground hover:bg-accent"
+                }`}
+              >
+                <List size={14} /> <span className="hidden sm:inline">List</span>
+              </button>
+              <button
+                onClick={() => setViewMode("map")}
+                className={`flex flex-1 sm:flex-initial items-center justify-center gap-1 px-3 py-2 text-sm transition-colors ${
+                  viewMode === "map" ? "bg-primary text-primary-foreground" : "bg-card text-muted-foreground hover:bg-accent"
+                }`}
+              >
+                <MapIcon size={14} /> <span className="hidden sm:inline">Knowledge Map</span>
+              </button>
+            </div>
             <button
-              onClick={() => setViewMode("list")}
-              className={`flex items-center gap-1 px-3 py-2 text-sm transition-colors ${
-                viewMode === "list" ? "bg-primary text-primary-foreground" : "bg-card text-muted-foreground hover:bg-accent"
-              }`}
+              onClick={() => setIsCreating(true)}
+              className="px-4 py-2 bg-primary text-primary-foreground rounded text-sm whitespace-nowrap"
             >
-              <List size={14} /> List
-            </button>
-            <button
-              onClick={() => setViewMode("map")}
-              className={`flex items-center gap-1 px-3 py-2 text-sm transition-colors ${
-                viewMode === "map" ? "bg-primary text-primary-foreground" : "bg-card text-muted-foreground hover:bg-accent"
-              }`}
-            >
-              <MapIcon size={14} /> Knowledge Map
+              New Note
             </button>
           </div>
-          <button
-            onClick={() => setIsCreating(true)}
-            className="px-4 py-2 bg-primary text-primary-foreground rounded text-sm"
-          >
-            New Note
-          </button>
         </div>
 
         {allTags.length > 0 && (

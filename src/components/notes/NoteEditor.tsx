@@ -326,9 +326,9 @@ export function NoteEditor({ noteId, initialData, onSave, onClose }: NoteEditorP
       </div>
 
       {/* Split Pane */}
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-1 flex-col md:flex-row overflow-hidden">
         {/* Editor Left */}
-        <div className="flex flex-col flex-1 border-r-2" style={{ borderColor: "var(--color-primary-gold)" }}>
+        <div className="flex flex-col flex-1 min-h-0 border-b-2 md:border-b-0 md:border-r-2" style={{ borderColor: "var(--color-primary-gold)" }}>
           <div className="px-3 py-2 border-b border-gray-600" style={{ backgroundColor: "var(--color-bg-panel-alt)" }}>
             <span className="text-xs font-display" style={{ color: "var(--color-primary-gold)" }}>
               📝 EDITOR
@@ -344,12 +344,12 @@ export function NoteEditor({ noteId, initialData, onSave, onClose }: NoteEditorP
             }}
             onBlur={handleAutoSave}
             placeholder="Write markdown..."
-            className="flex-1 p-4 font-mono text-sm bg-panel text-foreground border-none outline-none resize-none"
+            className="flex-1 min-h-[200px] p-4 font-mono text-sm bg-panel text-foreground border-none outline-none resize-none"
           />
         </div>
 
         {/* Preview Right */}
-        <div className="flex-1 border-l-2 overflow-hidden" style={{ borderColor: "var(--color-primary-gold)" }}>
+        <div className="flex-1 min-h-0 md:border-l-2 overflow-hidden" style={{ borderColor: "var(--color-primary-gold)" }}>
           <div className="px-3 py-2 border-b border-gray-600" style={{ backgroundColor: "var(--color-bg-panel-alt)" }}>
             <span className="text-xs font-display" style={{ color: "var(--color-primary-gold)" }}>
               👁️ PREVIEW
@@ -366,7 +366,7 @@ export function NoteEditor({ noteId, initialData, onSave, onClose }: NoteEditorP
             🏷️ TAGS & LINKS
           </span>
         </div>
-        <div className="p-3 text-xs grid grid-cols-2 gap-3">
+        <div className="p-3 text-xs grid grid-cols-1 sm:grid-cols-2 gap-3">
           {/* Tags Column */}
           <div className="flex flex-col">
             <div className="flex gap-1 flex-wrap mb-2 max-h-12 overflow-y-auto flex-1">

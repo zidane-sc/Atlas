@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { SessionProvider } from "next-auth/react";
 import { Sidebar } from "@/components/layout/Sidebar";
+import { MobileTopBar } from "@/components/layout/MobileTopBar";
 import { DefaultViewRedirect } from "@/components/layout/DefaultViewRedirect";
 import { CommandPalette } from "@/components/layout/CommandPalette";
 import { TaskFormSheet } from "@/components/tasks/TaskFormSheet";
@@ -10,6 +11,7 @@ import { TasksProvider } from "@/components/providers/TasksProvider";
 import { ProjectsProvider } from "@/components/providers/ProjectsProvider";
 import { SprintsProvider } from "@/components/providers/SprintsProvider";
 import { CommandPaletteProvider } from "@/components/providers/CommandPaletteProvider";
+import { SidebarProvider } from "@/components/providers/SidebarProvider";
 import { SettingsProvider } from "@/components/providers/SettingsProvider";
 import { NotificationProvider } from "@/components/providers/NotificationProvider";
 import { auth } from "@/lib/auth";
@@ -137,10 +139,15 @@ export default async function DashboardLayout({
               initialActiveTimer={initialActiveTimer}
             >
               <CommandPaletteProvider>
-                <div className="flex h-full flex-1 overflow-hidden">
-                  <Sidebar />
-                  <div className="flex-1 overflow-y-auto">{children}</div>
-                </div>
+                <SidebarProvider>
+                  <div className="flex h-full flex-1 overflow-hidden">
+                    <Sidebar />
+                    <div className="flex flex-1 flex-col overflow-hidden">
+                      <MobileTopBar />
+                      <div className="flex-1 overflow-y-auto">{children}</div>
+                    </div>
+                  </div>
+                </SidebarProvider>
                 <TaskFormSheet />
                 <ProjectFormSheet />
                 <SprintFormSheet />
