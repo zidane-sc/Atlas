@@ -515,6 +515,8 @@ const PRIORITY_BAR_TEXT_VAR: Record<Priority, string> = {
 function TimelineTab({ tasks, projects, onSelect }: { tasks: Task[]; projects: Project[]; onSelect: (t: Task) => void }) {
   const TOTAL_DAYS = 28;
   const DAY_MS = 86_400_000;
+  const DAY_WIDTH_PX = 28;
+  const LABEL_WIDTH_PX = 128;
   const start = new Date(MOCK_NOW);
   const active = tasks.filter((t) => t.status !== "done" && t.dueDate);
   const dayOffset = (dueDate: string) => Math.max(0, Math.min(TOTAL_DAYS - 1, Math.floor((new Date(dueDate).getTime() - start.getTime()) / DAY_MS)));
@@ -522,53 +524,67 @@ function TimelineTab({ tasks, projects, onSelect }: { tasks: Task[]; projects: P
   const gridlineStyle = {
     backgroundImage: `repeating-linear-gradient(to right, var(--color-border) 0px, var(--color-border) 1px, transparent 1px, transparent ${dayWidthPct}%)`,
   };
+  const labelBg = { backgroundColor: "var(--color-bg-deep)" };
+
+  const rows = projects
+    .map((p) => ({ project: p, projectTasks: active.filter((t) => t.project === p.name) }))
+    .filter((row) => row.projectTasks.length > 0);
 
   return (
-    <div className="h-full overflow-auto p-6">
-      <div className="mb-3 ml-36 flex pb-2" style={{ borderBottom: "1px solid var(--color-border)", ...gridlineStyle }}>
-        {Array.from({ length: 4 }).map((_, i) => {
-          const d = new Date(start);
-          d.setDate(start.getDate() + i * 7);
-          return (
-            <div key={i} className="flex-1 pl-1 text-sm text-muted-foreground">
-              {d.toLocaleDateString("en-US", { month: "short", day: "numeric" })}
-            </div>
-          );
-        })}
-      </div>
-      {projects.map((p) => {
-        const projectTasks = active.filter((t) => t.project === p.name);
-        if (projectTasks.length === 0) return null;
-        return (
-          <div key={p.id} className="mb-2 flex items-center">
-            <div className="flex w-36 shrink-0 items-center gap-1 truncate text-sm" style={{ color: `var(${p.colorVar})` }}>
-              <span>{p.emoji}</span>{p.name}
-            </div>
-            <div className="relative h-7 flex-1" style={gridlineStyle}>
-              {projectTasks.map((t) => {
-                const pct = (dayOffset(t.dueDate!) / TOTAL_DAYS) * 100;
-                return (
-                  <button
-                    key={t.id}
-                    type="button"
-                    title={t.title}
-                    onClick={() => onSelect(t)}
-                    className="absolute top-1 h-5 max-w-[140px] min-w-[90px] cursor-pointer overflow-hidden px-1.5 transition-opacity hover:opacity-70"
-                    style={{ left: `${pct}%`, backgroundColor: `var(--color-priority-${t.priority})`, border: `1px solid var(${STATUS_COLOR_VAR[t.status]})` }}
-                  >
-                    <div style={{ display: "flex", flexDirection: "column", gap: "2px", fontSize: "10px" }}>
-                      <span style={{ fontWeight: "bold", textTransform: "uppercase" }}>{t.code}</span>
-                      <span className="block truncate text-sm font-bold" style={{ color: `var(${PRIORITY_BAR_TEXT_VAR[t.priority]})` }}>
-                        {t.title}
-                      </span>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
+    <div className="h-full overflow-auto p-3 sm:p-6">
+      {/* Label column stays pinned while the day grid scrolls horizontally — timeline is wider than a phone screen by design (28 days needs room to stay legible). */}
+      <div style={{ minWidth: LABEL_WIDTH_PX + TOTAL_DAYS * DAY_WIDTH_PX }}>
+        <div className="mb-3 flex pb-2" style={{ borderBottom: "1px solid var(--color-border)" }}>
+          <div className="sticky left-0 shrink-0" style={{ width: LABEL_WIDTH_PX, ...labelBg }} />
+          <div className="flex flex-1" style={gridlineStyle}>
+            {Array.from({ length: 4 }).map((_, i) => {
+              const d = new Date(start);
+              d.setDate(start.getDate() + i * 7);
+              return (
+                <div key={i} className="flex-1 pl-1 text-sm text-muted-foreground">
+                  {d.toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                </div>
+              );
+            })}
           </div>
-        );
-      })}
+        </div>
+        {rows.length === 0 ? (
+          <p className="py-10 text-center text-sm text-muted-foreground">No quests with due dates on the board.</p>
+        ) : (
+          rows.map(({ project: p, projectTasks }) => (
+            <div key={p.id} className="mb-2 flex items-center">
+              <div
+                className="sticky left-0 z-10 flex shrink-0 items-center gap-1 truncate text-sm"
+                style={{ width: LABEL_WIDTH_PX, color: `var(${p.colorVar})`, ...labelBg }}
+              >
+                <span>{p.emoji}</span>{p.name}
+              </div>
+              <div className="relative h-7 flex-1" style={gridlineStyle}>
+                {projectTasks.map((t) => {
+                  const pct = (dayOffset(t.dueDate!) / TOTAL_DAYS) * 100;
+                  return (
+                    <button
+                      key={t.id}
+                      type="button"
+                      title={t.title}
+                      onClick={() => onSelect(t)}
+                      className="absolute top-1 h-5 max-w-[140px] min-w-[90px] cursor-pointer overflow-hidden px-1.5 transition-opacity hover:opacity-70"
+                      style={{ left: `${pct}%`, backgroundColor: `var(--color-priority-${t.priority})`, border: `1px solid var(${STATUS_COLOR_VAR[t.status]})` }}
+                    >
+                      <div style={{ display: "flex", flexDirection: "column", gap: "2px", fontSize: "10px" }}>
+                        <span style={{ fontWeight: "bold", textTransform: "uppercase" }}>{t.code}</span>
+                        <span className="block truncate text-sm font-bold" style={{ color: `var(${PRIORITY_BAR_TEXT_VAR[t.priority]})` }}>
+                          {t.title}
+                        </span>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ))
+        )}
+      </div>
     </div>
   );
 }
