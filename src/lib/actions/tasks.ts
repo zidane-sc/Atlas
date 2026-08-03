@@ -9,6 +9,7 @@ import type { ActionResult } from "@/lib/actions/types";
 import { generateTaskCode, getNextTaskCodeNumber } from "@/lib/task-code";
 import type { TaskComment, TaskStatus, TaskStatusLogEntry } from "@/types/task";
 import { getCharacterSheetData, type CharacterSheetData } from "@/lib/character-sheet-data";
+import { seedInitialData } from "@/lib/seeders/initial-data";
 
 function toDate(value: string | null | undefined) {
   if (value === undefined) return undefined;
@@ -520,12 +521,16 @@ export async function resetAllTasksAction(): Promise<ActionResult<Partial<Charac
   }
 
   try {
+    // Delete all data
     await Promise.all([
       db.task.deleteMany({ where: { ownerId: user.id } }),
       db.project.deleteMany({ where: {} }),
       db.sprint.deleteMany({ where: {} }),
       db.note.deleteMany({ where: { userId: user.id } }),
     ]);
+
+    // Seed initial data
+    await seedInitialData(user.id);
 
     let sheetData: CharacterSheetData | undefined;
     try {

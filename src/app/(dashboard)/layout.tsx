@@ -12,13 +12,11 @@ import { SprintsProvider } from "@/components/providers/SprintsProvider";
 import { CommandPaletteProvider } from "@/components/providers/CommandPaletteProvider";
 import { SettingsProvider } from "@/components/providers/SettingsProvider";
 import { NotificationProvider } from "@/components/providers/NotificationProvider";
-import { mockProjects, mockSprints } from "@/lib/mock-data";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { mapDbTaskToClient, mapDbProjectToClient, mapDbSprintToClient } from "@/lib/tasks-reducer";
 import { getCharacterSheetData } from "@/lib/character-sheet-data";
-import { ProjectCategory, ProjectStatus, SprintStatus } from "@/generated/prisma/client";
-import { toDbProjectCategory } from "@/lib/schemas/project";
+import { seedInitialData } from "@/lib/seeders/initial-data";
 import type { SavedFilterClient } from "@/lib/actions/filters";
 import type { UserSetting } from "@/types/settings";
 export default async function DashboardLayout({
@@ -82,52 +80,13 @@ export default async function DashboardLayout({
   let dbProjects = rawDbProjects;
   let dbSprints = rawDbSprints;
 
-  if (dbProjects.length === 0) {
-    const PROJECT_MAP: Record<string, string> = {
-      "ATS": "a0665f80-7a0e-4364-8848-d39f60d3d5f1",
-      "Thesis": "b04e6c9a-d762-4217-a066-6b22b2ee709a",
-      "Client A": "c0559f23-64be-4581-807e-1284eb3b7280",
-      "Atlas": "d09ef1b3-4f24-4f40-8bde-d51025a17688",
-      "Group Project": "e03bf3ab-d886-455f-8647-5d2bc50e3025",
-      "Full-time": "f0f9c2d1-2ee3-4927-99df-1c7c10b429a3",
-    };
-
-    await db.project.createMany({
-      data: mockProjects.map((p) => ({
-        id: PROJECT_MAP[p.name],
-        name: p.name,
-        emoji: p.emoji,
-        colorVar: p.colorVar,
-        category: toDbProjectCategory(p.category) as ProjectCategory,
-        status: p.status as ProjectStatus,
-        description: p.description,
-      })),
-    });
-
+  // Seed initial data on first login (no projects/sprints yet)
+  if (dbProjects.length === 0 || dbSprints.length === 0) {
+    await seedInitialData(owner.id);
     dbProjects = await db.project.findMany({
       where: { archivedAt: null },
       orderBy: { createdAt: "asc" },
     });
-  }
-
-  if (dbSprints.length === 0) {
-    const SPRINT_MAP: Record<string, string> = {
-      "Sprint 7 — The Awakening": "77777777-7777-7777-7777-777777777777",
-      "Sprint 6 — Dark Passage": "66666666-6666-6666-6666-666666666666",
-      "Sprint 8 — The Reckoning": "88888888-8888-8888-8888-888888888888",
-    };
-
-    await db.sprint.createMany({
-      data: mockSprints.map((s) => ({
-        id: SPRINT_MAP[s.name] || crypto.randomUUID(),
-        name: s.name,
-        startDate: new Date(s.startDate),
-        endDate: new Date(s.endDate),
-        status: s.status as SprintStatus,
-        goal: s.goal || null,
-      })),
-    });
-
     dbSprints = await db.sprint.findMany({
       orderBy: { startDate: "asc" },
     });
@@ -172,7 +131,7 @@ export default async function DashboardLayout({
               initialCharacterSheet={characterSheetData.characterSheet}
               initialUnlockedAchievements={characterSheetData.unlockedAchievements}
               initialPurchasedDecorations={owner.purchasedDecorations}
-              initialPlacedDecorations={owner.placedDecorations as Record<string, string | null>}
+              initialPlacedDecorations={owner.placedDecorations as Record<string, any>}
               initialSavedFilters={owner.savedFilters as unknown as SavedFilterClient[]}
               initialLastQuestClaimedAt={owner.lastQuestClaimedAt ? owner.lastQuestClaimedAt.toISOString() : null}
               initialActiveTimer={initialActiveTimer}
