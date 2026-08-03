@@ -2,8 +2,8 @@ import type { ImportPayload, ValidationError, ImportValidationResult } from "@/l
 
 // Re-export for convenience
 const validTaskStatuses = new Set(["inbox", "todo", "ready", "in_progress", "blocked", "waiting_external", "testing", "done"]);
-const validTaskTypes = new Set(["coding", "design", "documentation", "testing", "devops", "study", "other"]);
-const validTaskPriorities = new Set(["p0", "p1", "p2", "p3"]);
+const validTaskTypes = new Set(["coding", "investigation", "study", "analysis", "documentation", "bug", "deployment", "testing", "meeting", "research", "design", "maintenance", "refactor", "incident", "communication"]);
+const validTaskPriorities = new Set(["p0", "p1", "p2", "p3", "p4"]);
 const validTaskEfforts = new Set(["xs", "s", "m", "l", "xl", "xxl"]);
 const validProjectStatuses = new Set(["active", "archived", "paused"]);
 const validSprintStatuses = new Set(["planning", "active", "completed", "cancelled"]);
