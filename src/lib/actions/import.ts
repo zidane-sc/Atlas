@@ -19,6 +19,56 @@ function parseDate(dateStr: string | null | undefined): Date | null {
   return date;
 }
 
+const validTaskStatuses = new Set(["inbox", "todo", "ready", "in_progress", "blocked", "waiting_external", "testing", "done"]);
+const validTaskTypes = new Set(["coding", "design", "documentation", "testing", "devops", "other"]);
+const validTaskPriorities = new Set(["p0", "p1", "p2", "p3"]);
+const validTaskEfforts = new Set(["xs", "s", "m", "l", "xl", "xxl"]);
+const validProjectStatuses = new Set(["active", "archived", "paused"]);
+const validSprintStatuses = new Set(["planning", "active", "completed", "cancelled"]);
+
+function validateTaskStatus(status: unknown): TaskStatus {
+  if (typeof status !== "string" || !validTaskStatuses.has(status)) {
+    throw new Error(`Invalid task status: "${status}". Must be one of: ${Array.from(validTaskStatuses).join(", ")}`);
+  }
+  return status as TaskStatus;
+}
+
+function validateTaskType(type: unknown): TaskType {
+  if (typeof type !== "string" || !validTaskTypes.has(type)) {
+    throw new Error(`Invalid task type: "${type}". Must be one of: ${Array.from(validTaskTypes).join(", ")}`);
+  }
+  return type as TaskType;
+}
+
+function validateTaskPriority(priority: unknown): TaskPriority {
+  if (typeof priority !== "string" || !validTaskPriorities.has(priority)) {
+    throw new Error(`Invalid task priority: "${priority}". Must be one of: ${Array.from(validTaskPriorities).join(", ")}`);
+  }
+  return priority as TaskPriority;
+}
+
+function validateTaskEffort(effort: unknown): TaskEffort | null {
+  if (effort === null || effort === undefined) return null;
+  if (typeof effort !== "string" || !validTaskEfforts.has(effort)) {
+    throw new Error(`Invalid task effort: "${effort}". Must be one of: ${Array.from(validTaskEfforts).join(", ")}`);
+  }
+  return effort as TaskEffort;
+}
+
+function validateProjectStatus(status: unknown): ProjectStatus {
+  if (typeof status !== "string" || !validProjectStatuses.has(status)) {
+    throw new Error(`Invalid project status: "${status}". Must be one of: ${Array.from(validProjectStatuses).join(", ")}`);
+  }
+  return status as ProjectStatus;
+}
+
+function validateSprintStatus(status: unknown): SprintStatus {
+  if (typeof status !== "string" || !validSprintStatuses.has(status)) {
+    throw new Error(`Invalid sprint status: "${status}". Must be one of: ${Array.from(validSprintStatuses).join(", ")}`);
+  }
+  return status as SprintStatus;
+}
+
 export interface WorkSessionExport {
   taskId: string;
   startedAt: string;
@@ -236,70 +286,93 @@ export async function importWorkspaceData(
       // 2. Insert Projects
       if (projects.length > 0) {
         await tx.project.createMany({
-          data: projects.map((p) => ({
-            id: p.id,
-            name: p.name,
-            category: toDbProjectCategory(p.category) as ProjectCategory,
-            colorVar: p.colorVar,
-            emoji: p.emoji,
-            description: p.description || null,
-            status: p.status as ProjectStatus,
-          })),
+          data: projects.map((p, idx) => {
+            try {
+              return {
+                id: p.id,
+                name: p.name,
+                category: toDbProjectCategory(p.category) as ProjectCategory,
+                colorVar: p.colorVar,
+                emoji: p.emoji,
+                description: p.description || null,
+                status: validateProjectStatus(p.status),
+              };
+            } catch (e) {
+              throw new Error(`Project ${idx} (${p.name}): ${e instanceof Error ? e.message : String(e)}`);
+            }
+          }),
         });
       }
 
       // 3. Insert Sprints
       if (sprints.length > 0) {
         await tx.sprint.createMany({
-          data: sprints.map((s) => ({
-            id: s.id,
-            name: s.name,
-            startDate: parseDate(s.startDate)!,
-            endDate: parseDate(s.endDate)!,
-            status: s.status as SprintStatus,
-            goal: s.goal || null,
-          })),
+          data: sprints.map((s, idx) => {
+            try {
+              return {
+                id: s.id,
+                name: s.name,
+                startDate: parseDate(s.startDate)!,
+                endDate: parseDate(s.endDate)!,
+                status: validateSprintStatus(s.status),
+                goal: s.goal || null,
+              };
+            } catch (e) {
+              throw new Error(`Sprint ${idx} (${s.name}): ${e instanceof Error ? e.message : String(e)}`);
+            }
+          }),
         });
       }
 
       // 4. Insert Tasks & nested items
-      for (const t of tasks) {
-        // Resolve project and sprint IDs by name if they exist
-        let projectId: string | null = null;
-        if (t.project) {
-          const prj = projects.find((p) => p.name === t.project);
-          if (prj) projectId = prj.id;
-        }
+      for (let taskIdx = 0; taskIdx < tasks.length; taskIdx++) {
+        const t = tasks[taskIdx];
+        try {
+          // Resolve project and sprint IDs by name if they exist
+          let projectId: string | null = null;
+          if (t.project) {
+            const prj = projects.find((p) => p.name === t.project);
+            if (!prj && t.project) {
+              console.warn(`Task ${taskIdx} (${t.title}): Project "${t.project}" not found in import, will be unlinked`);
+            }
+            projectId = prj?.id ?? null;
+          }
 
-        let sprintId: string | null = null;
-        if (t.sprint) {
-          const spr = sprints.find((s) => s.name === t.sprint);
-          if (spr) sprintId = spr.id;
-        }
+          let sprintId: string | null = null;
+          if (t.sprint) {
+            const spr = sprints.find((s) => s.name === t.sprint);
+            if (!spr && t.sprint) {
+              console.warn(`Task ${taskIdx} (${t.title}): Sprint "${t.sprint}" not found in import, will be unlinked`);
+            }
+            sprintId = spr?.id ?? null;
+          }
 
-        await tx.task.create({
-          data: {
-            id: t.id,
-            title: t.title,
-            description: t.description || null,
-            projectId,
-            sprintId,
-            status: t.status as TaskStatus,
-            type: t.type as TaskType,
-            priority: t.priority as TaskPriority,
-            effort: t.effort ? (t.effort as TaskEffort) : null,
-            storyPoint: t.storyPoint || null,
-            reporter: (t.reporter as TaskReporter) || "self",
-            ownerId: user.id,
-            tags: t.tags,
-            relations: t.relations as unknown as Prisma.InputJsonValue,
-            attachments: t.attachments as unknown as Prisma.InputJsonValue,
-            deliverables: t.deliverables as unknown as Prisma.InputJsonValue,
-            timeSpentSeconds: t.timeSpentSeconds || 0,
-            dueDate: t.dueDate ? parseDate(t.dueDate) : null,
-            completedAt: t.status === "done" ? new Date() : null,
-          },
-        });
+          await tx.task.create({
+            data: {
+              id: t.id,
+              title: t.title,
+              description: t.description || null,
+              projectId,
+              sprintId,
+              status: validateTaskStatus(t.status),
+              type: validateTaskType(t.type),
+              priority: validateTaskPriority(t.priority),
+              effort: validateTaskEffort(t.effort),
+              storyPoint: t.storyPoint || null,
+              reporter: (t.reporter as TaskReporter) || "self",
+              ownerId: user.id,
+              tags: t.tags || [],
+              relations: t.relations as unknown as Prisma.InputJsonValue,
+              attachments: t.attachments as unknown as Prisma.InputJsonValue,
+              deliverables: t.deliverables as unknown as Prisma.InputJsonValue,
+              timeSpentSeconds: t.timeSpentSeconds || 0,
+              dueDate: t.dueDate ? parseDate(t.dueDate) : null,
+              completedAt: t.status === "done" ? new Date() : null,
+            },
+          });
+        } catch (e) {
+          throw new Error(`Task ${taskIdx} (${t.title}): ${e instanceof Error ? e.message : String(e)}`);
+        }
 
         // Insert Comments for this task, preserving original author info
         if (t.comments && t.comments.length > 0) {
@@ -404,11 +477,17 @@ export async function importWorkspaceData(
       }
 
       // 7. Update user stats with decorations and saved filters
+      const bonusXp = typeof bonus.xp === "number" ? Math.max(0, Math.floor(bonus.xp)) : 0;
+      const bonusCoins = typeof bonus.coins === "number" ? Math.max(0, Math.floor(bonus.coins)) : 0;
+      if (typeof bonus.xp !== "number" || typeof bonus.coins !== "number") {
+        console.warn(`Import: bonus XP/coins had invalid types, reset to 0. Expected numbers, got xp=${typeof bonus.xp}, coins=${typeof bonus.coins}`);
+      }
+
       await tx.user.update({
         where: { id: user.id },
         data: {
-          bonusXp: bonus.xp,
-          bonusCoins: bonus.coins,
+          bonusXp,
+          bonusCoins,
           purchasedDecorations: decorations?.purchased || [],
           placedDecorations: decorations?.placed || {},
           savedFilters: savedFilters || [],
@@ -418,7 +497,14 @@ export async function importWorkspaceData(
 
     return { success: true, data: { success: true } };
   } catch (error) {
-    console.error("Failed to import workspace data:", error);
-    return { success: false, error: { code: "INTERNAL", message: "Failed to import workspace data." } };
+    const errorMsg = error instanceof Error ? error.message : String(error);
+    console.error("Failed to import workspace data:", errorMsg);
+    return {
+      success: false,
+      error: {
+        code: "INTERNAL",
+        message: `Import failed: ${errorMsg}`,
+      },
+    };
   }
 }
