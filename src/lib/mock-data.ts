@@ -91,38 +91,19 @@ export const TYPE_ICON: Record<TaskType, string> = {
 
 /** Project totals are computed live from tasks on each page (see useTasks()), not stored here. */
 export const mockProjects: Project[] = [
-  { id: "p1", name: "ATS", colorVar: "--color-priority-p0", emoji: "🏢", category: "Full-time", description: "Applicant Tracking System — squad lead", status: "active" },
-  { id: "p2", name: "Thesis", colorVar: "--color-status-waiting-external", emoji: "🎓", category: "University", description: "Distributed systems thesis", status: "active" },
-  { id: "p3", name: "Client A", colorVar: "--color-status-in-progress", emoji: "💼", category: "Freelance", description: "Freelance client work", status: "active" },
-  { id: "p4", name: "Atlas", colorVar: "--color-status-ready", emoji: "🚀", category: "Side Project", description: "This app — personal second brain", status: "active" },
-  { id: "p5", name: "Group Project", colorVar: "--color-status-testing", emoji: "🎓", category: "University", description: "University group project", status: "active" },
-  { id: "p6", name: "Full-time", colorVar: "--color-text-muted", emoji: "🏢", category: "Full-time", description: "General full-time job tasks", status: "active" },
+  { id: "p1", name: "My Full-Time Job", colorVar: "--color-priority-p0", emoji: "🏢", category: "Full-time", description: "Work tasks — rename to your actual job", status: "active" },
+  { id: "p2", name: "University Courses", colorVar: "--color-status-waiting-external", emoji: "🎓", category: "University", description: "Study and coursework — rename to your school", status: "active" },
+  { id: "p3", name: "Personal Side Project", colorVar: "--color-status-ready", emoji: "🚀", category: "Side Project", description: "My side project — rename to your project", status: "active" },
 ];
 
 export const mockSprints: Sprint[] = [
   {
     id: "s1",
-    name: "Sprint 7 — The Awakening",
-    startDate: "2026-07-21",
-    endDate: "2026-08-03",
-    status: "active",
-    goal: "Ship search endpoint, patch auth bypass, clear QA regression.",
-  },
-  {
-    id: "s2",
-    name: "Sprint 6 — Dark Passage",
-    startDate: "2026-07-07",
-    endDate: "2026-07-20",
-    status: "completed",
-    goal: "Auth, design pass, docs, and first thesis literature review.",
-  },
-  {
-    id: "s3",
-    name: "Sprint 8 — The Reckoning",
-    startDate: "2026-08-04",
+    name: "Current Sprint",
+    startDate: "2026-08-03",
     endDate: "2026-08-17",
-    status: "planning",
-    goal: "Onboarding flow, thesis chapter 3 draft.",
+    status: "active",
+    goal: "Rename this sprint and set your goals",
   },
 ];
 
