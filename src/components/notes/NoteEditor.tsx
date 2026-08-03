@@ -303,10 +303,10 @@ export function NoteEditor({ noteId, initialData, onSave, onClose }: NoteEditorP
             debouncedSave();
           }}
           placeholder="Note title..."
-          className="flex-1 font-display text-lg bg-transparent border-none outline-none"
+          className="flex-1 min-w-0 font-display text-lg bg-transparent border-none outline-none"
           style={{ color: "var(--color-foreground)" }}
         />
-        <div className="text-xs text-muted-foreground ml-2">
+        <div className="hidden sm:block text-xs text-muted-foreground ml-2 flex-shrink-0 whitespace-nowrap">
           {saving ? "Saving..." : lastSaved ? `Saved ${lastSaved}` : ""}
         </div>
         {onClose && (
@@ -318,7 +318,7 @@ export function NoteEditor({ noteId, initialData, onSave, onClose }: NoteEditorP
               }
               onClose();
             }}
-            className="ml-4 px-2 py-1 border border-gray-500 rounded hover:border-primary-gold transition-all"
+            className="ml-4 px-2 py-1 border border-gray-500 rounded hover:border-primary-gold transition-all flex-shrink-0"
             style={{ color: "var(--color-primary-gold)" }}
           >
             ✕
