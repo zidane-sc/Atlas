@@ -33,7 +33,7 @@ import {
   type CharacterSheet,
 } from "@/lib/gamification";
 import { getTodayDate } from "@/lib/mock-data";
-import { purchaseDecoration as apiPurchaseDecoration, placeDecoration as apiPlaceDecoration } from "@/lib/actions/decorations";
+import { purchaseDecoration as apiPurchaseDecoration, placeDecoration as apiPlaceDecoration, moveDecoration as apiMoveDecoration } from "@/lib/actions/decorations";
 import type { TaskFilters } from "@/lib/task-filters";
 import type { SavedFilterClient } from "@/lib/actions/filters";
 import { saveFilterAction as apiSaveFilter, deleteFilterAction as apiDeleteFilter } from "@/lib/actions/filters";
@@ -131,9 +131,10 @@ interface TasksContextValue {
   lazySearchLoadMore: () => Promise<void>;
   isSearchLoadingMore: boolean;
   purchasedDecorations: string[];
-  placedDecorations: Record<string, string | null>;
+  placedDecorations: Record<string, any>;
   purchaseDecoration: (itemId: string) => Promise<boolean>;
   placeDecoration: (category: "desk" | "chair" | "decor" | "wallpaper" | "floor", itemId: string | null) => Promise<boolean>;
+  moveDecoration: (category: "desk" | "chair" | "decor" | "wallpaper" | "floor", x: number, y: number) => Promise<boolean>;
   savedFilters: SavedFilterClient[];
   saveFilter: (name: string, filters: TaskFilters) => Promise<boolean>;
   deleteFilter: (id: string) => Promise<boolean>;
@@ -169,7 +170,7 @@ export function TasksProvider({
   initialCharacterSheet: CharacterSheet;
   initialUnlockedAchievements: Record<string, { unlocked: boolean; unlockedAt: string | null }>;
   initialPurchasedDecorations?: string[];
-  initialPlacedDecorations?: Record<string, string | null>;
+  initialPlacedDecorations?: Record<string, any>;
   initialSavedFilters?: SavedFilterClient[];
   initialLastQuestClaimedAt?: string | null;
   initialActiveTimer?: ActiveTimer | null;
@@ -197,7 +198,7 @@ export function TasksProvider({
   const [characterSheet, setCharacterSheet] = useState<CharacterSheet>(initialCharacterSheet);
   const [unlockedAchievements, setUnlockedAchievements] = useState(initialUnlockedAchievements);
   const [purchasedDecorations, setPurchasedDecorations] = useState<string[]>(initialPurchasedDecorations);
-  const [placedDecorations, setPlacedDecorations] = useState<Record<string, string | null>>(initialPlacedDecorations);
+  const [placedDecorations, setPlacedDecorations] = useState<Record<string, any>>(initialPlacedDecorations);
   const [activeTimer, setActiveTimer] = useState<ActiveTimer | null>(initialActiveTimer);
   const [completions, setCompletions] = useState<CompletionOverlay[]>([]);
   const lastSyncTimeRef = useRef<Record<string, number>>({});
@@ -635,6 +636,8 @@ export function TasksProvider({
         } else if (statsRes.success && statsRes.data.characterSheet) {
           setCharacterSheet(statsRes.data.characterSheet);
         }
+        // Reload page to refetch all data including seeded projects/sprints
+        window.location.reload();
       },
       loadMore: async (lastTaskId) => {
         const result = await apiLoadMoreTasks({ cursor: lastTaskId, limit: 100 });
@@ -665,6 +668,7 @@ export function TasksProvider({
         if (res.success) {
           setBonusCoins(res.data.bonusCoins);
           setPurchasedDecorations(res.data.purchasedDecorations);
+          setCharacterSheet(computeCharacterSheet(tasks, bonusXp, res.data.bonusCoins));
           notify("Item purchased successfully!", "success");
           return true;
         } else {
@@ -675,8 +679,18 @@ export function TasksProvider({
       placeDecoration: async (category, itemId) => {
         const res = await apiPlaceDecoration(category, itemId);
         if (res.success) {
-          setPlacedDecorations(res.data.placedDecorations as Record<string, string | null>);
+          setPlacedDecorations(res.data.placedDecorations as Record<string, any>);
           notify("Item placed in room!", "success");
+          return true;
+        } else {
+          notify(res.error.message, "error");
+          return false;
+        }
+      },
+      moveDecoration: async (category, x, y) => {
+        const res = await apiMoveDecoration(category, x, y);
+        if (res.success) {
+          setPlacedDecorations(res.data.placedDecorations as Record<string, any>);
           return true;
         } else {
           notify(res.error.message, "error");
