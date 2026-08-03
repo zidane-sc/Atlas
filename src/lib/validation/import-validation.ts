@@ -134,7 +134,7 @@ export function validateImportPayload(payload: ImportPayload): ImportValidationR
     }
   }
 
-  return {
+  const result = {
     counts: {
       tasks: payload.tasks?.length ?? 0,
       projects: payload.projects?.length ?? 0,
@@ -145,4 +145,6 @@ export function validateImportPayload(payload: ImportPayload): ImportValidationR
     },
     errors,
   };
+  console.log("Validation result:", result);
+  return result;
 }
