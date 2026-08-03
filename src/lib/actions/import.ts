@@ -10,10 +10,10 @@ import { Prisma } from "@/generated/prisma/client";
 import type { ProjectCategory, ProjectStatus, SprintStatus, TaskStatus, TaskType, TaskPriority, TaskEffort, TaskReporter } from "@/generated/prisma/client";
 import { mapDbTaskToClient } from "@/lib/tasks-reducer";
 import { validateImportPayload } from "@/lib/validation/import-validation";
-import type { ValidationError, ImportValidationResult, ImportPayload, WorkSessionExport, ActivityLogExport, NoteExport, NoteAttachmentExport, NoteTaskLinkExport } from "@/lib/types/import-types";
+import type { ImportPayload, WorkSessionExport, ActivityLogExport, NoteExport, NoteAttachmentExport, NoteTaskLinkExport } from "@/lib/types/import-types";
 
-export type { ValidationError, ImportValidationResult };
 export { validateImportPayload };
+export type { ImportPayload, WorkSessionExport, ActivityLogExport, NoteExport, NoteAttachmentExport, NoteTaskLinkExport } from "@/lib/types/import-types";
 
 function parseDate(dateStr: string | null | undefined): Date | null {
   if (!dateStr) return null;
@@ -73,9 +73,6 @@ function validateSprintStatus(status: unknown): SprintStatus {
   }
   return status as SprintStatus;
 }
-
-export type { WorkSessionExport, ActivityLogExport, NoteAttachmentExport, NoteTaskLinkExport, NoteExport };
-export type { ImportPayload } from "@/lib/types/import-types";
 
 /**
  * Raw WorkSession/ActivityLog rows for a full export — the client-held `tasks`/`activityLogs`
