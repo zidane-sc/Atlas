@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Moon, Plus, Search } from "lucide-react";
@@ -83,24 +83,24 @@ function GroupLabel({ children }: { children: React.ReactNode }) {
 
 export function Sidebar() {
   const router = useRouter();
-  const { tasks, characterSheet, openCreateForm, openEditForm, justCompleted, updateTask } = useTasks();
+  const { tasks, characterSheet, openCreateForm, openEditForm, justCompleted, updateTask, togglePin } = useTasks();
   const { notify } = useNotifications();
   const [showQuit, setShowQuit] = useState(false);
   const [pinnedNotes, setPinnedNotes] = useState<NotePreview[]>([]);
   const { setOpen: setCommandPaletteOpen } = useCommandPalette();
 
+  const fetchPinnedNotes = useCallback(async () => {
+    const result = await listNotesAction({ skip: 0, take: 100 });
+    if (result.success) {
+      setPinnedNotes(result.data!.notes.filter((n) => n.pinned));
+    } else {
+      notify(result.error?.message ?? "Failed to load pinned notes.", "error");
+    }
+  }, [notify]);
+
   useEffect(() => {
-    const fetchPinnedNotes = async () => {
-      const result = await listNotesAction({ skip: 0, take: 100 });
-      if (result.success) {
-        setPinnedNotes(result.data!.notes.filter((n) => n.pinned));
-      } else {
-        notify(result.error?.message ?? "Failed to load pinned notes.", "error");
-      }
-    };
     fetchPinnedNotes();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [fetchPinnedNotes]);
   const sheet = characterSheet;
   const streakDays = useMemo(() => {
     const s = calculateStreak(tasks);
@@ -245,7 +245,7 @@ export function Sidebar() {
         pinnedNotes={pinnedNotes}
         onOpenTask={(task) => openEditForm(task)}
         onOpenNote={(noteId) => router.push(`/notes?edit=${noteId}`)}
-        onUnpinTask={(taskId) => updateTaskAction(taskId, { pinned: false })}
+        onUnpinTask={(taskId) => togglePin(taskId, false)}
         onUnpinNote={(noteId) => updateNoteAction({ noteId, pinned: false })}
       />
       <div className="p-3">
