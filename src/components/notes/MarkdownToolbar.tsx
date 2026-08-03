@@ -48,7 +48,7 @@ export function MarkdownToolbar({ onInsert }: MarkdownToolbarProps) {
   const [tableCols, setTableCols] = useState(3);
   const [tableRows, setTableRows] = useState(3);
   const buttonClass =
-    "px-2 py-1 border-2 border-gray-400 bg-panel text-foreground hover:bg-panel-alt active:border-primary-gold active:text-primary-gold text-xs font-display transition-colors";
+    "px-2.5 py-1.5 md:px-2 md:py-1 border-2 border-gray-400 bg-panel text-foreground hover:bg-panel-alt active:border-primary-gold active:text-primary-gold text-xs font-display transition-colors";
 
   return (
     <div className="flex gap-1 flex-wrap p-2 border-b border-gray-600 bg-panel">
@@ -188,7 +188,7 @@ export function MarkdownToolbar({ onInsert }: MarkdownToolbarProps) {
               }}
               style={{ backgroundColor: "rgba(0, 0, 0, 0.3)" }}
             />
-            <div className="absolute top-full left-0 mt-2 p-3 border-2 border-gray-500 rounded-lg z-50 shadow-lg" style={{ minWidth: "240px", backgroundColor: "var(--color-bg-panel-alt)" }}>
+            <div className="absolute top-full left-1/2 -translate-x-1/2 md:left-0 md:translate-x-0 mt-2 p-3 border-2 border-gray-500 rounded-lg z-50 shadow-lg max-w-[calc(100vw-2rem)]" style={{ minWidth: "240px", backgroundColor: "var(--color-bg-panel-alt)" }}>
               <div className="mb-2">
                 <div className="text-xs font-display text-foreground mb-2">Create Table</div>
                 <div className="flex gap-2">
