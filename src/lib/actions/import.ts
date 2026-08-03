@@ -10,6 +10,15 @@ import { Prisma } from "@/generated/prisma/client";
 import type { ProjectCategory, ProjectStatus, SprintStatus, TaskStatus, TaskType, TaskPriority, TaskEffort, TaskReporter } from "@/generated/prisma/client";
 import { mapDbTaskToClient } from "@/lib/tasks-reducer";
 
+function parseDate(dateStr: string | null | undefined): Date | null {
+  if (!dateStr) return null;
+  const date = new Date(dateStr);
+  if (isNaN(date.getTime())) {
+    throw new Error(`Invalid date format: "${dateStr}". Expected ISO 8601 format.`);
+  }
+  return date;
+}
+
 export interface WorkSessionExport {
   taskId: string;
   startedAt: string;
@@ -245,8 +254,8 @@ export async function importWorkspaceData(
           data: sprints.map((s) => ({
             id: s.id,
             name: s.name,
-            startDate: new Date(s.startDate),
-            endDate: new Date(s.endDate),
+            startDate: parseDate(s.startDate)!,
+            endDate: parseDate(s.endDate)!,
             status: s.status as SprintStatus,
             goal: s.goal || null,
           })),
@@ -282,25 +291,25 @@ export async function importWorkspaceData(
             storyPoint: t.storyPoint || null,
             reporter: (t.reporter as TaskReporter) || "self",
             ownerId: user.id,
-            dueDate: t.dueDate ? new Date(t.dueDate) : null,
             tags: t.tags,
             relations: t.relations as unknown as Prisma.InputJsonValue,
             attachments: t.attachments as unknown as Prisma.InputJsonValue,
             deliverables: t.deliverables as unknown as Prisma.InputJsonValue,
             timeSpentSeconds: t.timeSpentSeconds || 0,
-            completedAt: t.status === "done" ? new Date() : null, // fallback
+            dueDate: t.dueDate ? parseDate(t.dueDate) : null,
+            completedAt: t.status === "done" ? new Date() : null,
           },
         });
 
-        // Insert Comments for this task
+        // Insert Comments for this task, preserving original author info
         if (t.comments && t.comments.length > 0) {
           await tx.comment.createMany({
             data: t.comments.map((c) => ({
               id: c.id,
               taskId: t.id,
               authorId: user.id,
-              content: c.content,
-              createdAt: c.createdAt ? new Date(c.createdAt) : new Date(),
+              content: `[${c.authorName}]: ${c.content}`,
+              createdAt: parseDate(c.createdAt) || new Date(),
             })),
           });
         }
@@ -313,7 +322,7 @@ export async function importWorkspaceData(
               taskId: t.id,
               fromStatus: h.fromStatus as TaskStatus | null,
               toStatus: h.toStatus as TaskStatus,
-              changedAt: h.changedAt ? new Date(h.changedAt) : new Date(),
+              changedAt: parseDate(h.changedAt) || new Date(),
             })),
           });
         }
@@ -329,8 +338,8 @@ export async function importWorkspaceData(
             content: n.content,
             tags: n.tags,
             pinned: n.pinned,
-            createdAt: new Date(n.createdAt),
-            updatedAt: new Date(n.updatedAt),
+            createdAt: parseDate(n.createdAt)!,
+            updatedAt: parseDate(n.updatedAt)!,
           })),
         });
 
@@ -354,7 +363,7 @@ export async function importWorkspaceData(
             (n.taskLinks ?? []).map((l) => ({
               noteId: l.noteId,
               taskId: l.taskId,
-              createdAt: new Date(l.createdAt),
+              createdAt: parseDate(l.createdAt) || new Date(),
             }))
           )
           .filter((l) => taskIds.has(l.taskId));
@@ -370,8 +379,8 @@ export async function importWorkspaceData(
         await tx.workSession.createMany({
           data: validWorkSessions.map((w) => ({
             taskId: w.taskId,
-            startedAt: new Date(w.startedAt),
-            endedAt: new Date(w.endedAt),
+            startedAt: parseDate(w.startedAt)!,
+            endedAt: parseDate(w.endedAt)!,
             durationSeconds: w.durationSeconds,
           })),
         });
@@ -389,7 +398,7 @@ export async function importWorkspaceData(
             sprintId: a.sprintId,
             action: a.action,
             details: (a.details ?? undefined) as Prisma.InputJsonValue | undefined,
-            createdAt: new Date(a.createdAt),
+            createdAt: parseDate(a.createdAt) || new Date(),
           })),
         });
       }
