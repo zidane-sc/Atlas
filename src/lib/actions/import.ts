@@ -9,6 +9,10 @@ import { toDbProjectCategory } from "@/lib/schemas/project";
 import { Prisma } from "@/generated/prisma/client";
 import type { ProjectCategory, ProjectStatus, SprintStatus, TaskStatus, TaskType, TaskPriority, TaskEffort, TaskReporter } from "@/generated/prisma/client";
 import { mapDbTaskToClient } from "@/lib/tasks-reducer";
+import { validateImportPayload, type ValidationError, type ImportValidationResult } from "@/lib/validation/import-validation";
+
+export type { ValidationError, ImportValidationResult };
+export { validateImportPayload };
 
 function parseDate(dateStr: string | null | undefined): Date | null {
   if (!dateStr) return null;
