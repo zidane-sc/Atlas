@@ -167,10 +167,13 @@ export default function Page() {
         bonus: data.bonus ?? { xp: 0, coins: 0 },
         workSessions: data.workSessions ?? [],
         activityLogs: data.activityLogs ?? [],
+        notes: data.notes ?? [],
+        decorations: data.decorations,
+        savedFilters: data.savedFilters ?? [],
       });
       if (!result.success) throw new Error(result.error.message);
       if (data.settings) setReduceMotion(data.settings.reduceMotion);
-      notify(`Imported ${data.tasks.length} tasks, ${data.projects.length} projects, ${data.sprints.length} sprints. Reloading…`);
+      notify(`Imported ${data.tasks.length} tasks, ${data.projects.length} projects, ${data.sprints.length} sprints, ${(data.notes ?? []).length} notes. Reloading…`);
       // A full workspace restore replaces everything the DB holds — every provider needs
       // to re-hydrate from fresh server data, which a client-side dispatch can't do for
       // all of them at once, so reload rather than trying to patch each provider's state.
