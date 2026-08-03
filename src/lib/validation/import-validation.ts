@@ -1,8 +1,5 @@
 import type { ImportPayload } from "@/lib/actions/import";
 
-// Type guard for ImportPayload structure validation during tests
-export type { ImportPayload };
-
 // Re-export validators from import.ts validators for use here
 const validTaskStatuses = new Set(["inbox", "todo", "ready", "in_progress", "blocked", "waiting_external", "testing", "done"]);
 const validTaskTypes = new Set(["coding", "design", "documentation", "testing", "devops", "other"]);
