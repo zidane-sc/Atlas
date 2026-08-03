@@ -50,7 +50,10 @@ function NavLink({ href, label, icon: Icon, count, badgeColorVar, collapsed }: N
     <Link
       href={href}
       title={collapsed ? label : undefined}
-      className="flex w-full items-center gap-2 px-3 py-1 text-sm transition-all focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 rounded-sm"
+      className={cn(
+        "flex w-full items-center gap-2 px-3 py-1 text-sm transition-all focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 rounded-sm",
+        collapsed && "lg:justify-center lg:px-0"
+      )}
       style={{
         backgroundColor: active ? "var(--color-bg-panel)" : "transparent",
         color: active ? "var(--color-primary-gold)" : "var(--color-text-muted)",
@@ -58,7 +61,7 @@ function NavLink({ href, label, icon: Icon, count, badgeColorVar, collapsed }: N
         outlineColor: "var(--color-primary-gold)",
       }}
     >
-      <Icon size={12} />
+      <Icon size={collapsed ? 18 : 12} />
       <span className={cn("flex-1", collapsed && "lg:hidden")}>{label}</span>
       {count !== undefined && count > 0 && (
         <span
@@ -239,14 +242,17 @@ export function Sidebar() {
           <Link
             href={NAV_TASKS.href}
             title={collapsed ? NAV_TASKS.label : undefined}
-            className="flex w-full items-center gap-2 px-3 py-1 text-sm transition-all"
+            className={cn(
+              "flex w-full items-center gap-2 px-3 py-1 text-sm transition-all",
+              collapsed && "lg:justify-center lg:px-0"
+            )}
             style={{
               backgroundColor: tasksActive ? "var(--color-bg-panel)" : "transparent",
               color: tasksActive ? "var(--color-primary-gold)" : "var(--color-text-muted)",
               borderLeft: tasksActive ? "2px solid var(--color-primary-gold)" : "2px solid transparent",
             }}
           >
-            <NAV_TASKS.icon size={12} />
+            <NAV_TASKS.icon size={collapsed ? 18 : 12} />
             <span className={cn("flex-1", collapsed && "lg:hidden")}>{NAV_TASKS.label}</span>
           </Link>
 
@@ -279,20 +285,26 @@ export function Sidebar() {
             onRefreshNotes={fetchPinnedNotes}
           />
         </div>
-        <div className="p-3">
+        <div className={cn("p-3", collapsed && "lg:px-2")}>
           <button
             type="button"
             onClick={openCreateForm}
             title={collapsed ? "New Quest" : undefined}
-            className="pixel-button flex w-full items-center justify-center gap-1.5 border-2 border-primary bg-primary px-3 py-1.5 text-sm text-primary-foreground"
+            className={cn(
+              "pixel-button flex w-full items-center justify-center gap-1.5 border-2 border-primary bg-primary px-3 py-1.5 text-sm text-primary-foreground",
+              collapsed && "lg:px-0 lg:py-2"
+            )}
           >
-            <Plus size={12} /> <span className={cn(collapsed && "lg:hidden")}>New Quest</span>
+            <Plus size={collapsed ? 18 : 12} /> <span className={cn(collapsed && "lg:hidden")}>New Quest</span>
           </button>
           <button
             type="button"
             onClick={() => setShowQuit(true)}
             title={collapsed ? "Save & Quit" : undefined}
-            className="pixel-button mt-2 flex w-full items-center justify-center gap-1.5 border-2 border-border bg-transparent px-3 py-1.5 text-sm transition-colors"
+            className={cn(
+              "pixel-button mt-2 flex w-full items-center justify-center gap-1.5 border-2 border-border bg-transparent px-3 py-1.5 text-sm transition-colors",
+              collapsed && "lg:px-0 lg:py-2"
+            )}
             style={{ color: "var(--color-text-muted)" }}
             onMouseEnter={(e) => {
               e.currentTarget.style.color = "var(--color-text)";
@@ -303,7 +315,7 @@ export function Sidebar() {
               e.currentTarget.style.borderColor = "var(--color-border)";
             }}
           >
-            <Moon size={12} /> <span className={cn(collapsed && "lg:hidden")}>Save &amp; Quit</span>
+            <Moon size={collapsed ? 18 : 12} /> <span className={cn(collapsed && "lg:hidden")}>Save &amp; Quit</span>
           </button>
         </div>
         {showQuit && <SaveAndQuitOverlay onClose={() => setShowQuit(false)} />}
