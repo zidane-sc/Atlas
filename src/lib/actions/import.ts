@@ -9,7 +9,8 @@ import { toDbProjectCategory } from "@/lib/schemas/project";
 import { Prisma } from "@/generated/prisma/client";
 import type { ProjectCategory, ProjectStatus, SprintStatus, TaskStatus, TaskType, TaskPriority, TaskEffort, TaskReporter } from "@/generated/prisma/client";
 import { mapDbTaskToClient } from "@/lib/tasks-reducer";
-import { validateImportPayload, type ValidationError, type ImportValidationResult } from "@/lib/validation/import-validation";
+import { validateImportPayload } from "@/lib/validation/import-validation";
+import type { ValidationError, ImportValidationResult, ImportPayload, WorkSessionExport, ActivityLogExport, NoteExport, NoteAttachmentExport, NoteTaskLinkExport } from "@/lib/types/import-types";
 
 export type { ValidationError, ImportValidationResult };
 export { validateImportPayload };
@@ -73,59 +74,8 @@ function validateSprintStatus(status: unknown): SprintStatus {
   return status as SprintStatus;
 }
 
-export interface WorkSessionExport {
-  taskId: string;
-  startedAt: string;
-  endedAt: string;
-  durationSeconds: number;
-}
-
-export interface ActivityLogExport {
-  taskId: string | null;
-  projectId: string | null;
-  sprintId: string | null;
-  action: string;
-  details: unknown;
-  createdAt: string;
-}
-
-export interface NoteAttachmentExport {
-  id: string;
-  noteId: string;
-  url: string;
-  fileName: string;
-  fileType: string | null;
-}
-
-export interface NoteTaskLinkExport {
-  noteId: string;
-  taskId: string;
-  createdAt: string;
-}
-
-export interface NoteExport {
-  id: string;
-  title: string;
-  content: string;
-  tags: string[];
-  pinned: boolean;
-  createdAt: string;
-  updatedAt: string;
-  attachments?: NoteAttachmentExport[];
-  taskLinks?: NoteTaskLinkExport[];
-}
-
-export interface ImportPayload {
-  tasks: Task[];
-  projects: Project[];
-  sprints: Sprint[];
-  bonus: { xp: number; coins: number };
-  workSessions?: WorkSessionExport[];
-  activityLogs?: ActivityLogExport[];
-  notes?: NoteExport[];
-  decorations?: { purchased: string[]; placed: Record<string, string | null> };
-  savedFilters?: any[];
-}
+export type { WorkSessionExport, ActivityLogExport, NoteAttachmentExport, NoteTaskLinkExport, NoteExport };
+export type { ImportPayload } from "@/lib/types/import-types";
 
 /**
  * Raw WorkSession/ActivityLog rows for a full export — the client-held `tasks`/`activityLogs`

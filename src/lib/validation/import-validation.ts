@@ -1,6 +1,6 @@
-import type { ImportPayload } from "@/lib/actions/import";
+import type { ImportPayload, ValidationError, ImportValidationResult } from "@/lib/types/import-types";
 
-// Re-export validators from import.ts validators for use here
+// Re-export for convenience
 const validTaskStatuses = new Set(["inbox", "todo", "ready", "in_progress", "blocked", "waiting_external", "testing", "done"]);
 const validTaskTypes = new Set(["coding", "design", "documentation", "testing", "devops", "other"]);
 const validTaskPriorities = new Set(["p0", "p1", "p2", "p3"]);
@@ -17,24 +17,7 @@ function parseDate(dateStr: string | null | undefined): Date | null {
   return date;
 }
 
-export interface ValidationError {
-  category: string;
-  index: number;
-  itemName: string | null;
-  message: string;
-}
-
-export interface ImportValidationResult {
-  counts: {
-    tasks: number;
-    projects: number;
-    sprints: number;
-    notes: number;
-    workSessions: number;
-    activityLogs: number;
-  };
-  errors: ValidationError[];
-}
+export { ValidationError, ImportValidationResult };
 
 export function validateImportPayload(payload: ImportPayload): ImportValidationResult {
   const errors: ValidationError[] = [];
