@@ -42,21 +42,40 @@ export function RoomDecoration() {
     placedDecorations,
     purchaseDecoration,
     placeDecoration,
+    moveDecoration,
   } = useTasks();
 
   const [activeTab, setActiveTab] = useState<"desk" | "chair" | "decor" | "wallpaper" | "floor">("desk");
   const [buyingId, setBuyingId] = useState<string | null>(null);
   const [placingId, setPlacingId] = useState<string | null>(null);
+  const [dragging, setDragging] = useState<{ category: "desk" | "chair" | "decor" | "wallpaper" | "floor"; offsetX: number; offsetY: number } | null>(null);
+  const [dragPos, setDragPos] = useState<{ x: number; y: number } | null>(null);
 
   const sheet = characterSheet;
   const currentCoins = sheet.totalCoins;
 
+  // Helper to extract item ID from old (string) or new (object) format
+  const getItemId = (item: any): string | null => {
+    if (!item) return null;
+    return typeof item === "string" ? item : item.id;
+  };
+
+  // Helper to extract position from item
+  const getPosition = (item: any): { x: number; y: number } => {
+    if (!item || typeof item === "string") return { x: 0, y: 0 };
+    return { x: item.x || 0, y: item.y || 0 };
+  };
+
   // Resolve placed items (with defaults if empty)
-  const currentDesk = placedDecorations.desk || "desk-wood";
-  const currentChair = placedDecorations.chair || "chair-stool";
-  const currentDecor = placedDecorations.decor || "decor-none";
-  const currentWall = placedDecorations.wallpaper || "wall-brick";
-  const currentFloor = placedDecorations.floor || "floor-wood";
+  const currentDesk = getItemId(placedDecorations.desk) || "desk-wood";
+  const currentChair = getItemId(placedDecorations.chair) || "chair-stool";
+  const currentDecor = getItemId(placedDecorations.decor) || "decor-none";
+  const currentWall = getItemId(placedDecorations.wallpaper) || "wall-brick";
+  const currentFloor = getItemId(placedDecorations.floor) || "floor-wood";
+
+  const deskPos = getPosition(placedDecorations.desk);
+  const chairPos = getPosition(placedDecorations.chair);
+  const decorPos = getPosition(placedDecorations.decor);
 
   const deskObj = DECORATIONS_CATALOG.find((d) => d.id === currentDesk);
   const chairObj = DECORATIONS_CATALOG.find((d) => d.id === currentChair);
@@ -84,18 +103,49 @@ export function RoomDecoration() {
     }
   };
 
+  const handleDragStart = (e: React.MouseEvent, category: "desk" | "chair" | "decor" | "wallpaper" | "floor", currentX: number, currentY: number) => {
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    const parentRect = (e.currentTarget.parentElement as HTMLElement).getBoundingClientRect();
+    const offsetX = e.clientX - rect.left;
+    const offsetY = e.clientY - rect.top;
+    setDragging({ category, offsetX, offsetY });
+    setDragPos({ x: currentX, y: currentY });
+    e.preventDefault();
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!dragging || !dragPos) return;
+    const roomRect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    const x = Math.max(0, Math.min(100, ((e.clientX - roomRect.left - dragging.offsetX) / roomRect.width) * 100));
+    const yFromTop = ((e.clientY - roomRect.top - dragging.offsetY) / roomRect.height) * 100;
+    const y = Math.max(0, Math.min(100, 100 - yFromTop));
+    setDragPos({ x, y });
+  };
+
+  const handleDragEnd = async () => {
+    if (!dragging || !dragPos) return;
+    await moveDecoration(dragging.category, dragPos.x, dragPos.y);
+    setDragging(null);
+    setDragPos(null);
+  };
+
   const wallStyle = WALLPAPER_STYLES[currentWall] || WALLPAPER_STYLES["wall-brick"];
   const floorBg = FLOOR_STYLES[currentFloor] || FLOOR_STYLES["floor-wood"];
 
   return (
     <div className="flex flex-col gap-6 p-6">
       {/* 1. ROOM VIEWPORT */}
-      <div 
-        className="relative overflow-hidden border-4"
-        style={{ 
-          height: "260px", 
+      <div
+        className="relative overflow-hidden border-4 select-none"
+        data-room-viewport
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleDragEnd}
+        onMouseLeave={handleDragEnd}
+        style={{
+          height: "260px",
           borderColor: "var(--color-primary-gold)",
-          boxShadow: "0 0 24px rgba(240,180,41,0.15), inset 0 0 20px rgba(0,0,0,0.8)"
+          boxShadow: "0 0 24px rgba(240,180,41,0.15), inset 0 0 20px rgba(0,0,0,0.8)",
+          cursor: dragging ? "grabbing" : "default",
         }}
       >
         {/* Wall background */}
@@ -142,49 +192,55 @@ export function RoomDecoration() {
         </div>
 
         {/* Placed Chair */}
-        {chairObj && chairObj.id !== "chair-none" && (
-          <div 
-            className="absolute transition-all duration-300"
-            style={{ 
-              left: "44%", 
-              bottom: "20%", 
+        {chairObj && currentChair === chairObj.id && placedDecorations.chair && (
+          <div
+            className="absolute select-none cursor-grab active:cursor-grabbing"
+            onMouseDown={(e) => handleDragStart(e, "chair", chairPos.x, chairPos.y)}
+            style={{
+              left: `${dragging?.category === "chair" && dragPos ? dragPos.x : chairPos.x}%`,
+              bottom: `${dragging?.category === "chair" && dragPos ? dragPos.y : chairPos.y}%`,
               zIndex: 5,
               fontSize: "38px",
+              transition: dragging?.category === "chair" ? "none" : "all 300ms",
             }}
-            title={chairObj.name}
+            title={`${chairObj.name} (drag to move)`}
           >
             {chairObj.emoji}
           </div>
         )}
 
         {/* Placed Desk */}
-        {deskObj && (
-          <div 
-            className="absolute transition-all duration-300"
-            style={{ 
-              left: "50%", 
-              bottom: "16%", 
+        {deskObj && currentDesk === deskObj.id && placedDecorations.desk && (
+          <div
+            className="absolute select-none cursor-grab active:cursor-grabbing"
+            onMouseDown={(e) => handleDragStart(e, "desk", deskPos.x, deskPos.y)}
+            style={{
+              left: `${dragging?.category === "desk" && dragPos ? dragPos.x : deskPos.x}%`,
+              bottom: `${dragging?.category === "desk" && dragPos ? dragPos.y : deskPos.y}%`,
               zIndex: 8,
               fontSize: "44px",
+              transition: dragging?.category === "desk" ? "none" : "all 300ms",
             }}
-            title={deskObj.name}
+            title={`${deskObj.name} (drag to move)`}
           >
             {deskObj.emoji}
           </div>
         )}
 
         {/* Placed Decor */}
-        {decorObj && decorObj.id !== "decor-none" && (
-          <div 
-            className="absolute transition-all duration-300"
-            style={{ 
-              left: "72%", 
-              bottom: "22%", 
+        {decorObj && decorObj.id !== "decor-none" && currentDecor === decorObj.id && placedDecorations.decor && (
+          <div
+            className="absolute select-none cursor-grab active:cursor-grabbing"
+            onMouseDown={(e) => handleDragStart(e, "decor", decorPos.x, decorPos.y)}
+            style={{
+              left: `${dragging?.category === "decor" && dragPos ? dragPos.x : decorPos.x}%`,
+              bottom: `${dragging?.category === "decor" && dragPos ? dragPos.y : decorPos.y}%`,
               zIndex: 6,
               fontSize: "34px",
-              animation: decorObj.id === "decor-lava" ? "pixelPulse 2s ease-in-out infinite" : "none"
+              animation: decorObj.id === "decor-lava" ? "pixelPulse 2s ease-in-out infinite" : "none",
+              transition: dragging?.category === "decor" ? "none" : "all 300ms",
             }}
-            title={decorObj.name}
+            title={`${decorObj.name} (drag to move)`}
           >
             {decorObj.emoji}
           </div>
@@ -224,13 +280,14 @@ export function RoomDecoration() {
           const isFree = item.cost === 0;
           const isOwned = purchasedDecorations.includes(item.id) || isFree;
           
-          // Determine if placed
+          // Determine if placed (must be both displayed AND in DB)
           let isPlaced = false;
-          if (activeTab === "desk") isPlaced = currentDesk === item.id;
-          else if (activeTab === "chair") isPlaced = currentChair === item.id;
-          else if (activeTab === "decor") isPlaced = currentDecor === item.id;
-          else if (activeTab === "wallpaper") isPlaced = currentWall === item.id;
-          else if (activeTab === "floor") isPlaced = currentFloor === item.id;
+          const isInDb = placedDecorations[activeTab] !== null && placedDecorations[activeTab] !== undefined;
+          if (activeTab === "desk") isPlaced = isInDb && currentDesk === item.id;
+          else if (activeTab === "chair") isPlaced = isInDb && currentChair === item.id;
+          else if (activeTab === "decor") isPlaced = isInDb && currentDecor === item.id;
+          else if (activeTab === "wallpaper") isPlaced = isInDb && currentWall === item.id;
+          else if (activeTab === "floor") isPlaced = isInDb && currentFloor === item.id;
 
           const isAffordable = currentCoins >= item.cost;
 

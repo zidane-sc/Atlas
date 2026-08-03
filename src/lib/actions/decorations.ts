@@ -73,10 +73,67 @@ export async function purchaseDecoration(itemId: string): Promise<ActionResult<{
   }
 }
 
+export async function moveDecoration(
+  category: "desk" | "chair" | "decor" | "wallpaper" | "floor",
+  x: number,
+  y: number
+): Promise<ActionResult<{ placedDecorations: Record<string, any> }>> {
+  const session = await auth();
+  if (!session?.user?.email) {
+    return { success: false, error: { code: "UNAUTHORIZED", message: "Sign in required." } };
+  }
+
+  try {
+    const user = await db.user.findUnique({
+      where: { email: session.user.email },
+      select: { id: true, placedDecorations: true },
+    });
+
+    if (!user) {
+      return { success: false, error: { code: "NOT_FOUND", message: "User not found." } };
+    }
+
+    const currentPlaced = (user.placedDecorations as Record<string, any>) || {};
+    const currentItem = currentPlaced[category];
+
+    if (!currentItem) {
+      return { success: false, error: { code: "NOT_FOUND", message: "No item placed in this category." } };
+    }
+
+    // Handle both old format (string) and new format (object with id/x/y)
+    const itemId = typeof currentItem === "string" ? currentItem : currentItem.id;
+    if (!itemId) {
+      return { success: false, error: { code: "NOT_FOUND", message: "Invalid item data." } };
+    }
+
+    const newPlaced = {
+      ...currentPlaced,
+      [category]: { id: itemId, x, y },
+    };
+
+    await db.user.update({
+      where: { id: user.id },
+      data: {
+        placedDecorations: newPlaced,
+      },
+    });
+
+    return {
+      success: true,
+      data: {
+        placedDecorations: newPlaced,
+      },
+    };
+  } catch (error) {
+    console.error("Failed to move decoration:", error);
+    return { success: false, error: { code: "INTERNAL", message: "Failed to move decoration." } };
+  }
+}
+
 export async function placeDecoration(
   category: "desk" | "chair" | "decor" | "wallpaper" | "floor",
   itemId: string | null
-): Promise<ActionResult<{ placedDecorations: Record<string, string | null> }>> {
+): Promise<ActionResult<{ placedDecorations: Record<string, any> }>> {
   const session = await auth();
   if (!session?.user?.email) {
     return { success: false, error: { code: "UNAUTHORIZED", message: "Sign in required." } };
@@ -111,10 +168,10 @@ export async function placeDecoration(
       }
     }
 
-    const currentPlaced = (user.placedDecorations as Record<string, string | null>) || {};
+    const currentPlaced = (user.placedDecorations as Record<string, any>) || {};
     const newPlaced = {
       ...currentPlaced,
-      [category]: itemId,
+      [category]: itemId ? { id: itemId, x: 0, y: 0 } : null,
     };
 
     await db.user.update({
