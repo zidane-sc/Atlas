@@ -61,8 +61,8 @@ export async function createTask(
           : null;
 
         // Generate task code with project code or default TASK prefix
-        const nextNumber = await getNextTaskCodeNumber(tx, owner.id);
         const codePrefix = project?.code || "TASK";
+        const nextNumber = await getNextTaskCodeNumber(tx, owner.id, codePrefix);
         const taskCode = generateTaskCode(codePrefix, nextNumber);
 
         const created = await tx.task.create({

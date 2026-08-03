@@ -2,9 +2,14 @@ export function generateTaskCode(projectCode: string, nextNumber: number): strin
   return `${projectCode.toUpperCase()}-${nextNumber}`;
 }
 
-export async function getNextTaskCodeNumber(db: any, ownerId: string): Promise<number> {
+export async function getNextTaskCodeNumber(db: any, ownerId: string, prefix: string = "TASK"): Promise<number> {
   const lastTask = await db.task.findFirst({
-    where: { ownerId, code: { not: null } },
+    where: {
+      ownerId,
+      code: {
+        startsWith: `${prefix.toUpperCase()}-`,
+      },
+    },
     orderBy: { createdAt: "desc" },
     select: { code: true },
   });
@@ -14,3 +19,4 @@ export async function getNextTaskCodeNumber(db: any, ownerId: string): Promise<n
   const match = lastTask.code.match(/-(\d+)$/);
   return match ? parseInt(match[1]) + 1 : 1;
 }
+

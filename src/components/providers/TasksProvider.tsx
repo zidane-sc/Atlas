@@ -422,6 +422,7 @@ export function TasksProvider({
           priority: source.priority,
           effort: source.effort,
           storyPoint: source.storyPoint,
+          startDate: source.startDate,
           dueDate: source.dueDate,
           sprint: source.sprint,
           waitingOn: source.waitingOn,
@@ -440,16 +441,21 @@ export function TasksProvider({
 
         const input = {
           title: values.title,
-          description: values.description || null,
-          projectId: projects.find((p) => p.name === values.project)?.id || null,
-          sprintId: values.sprint ? (sprints.find((s) => s.name === values.sprint)?.id || null) : null,
+          description: values.description || undefined,
+          projectId: projects.find((p) => p.name === values.project)?.id,
+          sprintId: values.sprint ? (sprints.find((s) => s.name === values.sprint)?.id || undefined) : undefined,
           status: values.status,
           type: values.type,
           priority: values.priority,
-          effort: values.effort || null,
-          storyPoint: values.storyPoint || null,
+          effort: values.effort || undefined,
+          storyPoint: values.storyPoint || undefined,
           reporter: values.reporter || "self",
-          dueDate: values.dueDate || null,
+          startDate: values.startDate || undefined,
+          dueDate: values.dueDate || undefined,
+          tags: values.tags,
+          relations: values.relations,
+          attachments: values.attachments,
+          deliverables: values.deliverables,
         };
 
         const result = await apiCreateTask(input);
@@ -458,10 +464,14 @@ export function TasksProvider({
           dispatch({ type: "delete", id: tempId });
           setSheet((s) => (s.task?.id === tempId ? { ...s, open: false } : s));
         } else {
-          dispatch({ type: "replaceId", tempId, realId: result.data.task.id });
+          const dbProjects = projects as any[];
+          const dbSprints = sprints as any[];
+          const clientTask = mapDbTaskToClient(result.data.task, dbProjects, dbSprints);
+          dispatch({ type: "replaceId", tempId, realId: clientTask.id });
+          dispatch({ type: "sync", task: clientTask });
           setSheet((s) =>
-            s.task?.id === tempId
-              ? { ...s, task: { ...s.task, id: result.data.task.id } }
+            s.task?.id === tempId || s.task?.id === clientTask.id
+              ? { ...s, task: clientTask }
               : s
           );
           if (result.data.characterSheet) {
