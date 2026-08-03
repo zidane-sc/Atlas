@@ -209,6 +209,7 @@ export default function Page() {
       };
 
       // Validate and show preview
+      console.log("Import payload:", importPayload);
       const validation = validateImportPayload(importPayload);
       setImportPreviewData({
         counts: validation.counts,
