@@ -26,6 +26,20 @@ export interface ActivityLogExport {
   createdAt: string;
 }
 
+export interface NoteAttachmentExport {
+  id: string;
+  noteId: string;
+  url: string;
+  fileName: string;
+  fileType: string | null;
+}
+
+export interface NoteTaskLinkExport {
+  noteId: string;
+  taskId: string;
+  createdAt: string;
+}
+
 export interface NoteExport {
   id: string;
   title: string;
@@ -34,6 +48,8 @@ export interface NoteExport {
   pinned: boolean;
   createdAt: string;
   updatedAt: string;
+  attachments?: NoteAttachmentExport[];
+  taskLinks?: NoteTaskLinkExport[];
 }
 
 interface ImportPayload {
@@ -132,6 +148,10 @@ export async function getTasksForExport(): Promise<ActionResult<{ tasks: Task[];
     db.note.findMany({
       where: { userId: user.id },
       orderBy: { createdAt: "asc" },
+      include: {
+        attachments: true,
+        taskLinks: true,
+      },
     }),
   ]);
 
@@ -147,6 +167,18 @@ export async function getTasksForExport(): Promise<ActionResult<{ tasks: Task[];
         pinned: n.pinned,
         createdAt: n.createdAt.toISOString(),
         updatedAt: n.updatedAt.toISOString(),
+        attachments: n.attachments.map((a) => ({
+          id: a.id,
+          noteId: a.noteId,
+          url: a.url,
+          fileName: a.fileName,
+          fileType: a.fileType,
+        })),
+        taskLinks: n.taskLinks.map((l) => ({
+          noteId: l.noteId,
+          taskId: l.taskId,
+          createdAt: l.createdAt.toISOString(),
+        })),
       })),
       decorations: {
         purchased: (user.purchasedDecorations as string[]) || [],
@@ -287,7 +319,7 @@ export async function importWorkspaceData(
         }
       }
 
-      // 5. Insert Notes
+      // 5. Insert Notes with attachments and task links
       if (notes.length > 0) {
         await tx.note.createMany({
           data: notes.map((n) => ({
@@ -301,6 +333,34 @@ export async function importWorkspaceData(
             updatedAt: new Date(n.updatedAt),
           })),
         });
+
+        // Insert Note Attachments
+        const allAttachments = notes.flatMap((n) =>
+          (n.attachments ?? []).map((a) => ({
+            id: a.id,
+            noteId: a.noteId,
+            url: a.url,
+            fileName: a.fileName,
+            fileType: a.fileType,
+          }))
+        );
+        if (allAttachments.length > 0) {
+          await tx.noteAttachment.createMany({ data: allAttachments });
+        }
+
+        // Insert Note Task Links (only if tasks were imported)
+        const validTaskLinks = notes
+          .flatMap((n) =>
+            (n.taskLinks ?? []).map((l) => ({
+              noteId: l.noteId,
+              taskId: l.taskId,
+              createdAt: new Date(l.createdAt),
+            }))
+          )
+          .filter((l) => taskIds.has(l.taskId));
+        if (validTaskLinks.length > 0) {
+          await tx.noteTaskLink.createMany({ data: validTaskLinks });
+        }
       }
 
       // 6. Restore Focus Timer history and the activity feed — previously dropped on
