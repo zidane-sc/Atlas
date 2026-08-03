@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { X } from "lucide-react";
 import { getCompanionMood, type CompanionMood } from "@/lib/gamification";
 import { TYPE_ICON } from "@/lib/mock-data";
@@ -119,6 +119,16 @@ export function Companion({
   const compLv = Math.max(1, Math.round(level * 0.65));
   const colorVar = MOOD_COLOR_VAR[mood];
   const hasPinned = (pinnedTasks && pinnedTasks.length > 0) || (pinnedNotes && pinnedNotes.length > 0);
+
+  useEffect(() => {
+    const hasOnlyTasks = pinnedTasks.length > 0 && pinnedNotes.length === 0;
+    const hasOnlyNotes = pinnedNotes.length > 0 && pinnedTasks.length === 0;
+    if (hasOnlyNotes) {
+      setActiveTab("notes");
+    } else if (hasOnlyTasks) {
+      setActiveTab("tasks");
+    }
+  }, [pinnedTasks, pinnedNotes]);
 
   return (
     <div
