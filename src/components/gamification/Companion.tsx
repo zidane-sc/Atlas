@@ -100,6 +100,7 @@ export function Companion({
   onOpenNote,
   onUnpinTask,
   onUnpinNote,
+  onRefreshNotes,
 }: {
   level: number;
   todayCompleted: number;
@@ -110,6 +111,7 @@ export function Companion({
   onOpenNote?: (noteId: string) => void;
   onUnpinTask?: (taskId: string) => void;
   onUnpinNote?: (noteId: string) => void;
+  onRefreshNotes?: () => Promise<void>;
 }) {
   const [showPinned, setShowPinned] = useState(false);
   const [showMood, setShowMood] = useState(false);
@@ -129,6 +131,12 @@ export function Companion({
       setActiveTab("tasks");
     }
   }, [pinnedTasks, pinnedNotes]);
+
+  useEffect(() => {
+    if (showPinned && onRefreshNotes) {
+      onRefreshNotes();
+    }
+  }, [showPinned, onRefreshNotes]);
 
   return (
     <div

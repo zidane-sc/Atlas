@@ -247,6 +247,7 @@ export function Sidebar() {
         onOpenNote={(noteId) => router.push(`/notes?edit=${noteId}`)}
         onUnpinTask={(taskId) => togglePin(taskId, false)}
         onUnpinNote={(noteId) => updateNoteAction({ noteId, pinned: false })}
+        onRefreshNotes={fetchPinnedNotes}
       />
       <div className="p-3">
         <button
