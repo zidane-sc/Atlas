@@ -35,7 +35,28 @@ interface AtlasExport {
 function isAtlasExport(data: unknown): data is AtlasExport {
   if (!data || typeof data !== "object") return false;
   const d = data as Record<string, unknown>;
+  // Minimal checks - tasks, projects, sprints are required
+  // Other fields optional for backwards compatibility
   return Array.isArray(d.tasks) && Array.isArray(d.projects) && Array.isArray(d.sprints);
+}
+
+function migrateExportFormat(data: AtlasExport): AtlasExport {
+  // Backwards compatibility migrations for older export versions
+  const version = (data as any).version || 1;
+
+  // v1 -> v2: added workSessions and activityLogs
+  // v2 -> v3: added notes, decorations, savedFilters
+  // No schema changes needed, just fill in defaults for missing fields
+
+  return {
+    ...data,
+    bonus: data.bonus ?? { xp: 0, coins: 0 },
+    workSessions: data.workSessions ?? [],
+    activityLogs: data.activityLogs ?? [],
+    notes: data.notes ?? [],
+    decorations: data.decorations,
+    savedFilters: data.savedFilters ?? [],
+  };
 }
 
 function SectionDivider({ children }: { children: React.ReactNode }) {
@@ -158,18 +179,25 @@ export default function Page() {
 
   const onImportFile = async (file: File) => {
     try {
-      const data: unknown = JSON.parse(await file.text());
-      if (!isAtlasExport(data)) throw new Error("Not a recognized Atlas export file.");
+      const rawData: unknown = JSON.parse(await file.text());
+      if (!isAtlasExport(rawData)) throw new Error("Not a recognized Atlas export file.");
+
+      const data = migrateExportFormat(rawData as AtlasExport);
+      const version = (rawData as any).version || 1;
+      if (version > EXPORT_VERSION) {
+        console.warn(`Import file version ${version} is newer than current version ${EXPORT_VERSION}. Some data may be lost.`);
+      }
+
       const result = await importWorkspaceData({
         tasks: data.tasks,
         projects: data.projects,
         sprints: data.sprints,
-        bonus: data.bonus ?? { xp: 0, coins: 0 },
-        workSessions: data.workSessions ?? [],
-        activityLogs: data.activityLogs ?? [],
-        notes: data.notes ?? [],
+        bonus: data.bonus,
+        workSessions: data.workSessions,
+        activityLogs: data.activityLogs,
+        notes: data.notes,
         decorations: data.decorations,
-        savedFilters: data.savedFilters ?? [],
+        savedFilters: data.savedFilters,
       });
       if (!result.success) throw new Error(result.error.message);
       if (data.settings) setReduceMotion(data.settings.reduceMotion);
