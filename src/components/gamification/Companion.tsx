@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { getCompanionMood, type CompanionMood } from "@/lib/gamification";
 import { TYPE_ICON } from "@/lib/mock-data";
@@ -115,6 +116,7 @@ export function Companion({
 }) {
   const [showPinned, setShowPinned] = useState(false);
   const [showMood, setShowMood] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const [activeTab, setActiveTab] = useState<"tasks" | "notes">("tasks");
   const [msgIdx] = useState(() => Math.floor(Math.random() * 4));
   const mood = getCompanionMood(todayCompleted, justCompleted);
@@ -137,6 +139,10 @@ export function Companion({
       onRefreshNotes();
     }
   }, [showPinned, onRefreshNotes]);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   return (
     <div
@@ -177,8 +183,10 @@ export function Companion({
         </div>
       )}
 
-      {/* Pinned Hub Modal - Fixed on main page */}
-      {showPinned && (pinnedTasks.length > 0 || pinnedNotes.length > 0) && (
+      {/* Pinned Hub Modal - portaled to <body> so the sidebar's translate-x transform
+          (which creates a containing block for descendant `position: fixed` elements)
+          doesn't confine it to the sidebar's box instead of the viewport. */}
+      {mounted && showPinned && (pinnedTasks.length > 0 || pinnedNotes.length > 0) && createPortal(
         <>
           <div
             className="fixed inset-0 z-40 bg-black/30"
@@ -319,7 +327,8 @@ export function Companion({
             }
           `}</style>
         </div>
-        </>
+        </>,
+        document.body
       )}
 
       <div className="flex cursor-default flex-col items-center gap-0">

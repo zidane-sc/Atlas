@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { List, Map as MapIcon } from "lucide-react";
 import { listNotesAction, deleteNoteAction, updateNoteAction } from "@/lib/actions/notes";
+import { pinnedNotesEmitter } from "@/lib/pinned-notes-events";
 import { useNotifications } from "@/hooks/useNotifications";
 import { NoteList } from "@/components/notes/NoteList";
 import { NoteEditorLazy } from "@/components/notes/NoteEditorLazy";
@@ -79,6 +80,7 @@ export default function NotesPage() {
     const note = notes.find((n) => n.id === id);
     await updateNoteAction({ noteId: id, pinned });
     setNotes(notes.map((n) => (n.id === id ? { ...n, pinned } : n)));
+    pinnedNotesEmitter.emit();
     notify(`📌 ${pinned ? "Pinned" : "Unpinned"}: "${note?.title}"`, "success");
   };
 

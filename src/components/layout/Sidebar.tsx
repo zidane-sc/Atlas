@@ -15,6 +15,7 @@ import { getNextStreakMilestone, calculateStreak, completedAt, formatLocalDate }
 import { updateTask as updateTaskAction } from "@/lib/actions/tasks";
 import { updateNoteAction } from "@/lib/actions/notes";
 import { listNotesAction } from "@/lib/actions/notes";
+import { pinnedNotesEmitter } from "@/lib/pinned-notes-events";
 import { MOCK_NOW } from "@/lib/mock-data";
 import { NAV_CORE, NAV_MANAGE, NAV_SMART_VIEWS, NAV_TASKS, type NavItemBase } from "@/lib/nav-items";
 import { isOverdue } from "@/lib/task-utils";
@@ -107,6 +108,10 @@ export function Sidebar() {
 
   useEffect(() => {
     fetchPinnedNotes();
+  }, [fetchPinnedNotes]);
+
+  useEffect(() => {
+    return pinnedNotesEmitter.subscribe(fetchPinnedNotes);
   }, [fetchPinnedNotes]);
   const sheet = characterSheet;
   const streakDays = useMemo(() => {
@@ -281,7 +286,11 @@ export function Sidebar() {
             onOpenTask={(task) => openEditForm(task)}
             onOpenNote={(noteId) => router.push(`/notes?edit=${noteId}`)}
             onUnpinTask={(taskId) => togglePin(taskId, false)}
-            onUnpinNote={(noteId) => updateNoteAction({ noteId, pinned: false })}
+            onUnpinNote={async (noteId) => {
+              setPinnedNotes((prev) => prev.filter((n) => n.id !== noteId));
+              await updateNoteAction({ noteId, pinned: false });
+              pinnedNotesEmitter.emit();
+            }}
             onRefreshNotes={fetchPinnedNotes}
           />
         </div>
