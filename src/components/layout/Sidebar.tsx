@@ -3,12 +3,13 @@
 import { useMemo, useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Moon, Plus, Search } from "lucide-react";
+import { Moon, PanelLeftIcon, Plus, Search } from "lucide-react";
 import { Companion } from "@/components/gamification/Companion";
 import { SaveAndQuitOverlay } from "@/components/gamification/SaveAndQuitOverlay";
 import { XpBar } from "@/components/gamification/XpBar";
 import { useTasks } from "@/components/providers/TasksProvider";
 import { useCommandPalette } from "@/components/providers/CommandPaletteProvider";
+import { useSidebar } from "@/components/providers/SidebarProvider";
 import { useNotifications } from "@/hooks/useNotifications";
 import { getNextStreakMilestone, calculateStreak, completedAt, formatLocalDate } from "@/lib/gamification";
 import { updateTask as updateTaskAction } from "@/lib/actions/tasks";
@@ -17,6 +18,7 @@ import { listNotesAction } from "@/lib/actions/notes";
 import { MOCK_NOW } from "@/lib/mock-data";
 import { NAV_CORE, NAV_MANAGE, NAV_SMART_VIEWS, NAV_TASKS, type NavItemBase } from "@/lib/nav-items";
 import { isOverdue } from "@/lib/task-utils";
+import { cn } from "@/lib/utils";
 import type { Task } from "@/types/task";
 import type { NotePreview } from "@/types/note";
 
@@ -41,12 +43,13 @@ const SMART_VIEW_COUNT: Record<string, (tasks: Task[]) => number> = {
   "/tasks/focus": (tasks) => tasks.filter((t) => t.status === "ready" && (t.priority === "p0" || t.priority === "p1")).length,
 };
 
-function NavLink({ href, label, icon: Icon, count, badgeColorVar }: NavItem) {
+function NavLink({ href, label, icon: Icon, count, badgeColorVar, collapsed }: NavItem & { collapsed?: boolean }) {
   const pathname = usePathname();
   const active = pathname === href;
   return (
     <Link
       href={href}
+      title={collapsed ? label : undefined}
       className="flex w-full items-center gap-2 px-3 py-1 text-sm transition-all focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 rounded-sm"
       style={{
         backgroundColor: active ? "var(--color-bg-panel)" : "transparent",
@@ -56,10 +59,10 @@ function NavLink({ href, label, icon: Icon, count, badgeColorVar }: NavItem) {
       }}
     >
       <Icon size={12} />
-      <span className="flex-1">{label}</span>
+      <span className={cn("flex-1", collapsed && "lg:hidden")}>{label}</span>
       {count !== undefined && count > 0 && (
         <span
-          className="px-1 text-sm"
+          className={cn("px-1 text-sm", collapsed && "lg:hidden")}
           style={{
             backgroundColor: "var(--color-bg-panel-alt)",
             border: "1px solid var(--color-border)",
@@ -73,9 +76,9 @@ function NavLink({ href, label, icon: Icon, count, badgeColorVar }: NavItem) {
   );
 }
 
-function GroupLabel({ children }: { children: React.ReactNode }) {
+function GroupLabel({ children, collapsed }: { children: React.ReactNode; collapsed?: boolean }) {
   return (
-    <div className="px-3 py-1 text-sm tracking-widest" style={{ color: "var(--color-dim)" }}>
+    <div className={cn("px-3 py-1 text-sm tracking-widest", collapsed && "lg:hidden")} style={{ color: "var(--color-dim)" }}>
       ── {children} ──
     </div>
   );
@@ -85,6 +88,7 @@ export function Sidebar() {
   const router = useRouter();
   const { tasks, characterSheet, openCreateForm, openEditForm, justCompleted, updateTask, togglePin } = useTasks();
   const { notify } = useNotifications();
+  const { collapsed, setCollapsed, mobileOpen, setMobileOpen } = useSidebar();
   const [showQuit, setShowQuit] = useState(false);
   const [pinnedNotes, setPinnedNotes] = useState<NotePreview[]>([]);
   const { setOpen: setCommandPaletteOpen } = useCommandPalette();
@@ -133,148 +137,177 @@ export function Sidebar() {
   const tasksActive = pathname === "/tasks";
 
   return (
-    <aside
-      className="flex h-full w-52 shrink-0 flex-col overflow-y-auto border-r-2 border-border relative"
-      style={{ backgroundColor: "var(--color-bg-panel-alt)", overflowX: "visible" }}
-    >
-      <div className="px-4 py-4" style={{ borderBottom: "1px solid var(--color-border)" }}>
-        <div style={{ fontFamily: "var(--font-press-start), monospace", fontSize: "12px", color: "var(--color-primary-gold)" }}>
-          ⚔ ATLAS
-        </div>
-        <div className="mt-1 text-sm" style={{ color: "var(--color-text-muted)" }}>
-          Your Second Brain
-        </div>
-      </div>
-
-      {/* Compact XP strip — docs/03-design.md §10 ("compact" XpBar variant) */}
-      <div className="flex flex-col gap-1.5 px-4 py-3" style={{ borderBottom: "1px solid var(--color-border)" }}>
-        <XpBar level={sheet.globalLevel} xpIntoLevel={sheet.xpIntoLevel} xpForNextLevel={sheet.xpForNextLevel} compact />
-        <div className="flex items-center gap-3 text-sm">
-          <span
-            title={todayCompletedCount === 0 ? "You need to complete a task today to fire the streak!" : "Streak active!"}
-            style={{
-              color: todayCompletedCount === 0 ? "var(--color-dim)" : "var(--color-streak-flame)",
-              cursor: "help",
-            }}
-          >
-            <span style={{ filter: todayCompletedCount === 0 ? "grayscale(1) opacity(0.5)" : "none", display: "inline-block" }}>🔥</span> {streakDays}d
-          </span>
-          <span style={{ color: "var(--color-coin)" }}>🪙 {sheet.totalCoins}</span>
-        </div>
-        {milestone && (
-          <div className="mt-2 pt-2" style={{ borderTop: "1px solid var(--color-border)" }}>
-            <div className="mb-1 flex justify-between text-sm" style={{ color: "var(--color-dim)" }}>
-              <span style={{ color: "var(--color-text-muted)" }}>Next: {milestone.label}</span>
-              <span style={{ color: "var(--color-streak-flame)" }}>{milestone.daysLeft}d</span>
+    <>
+      {mobileOpen && (
+        <div
+          className="fixed inset-0 z-30 bg-black/50 lg:hidden"
+          onClick={() => setMobileOpen(false)}
+          aria-hidden="true"
+        />
+      )}
+      <aside
+        className={cn(
+          "fixed inset-y-0 left-0 z-40 flex h-full shrink-0 flex-col overflow-y-auto border-r-2 border-border transition-transform duration-200 lg:static lg:translate-x-0",
+          mobileOpen ? "translate-x-0" : "-translate-x-full",
+          collapsed ? "w-64 lg:w-14" : "w-64 lg:w-52"
+        )}
+        style={{ backgroundColor: "var(--color-bg-panel-alt)", overflowX: "visible" }}
+      >
+        <div className="flex items-center justify-between px-4 py-4" style={{ borderBottom: "1px solid var(--color-border)" }}>
+          <div>
+            <div style={{ fontFamily: "var(--font-press-start), monospace", fontSize: "12px", color: "var(--color-primary-gold)" }}>
+              ⚔<span className={cn(collapsed && "lg:hidden")}> ATLAS</span>
             </div>
-            <div className="flex gap-[2px]">
-              {Array.from({ length: milestone.target }).map((_, i) => (
-                <div
-                  key={i}
-                  className="h-1 flex-1"
-                  style={{ backgroundColor: i < streakDays ? "var(--color-streak-flame)" : "var(--color-border)" }}
-                />
-              ))}
+            <div className={cn("mt-1 text-sm", collapsed && "lg:hidden")} style={{ color: "var(--color-text-muted)" }}>
+              Your Second Brain
             </div>
           </div>
-        )}
-      </div>
-
-      <div className="px-3 py-2" style={{ borderBottom: "1px solid var(--color-border)" }}>
-        <button
-          type="button"
-          onClick={() => setCommandPaletteOpen(true)}
-          className="flex w-full items-center gap-2 px-2 py-1 text-sm transition-colors"
-          style={{
-            backgroundColor: "var(--color-bg-panel)",
-            border: "1px solid var(--color-border)",
-            color: "var(--color-text-muted)",
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.borderColor = "var(--color-primary-gold)";
-            e.currentTarget.style.color = "var(--color-text)";
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.borderColor = "var(--color-border)";
-            e.currentTarget.style.color = "var(--color-text-muted)";
-          }}
-        >
-          <Search size={10} />
-          <span>Search... Ctrl+K</span>
-        </button>
-      </div>
-
-      <nav className="flex-1 overflow-y-auto py-1">
-        <GroupLabel>CORE</GroupLabel>
-        {NAV_CORE.map((item) => (
-          <NavLink key={item.href} {...item} />
-        ))}
-        <Link
-          href={NAV_TASKS.href}
-          className="flex w-full items-center gap-2 px-3 py-1 text-sm transition-all"
-          style={{
-            backgroundColor: tasksActive ? "var(--color-bg-panel)" : "transparent",
-            color: tasksActive ? "var(--color-primary-gold)" : "var(--color-text-muted)",
-            borderLeft: tasksActive ? "2px solid var(--color-primary-gold)" : "2px solid transparent",
-          }}
-        >
-          <NAV_TASKS.icon size={12} />
-          <span className="flex-1">{NAV_TASKS.label}</span>
-        </Link>
-
-        <div className="mt-1">
-          <GroupLabel>SMART VIEWS</GroupLabel>
+          <button
+            type="button"
+            onClick={() => setCollapsed(!collapsed)}
+            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            className="hidden shrink-0 items-center justify-center p-1 lg:flex"
+            style={{ color: "var(--color-text-muted)" }}
+          >
+            <PanelLeftIcon size={14} />
+          </button>
         </div>
-        {smartViews.map((item) => (
-          <NavLink key={item.href} {...item} />
-        ))}
 
-        <div className="mt-1">
-          <GroupLabel>MANAGE</GroupLabel>
+        {/* Compact XP strip — docs/03-design.md §10 ("compact" XpBar variant) */}
+        <div className={cn("flex flex-col gap-1.5 px-4 py-3", collapsed && "lg:hidden")} style={{ borderBottom: "1px solid var(--color-border)" }}>
+          <XpBar level={sheet.globalLevel} xpIntoLevel={sheet.xpIntoLevel} xpForNextLevel={sheet.xpForNextLevel} compact />
+          <div className="flex items-center gap-3 text-sm">
+            <span
+              title={todayCompletedCount === 0 ? "You need to complete a task today to fire the streak!" : "Streak active!"}
+              style={{
+                color: todayCompletedCount === 0 ? "var(--color-dim)" : "var(--color-streak-flame)",
+                cursor: "help",
+              }}
+            >
+              <span style={{ filter: todayCompletedCount === 0 ? "grayscale(1) opacity(0.5)" : "none", display: "inline-block" }}>🔥</span> {streakDays}d
+            </span>
+            <span style={{ color: "var(--color-coin)" }}>🪙 {sheet.totalCoins}</span>
+          </div>
+          {milestone && (
+            <div className="mt-2 pt-2" style={{ borderTop: "1px solid var(--color-border)" }}>
+              <div className="mb-1 flex justify-between text-sm" style={{ color: "var(--color-dim)" }}>
+                <span style={{ color: "var(--color-text-muted)" }}>Next: {milestone.label}</span>
+                <span style={{ color: "var(--color-streak-flame)" }}>{milestone.daysLeft}d</span>
+              </div>
+              <div className="flex gap-[2px]">
+                {Array.from({ length: milestone.target }).map((_, i) => (
+                  <div
+                    key={i}
+                    className="h-1 flex-1"
+                    style={{ backgroundColor: i < streakDays ? "var(--color-streak-flame)" : "var(--color-border)" }}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
         </div>
-        {NAV_MANAGE.map((item) => (
-          <NavLink key={item.href} {...item} />
-        ))}
-      </nav>
 
-      <Companion
-        level={sheet.globalLevel}
-        todayCompleted={todayCompletedCount}
-        justCompleted={justCompleted}
-        pinnedTasks={pinnedTasks}
-        pinnedNotes={pinnedNotes}
-        onOpenTask={(task) => openEditForm(task)}
-        onOpenNote={(noteId) => router.push(`/notes?edit=${noteId}`)}
-        onUnpinTask={(taskId) => togglePin(taskId, false)}
-        onUnpinNote={(noteId) => updateNoteAction({ noteId, pinned: false })}
-        onRefreshNotes={fetchPinnedNotes}
-      />
-      <div className="p-3">
-        <button
-          type="button"
-          onClick={openCreateForm}
-          className="pixel-button flex w-full items-center justify-center gap-1.5 border-2 border-primary bg-primary px-3 py-1.5 text-sm text-primary-foreground"
-        >
-          <Plus size={12} /> New Quest
-        </button>
-        <button
-          type="button"
-          onClick={() => setShowQuit(true)}
-          className="pixel-button mt-2 flex w-full items-center justify-center gap-1.5 border-2 border-border bg-transparent px-3 py-1.5 text-sm transition-colors"
-          style={{ color: "var(--color-text-muted)" }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.color = "var(--color-text)";
-            e.currentTarget.style.borderColor = "var(--color-primary-gold)";
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.color = "var(--color-text-muted)";
-            e.currentTarget.style.borderColor = "var(--color-border)";
-          }}
-        >
-          <Moon size={12} /> Save &amp; Quit
-        </button>
-      </div>
-      {showQuit && <SaveAndQuitOverlay onClose={() => setShowQuit(false)} />}
-    </aside>
+        <div className={cn("px-3 py-2", collapsed && "lg:hidden")} style={{ borderBottom: "1px solid var(--color-border)" }}>
+          <button
+            type="button"
+            onClick={() => setCommandPaletteOpen(true)}
+            className="flex w-full items-center gap-2 px-2 py-1 text-sm transition-colors"
+            style={{
+              backgroundColor: "var(--color-bg-panel)",
+              border: "1px solid var(--color-border)",
+              color: "var(--color-text-muted)",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.borderColor = "var(--color-primary-gold)";
+              e.currentTarget.style.color = "var(--color-text)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.borderColor = "var(--color-border)";
+              e.currentTarget.style.color = "var(--color-text-muted)";
+            }}
+          >
+            <Search size={10} />
+            <span>Search... Ctrl+K</span>
+          </button>
+        </div>
+
+        <nav className="flex-1 overflow-y-auto py-1">
+          <GroupLabel collapsed={collapsed}>CORE</GroupLabel>
+          {NAV_CORE.map((item) => (
+            <NavLink key={item.href} {...item} collapsed={collapsed} />
+          ))}
+          <Link
+            href={NAV_TASKS.href}
+            title={collapsed ? NAV_TASKS.label : undefined}
+            className="flex w-full items-center gap-2 px-3 py-1 text-sm transition-all"
+            style={{
+              backgroundColor: tasksActive ? "var(--color-bg-panel)" : "transparent",
+              color: tasksActive ? "var(--color-primary-gold)" : "var(--color-text-muted)",
+              borderLeft: tasksActive ? "2px solid var(--color-primary-gold)" : "2px solid transparent",
+            }}
+          >
+            <NAV_TASKS.icon size={12} />
+            <span className={cn("flex-1", collapsed && "lg:hidden")}>{NAV_TASKS.label}</span>
+          </Link>
+
+          <div className="mt-1">
+            <GroupLabel collapsed={collapsed}>SMART VIEWS</GroupLabel>
+          </div>
+          {smartViews.map((item) => (
+            <NavLink key={item.href} {...item} collapsed={collapsed} />
+          ))}
+
+          <div className="mt-1">
+            <GroupLabel collapsed={collapsed}>MANAGE</GroupLabel>
+          </div>
+          {NAV_MANAGE.map((item) => (
+            <NavLink key={item.href} {...item} collapsed={collapsed} />
+          ))}
+        </nav>
+
+        <div className={cn(collapsed && "lg:hidden")}>
+          <Companion
+            level={sheet.globalLevel}
+            todayCompleted={todayCompletedCount}
+            justCompleted={justCompleted}
+            pinnedTasks={pinnedTasks}
+            pinnedNotes={pinnedNotes}
+            onOpenTask={(task) => openEditForm(task)}
+            onOpenNote={(noteId) => router.push(`/notes?edit=${noteId}`)}
+            onUnpinTask={(taskId) => togglePin(taskId, false)}
+            onUnpinNote={(noteId) => updateNoteAction({ noteId, pinned: false })}
+            onRefreshNotes={fetchPinnedNotes}
+          />
+        </div>
+        <div className="p-3">
+          <button
+            type="button"
+            onClick={openCreateForm}
+            title={collapsed ? "New Quest" : undefined}
+            className="pixel-button flex w-full items-center justify-center gap-1.5 border-2 border-primary bg-primary px-3 py-1.5 text-sm text-primary-foreground"
+          >
+            <Plus size={12} /> <span className={cn(collapsed && "lg:hidden")}>New Quest</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowQuit(true)}
+            title={collapsed ? "Save & Quit" : undefined}
+            className="pixel-button mt-2 flex w-full items-center justify-center gap-1.5 border-2 border-border bg-transparent px-3 py-1.5 text-sm transition-colors"
+            style={{ color: "var(--color-text-muted)" }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.color = "var(--color-text)";
+              e.currentTarget.style.borderColor = "var(--color-primary-gold)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.color = "var(--color-text-muted)";
+              e.currentTarget.style.borderColor = "var(--color-border)";
+            }}
+          >
+            <Moon size={12} /> <span className={cn(collapsed && "lg:hidden")}>Save &amp; Quit</span>
+          </button>
+        </div>
+        {showQuit && <SaveAndQuitOverlay onClose={() => setShowQuit(false)} />}
+      </aside>
+    </>
   );
 }
