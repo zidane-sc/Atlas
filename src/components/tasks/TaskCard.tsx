@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, memo } from "react";
+import { memo } from "react";
+import type { DraggableProvided } from "@hello-pangea/dnd";
 import { KANBAN_COLUMNS, STATUS_COLOR_VAR, STATUS_LABEL, STATUS_SHAPE, TYPE_ICON, MOCK_NOW } from "@/lib/mock-data";
 import { formatDueDate, isOverdue } from "@/lib/task-utils";
 import type { Task, TaskStatus } from "@/types/task";
@@ -11,31 +12,36 @@ function TaskCardComponent({
   task,
   onSelect,
   onMoveStatus,
+  dragHandleRef,
+  draggableProps,
+  dragHandleProps,
+  isDragging = false,
 }: {
   task: Task;
   onSelect: (task: Task) => void;
   /** Keyboard-operable alternative to Kanban drag-and-drop — moving columns shouldn't require a mouse. */
   onMoveStatus?: (task: Task, status: TaskStatus) => void;
+  dragHandleRef?: DraggableProvided["innerRef"];
+  draggableProps?: DraggableProvided["draggableProps"];
+  dragHandleProps?: DraggableProvided["dragHandleProps"];
+  isDragging?: boolean;
 }) {
   const overdue = isOverdue(task.dueDate, MOCK_NOW) && task.status !== "done";
-  const [dragging, setDragging] = useState(false);
+  const dragging = isDragging;
 
   return (
     // Not a <button> — a nested keyboard-operable status <select> requires div[role=button]
-    // (button > select is invalid HTML). Enter/Space on the card body still opens the editor.
+    // (button > select is invalid HTML). Enter on the card body still opens the editor;
+    // Space/arrows are reserved by @hello-pangea/dnd's keyboard drag sensor (dragHandleProps).
     <div
       role="button"
       tabIndex={0}
-      draggable
-      onDragStart={(e) => {
-        e.dataTransfer.setData("text/plain", task.id);
-        e.dataTransfer.effectAllowed = "move";
-        setDragging(true);
-      }}
-      onDragEnd={() => setDragging(false)}
+      ref={dragHandleRef}
+      {...draggableProps}
+      {...dragHandleProps}
       onClick={() => onSelect(task)}
       onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") {
+        if (e.key === "Enter") {
           e.preventDefault();
           onSelect(task);
         }
@@ -46,6 +52,7 @@ function TaskCardComponent({
         opacity: dragging ? 0.6 : 1,
         borderStyle: dragging ? "dashed" : "solid",
         boxShadow: dragging ? "0 4px 12px rgba(0,0,0,0.2) inset" : "none",
+        ...draggableProps?.style,
       }}
       className="pixel-panel flex w-full cursor-grab flex-col gap-2 border-2 p-3 text-left transition-all duration-200 hover:brightness-110 hover:cursor-grab focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 animate-in fade-in zoom-in-95"
     >
