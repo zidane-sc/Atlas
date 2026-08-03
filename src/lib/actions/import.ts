@@ -115,7 +115,7 @@ export interface NoteExport {
   taskLinks?: NoteTaskLinkExport[];
 }
 
-interface ImportPayload {
+export interface ImportPayload {
   tasks: Task[];
   projects: Project[];
   sprints: Sprint[];

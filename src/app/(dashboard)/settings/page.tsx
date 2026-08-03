@@ -10,7 +10,8 @@ import { useSprints } from "@/components/providers/SprintsProvider";
 import { useSettings } from "@/components/providers/SettingsProvider";
 import { useNotifications } from "@/hooks/useNotifications";
 import { updateUserProfileAction } from "@/lib/actions/user";
-import { getWorkspaceHistoryForExport, getTasksForExport, importWorkspaceData, type ActivityLogExport, type WorkSessionExport, type NoteExport } from "@/lib/actions/import";
+import { getWorkspaceHistoryForExport, getTasksForExport, importWorkspaceData, validateImportPayload, type ActivityLogExport, type WorkSessionExport, type NoteExport } from "@/lib/actions/import";
+import { ImportPreviewModal } from "@/components/ImportPreviewModal";
 import type { Project, Sprint } from "@/types/gamification";
 import type { Task } from "@/types/task";
 
@@ -118,6 +119,13 @@ export default function Page() {
   const [isEditingName, setIsEditingName] = useState(false);
   const [nameInput, setNameInput] = useState(session?.user?.name ?? "");
   const [savingName, setSavingName] = useState(false);
+  const [importPreviewOpen, setImportPreviewOpen] = useState(false);
+  const [importPreviewData, setImportPreviewData] = useState<{
+    counts: { tasks: number; projects: number; sprints: number; notes: number; workSessions: number; activityLogs: number };
+    errors: Array<{ category: string; index: number; itemName: string | null; message: string }>;
+    payload: any;
+  } | null>(null);
+  const [isImporting, setIsImporting] = useState(false);
 
   const getSetting = useCallback((key: string, defaultValue?: any): any => {
     const setting = settings.find((s) => s.key === key);
@@ -188,7 +196,7 @@ export default function Page() {
         console.warn(`Import file version ${version} is newer than current version ${EXPORT_VERSION}. Some data may be lost.`);
       }
 
-      const result = await importWorkspaceData({
+      const importPayload = {
         tasks: data.tasks,
         projects: data.projects,
         sprints: data.sprints,
@@ -198,16 +206,37 @@ export default function Page() {
         notes: data.notes,
         decorations: data.decorations,
         savedFilters: data.savedFilters,
+      };
+
+      // Validate and show preview
+      const validation = validateImportPayload(importPayload);
+      setImportPreviewData({
+        counts: validation.counts,
+        errors: validation.errors,
+        payload: importPayload,
       });
-      if (!result.success) throw new Error(result.error.message);
-      if (data.settings) setReduceMotion(data.settings.reduceMotion);
-      notify(`Imported ${data.tasks.length} tasks, ${data.projects.length} projects, ${data.sprints.length} sprints, ${(data.notes ?? []).length} notes. Reloading…`);
-      // A full workspace restore replaces everything the DB holds — every provider needs
-      // to re-hydrate from fresh server data, which a client-side dispatch can't do for
-      // all of them at once, so reload rather than trying to patch each provider's state.
-      window.location.reload();
+      setImportPreviewOpen(true);
     } catch (err) {
       notify(err instanceof Error ? err.message : "Import failed — file isn't valid JSON.", "error");
+    }
+  };
+
+  const onConfirmImport = async () => {
+    if (!importPreviewData) return;
+    setIsImporting(true);
+    try {
+      const result = await importWorkspaceData(importPreviewData.payload);
+      if (!result.success) throw new Error(result.error.message);
+
+      // Extract settings from the original payload if available
+      const rawData = importPreviewData.payload;
+      if (rawData.settings) setReduceMotion(rawData.settings.reduceMotion);
+
+      notify(`Imported ${importPreviewData.counts.tasks} tasks, ${importPreviewData.counts.projects} projects, ${importPreviewData.counts.sprints} sprints, ${importPreviewData.counts.notes} notes. Reloading…`);
+      window.location.reload();
+    } catch (err) {
+      notify(err instanceof Error ? err.message : "Import failed.", "error");
+      setIsImporting(false);
     }
   };
 
@@ -370,6 +399,19 @@ export default function Page() {
           </ConfirmButton>
         </div>
       </div>
+      {importPreviewData && (
+        <ImportPreviewModal
+          isOpen={importPreviewOpen}
+          counts={importPreviewData.counts}
+          errors={importPreviewData.errors}
+          isLoading={isImporting}
+          onCancel={() => {
+            setImportPreviewOpen(false);
+            setImportPreviewData(null);
+          }}
+          onConfirm={onConfirmImport}
+        />
+      )}
     </div>
   );
 }
