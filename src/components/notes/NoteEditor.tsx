@@ -44,6 +44,7 @@ export function NoteEditor({ noteId, initialData, onSave, onClose }: NoteEditorP
   const [lastSaved, setLastSaved] = useState<string | null>(null);
   const [tagError, setTagError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(!initialData && !!noteId);
+  const [mobileTab, setMobileTab] = useState<"editor" | "preview">("editor");
   const saveTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
   const errorTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
   const noteCreatedRef = useRef<string | null>(null);
@@ -325,10 +326,32 @@ export function NoteEditor({ noteId, initialData, onSave, onClose }: NoteEditorP
         )}
       </div>
 
+      {/* Mobile Editor/Preview Tabs */}
+      <div className="flex md:hidden border-b-2" style={{ borderColor: "var(--color-primary-gold)" }}>
+        <button
+          type="button"
+          onClick={() => setMobileTab("editor")}
+          className={`flex-1 flex items-center justify-center gap-1 px-3 py-2 text-xs font-display transition-colors ${
+            mobileTab === "editor" ? "bg-primary text-primary-foreground" : "bg-card text-muted-foreground hover:bg-accent"
+          }`}
+        >
+          📝 Editor
+        </button>
+        <button
+          type="button"
+          onClick={() => setMobileTab("preview")}
+          className={`flex-1 flex items-center justify-center gap-1 px-3 py-2 text-xs font-display transition-colors ${
+            mobileTab === "preview" ? "bg-primary text-primary-foreground" : "bg-card text-muted-foreground hover:bg-accent"
+          }`}
+        >
+          👁️ Preview
+        </button>
+      </div>
+
       {/* Split Pane */}
       <div className="flex flex-1 flex-col md:flex-row overflow-hidden">
         {/* Editor Left */}
-        <div className="flex flex-col flex-1 min-h-0 border-b-2 md:border-b-0 md:border-r-2" style={{ borderColor: "var(--color-primary-gold)" }}>
+        <div className={`${mobileTab === "editor" ? "flex" : "hidden"} md:flex flex-col flex-1 min-h-0 border-b-2 md:border-b-0 md:border-r-2`} style={{ borderColor: "var(--color-primary-gold)" }}>
           <div className="px-3 py-2 border-b border-gray-600" style={{ backgroundColor: "var(--color-bg-panel-alt)" }}>
             <span className="text-xs font-display" style={{ color: "var(--color-primary-gold)" }}>
               📝 EDITOR
@@ -349,7 +372,7 @@ export function NoteEditor({ noteId, initialData, onSave, onClose }: NoteEditorP
         </div>
 
         {/* Preview Right */}
-        <div className="flex-1 min-h-0 md:border-l-2 overflow-hidden" style={{ borderColor: "var(--color-primary-gold)" }}>
+        <div className={`${mobileTab === "preview" ? "block" : "hidden"} md:block flex-1 min-h-0 md:border-l-2 overflow-hidden`} style={{ borderColor: "var(--color-primary-gold)" }}>
           <div className="px-3 py-2 border-b border-gray-600" style={{ backgroundColor: "var(--color-bg-panel-alt)" }}>
             <span className="text-xs font-display" style={{ color: "var(--color-primary-gold)" }}>
               👁️ PREVIEW
