@@ -58,7 +58,7 @@ export default function Page() {
   return (
     <div className="flex h-full flex-col">
       <div
-        className="flex items-center gap-0 px-2 pt-2"
+        className="flex items-center gap-0 overflow-x-auto px-2 pt-2"
         style={{ borderBottom: "2px solid var(--color-border)", backgroundColor: "var(--color-bg-panel-alt)" }}
       >
         {TABS.map(([id, shape, label]) => {
