@@ -13,7 +13,7 @@ export interface ImportPreviewModalProps {
     workSessions: number;
     activityLogs: number;
   };
-  errors: ValidationError[];
+  errors?: ValidationError[];
   isLoading?: boolean;
   onCancel: () => void;
   onConfirm: () => void;
@@ -22,7 +22,7 @@ export interface ImportPreviewModalProps {
 export function ImportPreviewModal({
   isOpen,
   counts,
-  errors,
+  errors = [],
   isLoading = false,
   onCancel,
   onConfirm,
