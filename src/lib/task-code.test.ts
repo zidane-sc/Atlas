@@ -1,3 +1,4 @@
+import { describe, expect, it } from "vitest";
 import { generateTaskCode } from "./task-code";
 
 describe("generateTaskCode", () => {

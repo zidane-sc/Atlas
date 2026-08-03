@@ -31,6 +31,7 @@ export async function createSprint(input: unknown): Promise<ActionResult<Sprint>
       const created = await tx.sprint.create({
         data: {
           name: parsed.data.name,
+          projectId: parsed.data.projectId,
           startDate: new Date(parsed.data.startDate),
           endDate: new Date(parsed.data.endDate),
           status: parsed.data.status as SprintStatus,
@@ -40,6 +41,7 @@ export async function createSprint(input: unknown): Promise<ActionResult<Sprint>
 
       await logActivity(tx, owner.id, {
         sprintId: created.id,
+        projectId: created.projectId,
         action: "created",
         details: { name: created.name },
       });
@@ -83,6 +85,7 @@ export async function updateSprint(id: string, input: unknown): Promise<ActionRe
         where: { id },
         data: {
           name: parsed.data.name,
+          projectId: parsed.data.projectId,
           startDate: parsed.data.startDate ? new Date(parsed.data.startDate) : undefined,
           endDate: parsed.data.endDate ? new Date(parsed.data.endDate) : undefined,
           status: parsed.data.status ? (parsed.data.status as SprintStatus) : undefined,
@@ -92,6 +95,7 @@ export async function updateSprint(id: string, input: unknown): Promise<ActionRe
 
       await logActivity(tx, owner.id, {
         sprintId: updated.id,
+        projectId: updated.projectId,
         action: "updated",
         details: { name: updated.name },
       });
@@ -127,6 +131,7 @@ export async function deleteSprint(id: string): Promise<ActionResult<{ id: strin
 
       await logActivity(tx, owner.id, {
         sprintId: id,
+        projectId: existing.projectId,
         action: "deleted",
         details: { name: existing.name },
       });

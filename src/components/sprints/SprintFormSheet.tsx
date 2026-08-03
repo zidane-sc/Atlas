@@ -14,10 +14,11 @@ import { ConfirmButton } from "@/components/ui/ConfirmButton";
 import { Separator } from "@/components/ui/separator";
 import { DatePicker } from "@/components/ui/DatePicker";
 import { useSprints } from "@/components/providers/SprintsProvider";
+import { useProjects } from "@/components/providers/ProjectsProvider";
 import { SPRINT_STATUSES, sprintFormSchema, type SprintFormValues } from "@/lib/schemas/sprint";
 import type { Sprint } from "@/types/gamification";
 
-const EMPTY_FORM: SprintFormValues = {
+const EMPTY_FORM: Omit<SprintFormValues, "projectId"> = {
   name: "",
   startDate: "",
   endDate: "",
@@ -48,16 +49,25 @@ export function SprintFormSheet() {
 
 function SprintFormBody({ mode, sprint }: { mode: "create" | "edit"; sprint: Sprint | null }) {
   const { closeForm, createSprint, updateSprint, deleteSprint } = useSprints();
+  const { projects } = useProjects();
   const [form, setForm] = useState<SprintFormValues>(() =>
     mode === "edit" && sprint
       ? {
           name: sprint.name,
+          projectId: sprint.projectId,
           startDate: sprint.startDate,
           endDate: sprint.endDate,
           status: sprint.status,
           goal: sprint.goal,
         }
-      : EMPTY_FORM
+      : {
+          name: "",
+          projectId: projects[0]?.id ?? "",
+          startDate: "",
+          endDate: "",
+          status: "planning",
+          goal: "",
+        }
   );
   const [error, setError] = useState<string | null>(null);
 
@@ -123,6 +133,22 @@ function SprintFormBody({ mode, sprint }: { mode: "create" | "edit"; sprint: Spr
           {error && <p className="mt-1 text-sm" style={{ color: "var(--color-status-blocked)" }}>{error}</p>}
         </div>
 
+        <div>
+          <label className={LC}>Project *</label>
+          <select
+            aria-label="Project"
+            className={FIELD}
+            value={form.projectId}
+            onChange={(e) => set("projectId", e.target.value)}
+          >
+            {projects.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.emoji} {p.name}
+              </option>
+            ))}
+          </select>
+        </div>
+
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className={LC}>Start Date</label>
@@ -165,7 +191,7 @@ function SprintFormBody({ mode, sprint }: { mode: "create" | "edit"; sprint: Spr
       <Separator />
       <div className="flex items-center justify-between p-4">
         <Button type="button" variant="ghost" onClick={closeForm}>Cancel</Button>
-        <Button type="submit" disabled={!form.name.trim() || !form.startDate || !form.endDate}>
+        <Button type="submit" disabled={!form.name.trim() || !form.projectId || !form.startDate || !form.endDate}>
           <Check size={12} /> {mode === "edit" ? "Save Changes" : "Create Sprint"}
         </Button>
       </div>

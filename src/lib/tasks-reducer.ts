@@ -238,6 +238,7 @@ export function mapDbSprintToClient(dbSprint: DbSprint): Sprint {
   return {
     id: dbSprint.id,
     name: dbSprint.name,
+    projectId: dbSprint.projectId,
     startDate: dbSprint.startDate.toISOString().split("T")[0],
     endDate: dbSprint.endDate.toISOString().split("T")[0],
     status: dbSprint.status as Sprint["status"],

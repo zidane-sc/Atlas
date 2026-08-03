@@ -65,6 +65,7 @@ export async function seedInitialData(userId: string): Promise<SeedResult> {
     const sprint = await db.sprint.create({
       data: {
         name: "Current Sprint",
+        projectId: projectMap.sideProject || projectMap.fullTime,
         startDate: today,
         endDate: twoWeeksLater,
         status: "active" as SprintStatus,

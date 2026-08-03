@@ -263,6 +263,7 @@ export async function importWorkspaceData(
               return {
                 id: s.id,
                 name: s.name,
+                projectId: s.projectId || projects[0]?.id || "",
                 startDate: parseDate(s.startDate)!,
                 endDate: parseDate(s.endDate)!,
                 status: validateSprintStatus(s.status),

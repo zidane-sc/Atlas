@@ -7,6 +7,7 @@ import { PriorityMark } from "@/components/tasks/PriorityMark";
 import { StatusBadge } from "@/components/tasks/StatusBadge";
 import { useTasks } from "@/components/providers/TasksProvider";
 import { useSprints } from "@/components/providers/SprintsProvider";
+import { useProjects } from "@/components/providers/ProjectsProvider";
 import { PixBar } from "@/components/ui/PixBar";
 import { formatDueDate } from "@/lib/task-utils";
 
@@ -19,12 +20,14 @@ const SPRINT_STATUS_COLOR_VAR: Record<string, string> = {
 export default function Page() {
   const { tasks: allTasks, openEditForm } = useTasks();
   const { sprints, openCreateForm, openEditForm: openSprintEditForm } = useSprints();
+  const { projects } = useProjects();
   const [selectedId, setSelectedId] = useState(
     () => sprints.find((s) => s.status === "active")?.id ?? sprints[0]?.id
   );
   const sprint = sprints.find((s) => s.id === selectedId) ?? sprints[0];
   const sprintTasks = sprint ? allTasks.filter((t) => t.sprint === sprint.name) : [];
   const done = sprintTasks.filter((t) => t.status === "done").length;
+  const project = sprint ? projects.find((p) => p.id === sprint.projectId) : null;
 
   return (
     <div className="flex h-full flex-col">
@@ -43,6 +46,7 @@ export default function Page() {
           {sprints.map((s) => {
             const colorVar = SPRINT_STATUS_COLOR_VAR[s.status];
             const active = s.id === selectedId;
+            const proj = projects.find((p) => p.id === s.projectId);
             return (
               <button
                 key={s.id}
@@ -54,10 +58,15 @@ export default function Page() {
                   borderLeft: active ? "2px solid var(--color-primary-gold)" : "2px solid transparent",
                 }}
               >
-                <div className="mb-1">
-                  <span className="border px-1 text-sm" style={{ color: `var(${colorVar})`, borderColor: `var(${colorVar})` }}>
+                <div className="mb-1 flex flex-wrap items-center gap-1.5">
+                  <span className="border px-1 text-xs" style={{ color: `var(${colorVar})`, borderColor: `var(${colorVar})` }}>
                     {s.status.toUpperCase()}
                   </span>
+                  {proj && (
+                    <span className="text-[10px] text-muted-foreground opacity-80 truncate max-w-[100px]">
+                      {proj.emoji} {proj.name}
+                    </span>
+                  )}
                 </div>
                 <div className="text-sm text-foreground whitespace-nowrap">{s.name}</div>
                 <div className="hidden text-sm text-muted-foreground whitespace-nowrap md:block">{formatDueDate(s.startDate)} → {formatDueDate(s.endDate)}</div>
@@ -69,7 +78,19 @@ export default function Page() {
         {sprint && (
           <div className="flex-1 overflow-y-auto p-4 md:p-6">
             <div className="mb-5">
-              <div className="mb-2 flex flex-wrap items-center gap-3">
+              <div className="mb-2 flex flex-wrap items-center gap-2">
+                {project && (
+                  <span
+                    className="border px-2 py-0.5 text-xs font-semibold tracking-wider rounded-sm"
+                    style={{
+                      color: project.customColor || `var(${project.colorVar})`,
+                      borderColor: project.customColor || `var(${project.colorVar})`,
+                      backgroundColor: "rgba(0, 0, 0, 0.15)",
+                    }}
+                  >
+                    {project.emoji} {project.name.toUpperCase()}
+                  </span>
+                )}
                 <span
                   className="border px-2 py-0.5 text-sm"
                   style={{ color: `var(${SPRINT_STATUS_COLOR_VAR[sprint.status]})`, borderColor: `var(${SPRINT_STATUS_COLOR_VAR[sprint.status]})` }}

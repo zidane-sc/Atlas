@@ -7,6 +7,7 @@ const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 export const sprintFormSchema = z
   .object({
     name: z.string().trim().min(1, "Sprint name is required"),
+    projectId: z.string().uuid("Invalid project selected"),
     startDate: z.string().regex(DATE_RE, "Use YYYY-MM-DD"),
     endDate: z.string().regex(DATE_RE, "Use YYYY-MM-DD"),
     status: z.enum(SPRINT_STATUSES),
@@ -22,6 +23,7 @@ export type SprintFormValues = z.infer<typeof sprintFormSchema>;
 export const createSprintSchema = z
   .object({
     name: z.string().trim().min(1, "Sprint name is required"),
+    projectId: z.string().uuid("Invalid project selected"),
     startDate: z.string().regex(DATE_RE, "Use YYYY-MM-DD"),
     endDate: z.string().regex(DATE_RE, "Use YYYY-MM-DD"),
     status: z.enum(SPRINT_STATUSES).default("planning"),
@@ -37,6 +39,7 @@ export type CreateSprintInput = z.input<typeof createSprintSchema>;
 export const updateSprintSchema = z
   .object({
     name: z.string().trim().min(1, "Sprint name is required").optional(),
+    projectId: z.string().uuid("Invalid project selected").optional(),
     startDate: z.string().regex(DATE_RE, "Use YYYY-MM-DD").optional(),
     endDate: z.string().regex(DATE_RE, "Use YYYY-MM-DD").optional(),
     status: z.enum(SPRINT_STATUSES).optional(),
