@@ -26,6 +26,16 @@ export interface ActivityLogExport {
   createdAt: string;
 }
 
+export interface NoteExport {
+  id: string;
+  title: string;
+  content: string;
+  tags: string[];
+  pinned: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
 interface ImportPayload {
   tasks: Task[];
   projects: Project[];
@@ -33,6 +43,9 @@ interface ImportPayload {
   bonus: { xp: number; coins: number };
   workSessions?: WorkSessionExport[];
   activityLogs?: ActivityLogExport[];
+  notes?: NoteExport[];
+  decorations?: { purchased: string[]; placed: Record<string, string | null> };
+  savedFilters?: any[];
 }
 
 /**
@@ -94,18 +107,18 @@ export async function getWorkspaceHistoryForExport(): Promise<
  * with no `take` limit, same one-time-cost tradeoff already accepted by
  * `getWorkspaceHistoryForExport` above.
  */
-export async function getTasksForExport(): Promise<ActionResult<{ tasks: Task[] }>> {
+export async function getTasksForExport(): Promise<ActionResult<{ tasks: Task[]; notes: NoteExport[]; decorations: { purchased: string[]; placed: Record<string, string | null> }; savedFilters: any[] }>> {
   const session = await auth();
   if (!session?.user?.email) {
     return { success: false, error: { code: "UNAUTHORIZED", message: "Sign in required." } };
   }
 
-  const user = await db.user.findUnique({ where: { email: session.user.email }, select: { id: true } });
+  const user = await db.user.findUnique({ where: { email: session.user.email }, select: { id: true, purchasedDecorations: true, placedDecorations: true, savedFilters: true } });
   if (!user) {
     return { success: false, error: { code: "NOT_FOUND", message: "User not found." } };
   }
 
-  const [dbTasks, dbProjects, dbSprints] = await Promise.all([
+  const [dbTasks, dbProjects, dbSprints, dbNotes] = await Promise.all([
     db.task.findMany({
       where: { ownerId: user.id, deletedAt: null },
       orderBy: { createdAt: "asc" },
@@ -116,11 +129,31 @@ export async function getTasksForExport(): Promise<ActionResult<{ tasks: Task[] 
     }),
     db.project.findMany({ where: { archivedAt: null } }),
     db.sprint.findMany(),
+    db.note.findMany({
+      where: { userId: user.id },
+      orderBy: { createdAt: "asc" },
+    }),
   ]);
 
   return {
     success: true,
-    data: { tasks: dbTasks.map((t) => mapDbTaskToClient(t, dbProjects, dbSprints)) },
+    data: {
+      tasks: dbTasks.map((t) => mapDbTaskToClient(t, dbProjects, dbSprints)),
+      notes: dbNotes.map((n) => ({
+        id: n.id,
+        title: n.title,
+        content: n.content,
+        tags: n.tags,
+        pinned: n.pinned,
+        createdAt: n.createdAt.toISOString(),
+        updatedAt: n.updatedAt.toISOString(),
+      })),
+      decorations: {
+        purchased: (user.purchasedDecorations as string[]) || [],
+        placed: (user.placedDecorations as Record<string, string | null>) || {},
+      },
+      savedFilters: (user.savedFilters as any[]) || [],
+    },
   };
 }
 
@@ -142,23 +175,19 @@ export async function importWorkspaceData(
       return { success: false, error: { code: "NOT_FOUND", message: "User not found." } };
     }
 
-    const { tasks, projects, sprints, bonus, workSessions = [], activityLogs = [] } = payload;
+    const { tasks, projects, sprints, bonus, workSessions = [], activityLogs = [], notes = [], decorations, savedFilters = [] } = payload;
     const taskIds = new Set(tasks.map((t) => t.id));
 
     await db.$transaction(async (tx) => {
-      // Snapshot Note<->Task links before the task wipe below — `NoteTaskLink.taskId` cascades
-      // on task delete, and Notes aren't part of the import payload at all, so without this
-      // every note-task link in the account is silently destroyed by every import
-      // (docs/05-backlog.md §8 finding #3). Restored after tasks are recreated, below.
-      const preservedNoteTaskLinks = await tx.noteTaskLink.findMany({
-        where: { taskId: { in: [...taskIds] } },
-      });
-
       // 1. Wipe existing data
       await tx.taskStatusLog.deleteMany({});
       await tx.comment.deleteMany({});
       await tx.activityLog.deleteMany({});
       await tx.workSession.deleteMany({});
+      await tx.noteTaskLink.deleteMany({});
+      await tx.noteAttachment.deleteMany({});
+      await tx.noteLink.deleteMany({});
+      await tx.note.deleteMany({});
       await tx.task.deleteMany({});
       await tx.project.deleteMany({});
       await tx.sprint.deleteMany({});
@@ -258,18 +287,23 @@ export async function importWorkspaceData(
         }
       }
 
-      // Restore the Note<->Task links snapshotted before the wipe (see comment above).
-      if (preservedNoteTaskLinks.length > 0) {
-        await tx.noteTaskLink.createMany({
-          data: preservedNoteTaskLinks.map((l) => ({
-            noteId: l.noteId,
-            taskId: l.taskId,
-            createdAt: l.createdAt,
+      // 5. Insert Notes
+      if (notes.length > 0) {
+        await tx.note.createMany({
+          data: notes.map((n) => ({
+            id: n.id,
+            userId: user.id,
+            title: n.title,
+            content: n.content,
+            tags: n.tags,
+            pinned: n.pinned,
+            createdAt: new Date(n.createdAt),
+            updatedAt: new Date(n.updatedAt),
           })),
         });
       }
 
-      // 5. Restore Focus Timer history and the activity feed — previously dropped on
+      // 6. Restore Focus Timer history and the activity feed — previously dropped on
       // re-import even though the wipe step above deletes both (docs/05-backlog.md §6).
       const validWorkSessions = workSessions.filter((w) => taskIds.has(w.taskId));
       if (validWorkSessions.length > 0) {
@@ -300,14 +334,15 @@ export async function importWorkspaceData(
         });
       }
 
-      // 6. Update user stats
+      // 7. Update user stats with decorations and saved filters
       await tx.user.update({
         where: { id: user.id },
         data: {
           bonusXp: bonus.xp,
           bonusCoins: bonus.coins,
-          purchasedDecorations: [],
-          placedDecorations: {},
+          purchasedDecorations: decorations?.purchased || [],
+          placedDecorations: decorations?.placed || {},
+          savedFilters: savedFilters || [],
         },
       });
     });

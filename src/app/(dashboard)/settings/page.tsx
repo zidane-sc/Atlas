@@ -10,11 +10,11 @@ import { useSprints } from "@/components/providers/SprintsProvider";
 import { useSettings } from "@/components/providers/SettingsProvider";
 import { useNotifications } from "@/hooks/useNotifications";
 import { updateUserProfileAction } from "@/lib/actions/user";
-import { getWorkspaceHistoryForExport, getTasksForExport, importWorkspaceData, type ActivityLogExport, type WorkSessionExport } from "@/lib/actions/import";
+import { getWorkspaceHistoryForExport, getTasksForExport, importWorkspaceData, type ActivityLogExport, type WorkSessionExport, type NoteExport } from "@/lib/actions/import";
 import type { Project, Sprint } from "@/types/gamification";
 import type { Task } from "@/types/task";
 
-const EXPORT_VERSION = 2;
+const EXPORT_VERSION = 3;
 
 interface AtlasExport {
   version: number;
@@ -26,6 +26,10 @@ interface AtlasExport {
   /** Added in version 2 — absent on older export files, defaulted to [] on import. */
   workSessions?: WorkSessionExport[];
   activityLogs?: ActivityLogExport[];
+  /** Added in version 3 — notes, decorations, and saved filters. */
+  notes?: NoteExport[];
+  decorations?: { purchased: string[]; placed: Record<string, string | null> };
+  savedFilters?: any[];
 }
 
 function isAtlasExport(data: unknown): data is AtlasExport {
@@ -138,6 +142,9 @@ export default function Page() {
       bonus: { xp: bonusXp, coins: bonusCoins },
       workSessions: history.success ? history.data.workSessions : [],
       activityLogs: history.success ? history.data.activityLogs : [],
+      notes: tasksForExport.data.notes,
+      decorations: tasksForExport.data.decorations,
+      savedFilters: tasksForExport.data.savedFilters,
     };
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
