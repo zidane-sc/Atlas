@@ -5,7 +5,7 @@ import type { ValidationError } from "@/lib/validation/import-validation";
 
 export interface ImportPreviewModalProps {
   isOpen: boolean;
-  counts: {
+  counts?: {
     tasks: number;
     projects: number;
     sprints: number;
@@ -21,7 +21,7 @@ export interface ImportPreviewModalProps {
 
 export function ImportPreviewModal({
   isOpen,
-  counts,
+  counts = { tasks: 0, projects: 0, sprints: 0, notes: 0, workSessions: 0, activityLogs: 0 },
   errors = [],
   isLoading = false,
   onCancel,
