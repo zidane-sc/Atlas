@@ -16,9 +16,9 @@ export function GamificationFooter({
   const xp = calculateNoteXP(wordCount, hasStreak);
 
   return (
-    <div className="flex items-center justify-between gap-4 p-3 border-t border-gray-600 text-xs text-muted-foreground bg-panel">
+    <div className="flex items-center justify-center sm:justify-between flex-wrap gap-2 sm:gap-4 p-3 border-t border-gray-600 text-xs text-muted-foreground bg-panel">
       {/* Left: Tags placeholder */}
-      <div className="flex-1" />
+      <div className="hidden sm:block flex-1" />
 
       {/* Center: XP Display */}
       <div className="flex items-center gap-2">
