@@ -2,7 +2,10 @@ import NextAuth from "next-auth";
 import GitHub from "next-auth/providers/github";
 import Credentials from "next-auth/providers/credentials";
 
-const allowedEmail = process.env.ALLOWED_EMAIL;
+const allowedEmails = (process.env.ALLOWED_EMAIL ?? "")
+  .split(",")
+  .map((email) => email.trim())
+  .filter(Boolean);
 
 // Next.js always sets NODE_ENV=production for `next build`/`next start`/Vercel deploys,
 // so this provider is unreachable outside `next dev` — no separate opt-in flag needed.
@@ -18,8 +21,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             name: "Dev Login",
             credentials: {},
             authorize() {
-              if (!allowedEmail) return null;
-              return { id: "dev-user", email: allowedEmail, name: "Dev" };
+              const email = allowedEmails[0];
+              if (!email) return null;
+              return { id: "dev-user", email, name: "Dev" };
             },
           }),
         ]
@@ -31,10 +35,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     signIn: "/auth",
   },
   callbacks: {
-    // Atlas is single-user — reject anyone whose email isn't the allow-listed one (docs/02-architecture.md §6).
+    // Atlas is single-user per account, but multiple emails may map to that one account (docs/02-architecture.md §6).
     signIn({ user, profile }) {
       const email = profile?.email ?? user?.email;
-      return Boolean(allowedEmail) && email === allowedEmail;
+      return Boolean(email) && allowedEmails.includes(email as string);
     },
     jwt({ token, trigger, session, user }) {
       if (user) {
