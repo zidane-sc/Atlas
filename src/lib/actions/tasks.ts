@@ -520,9 +520,12 @@ export async function resetAllTasksAction(): Promise<ActionResult<Partial<Charac
   }
 
   try {
-    await db.task.deleteMany({
-      where: { ownerId: user.id },
-    });
+    await Promise.all([
+      db.task.deleteMany({ where: { ownerId: user.id } }),
+      db.project.deleteMany({ where: {} }),
+      db.sprint.deleteMany({ where: {} }),
+      db.note.deleteMany({ where: { userId: user.id } }),
+    ]);
 
     let sheetData: CharacterSheetData | undefined;
     try {
@@ -536,7 +539,7 @@ export async function resetAllTasksAction(): Promise<ActionResult<Partial<Charac
       data: sheetData ?? {},
     };
   } catch (error) {
-    console.error("Failed to reset tasks:", error);
-    return { success: false, error: { code: "INTERNAL", message: "Failed to reset tasks." } };
+    console.error("Failed to reset all data:", error);
+    return { success: false, error: { code: "INTERNAL", message: "Failed to reset data." } };
   }
 }
