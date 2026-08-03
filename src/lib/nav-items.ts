@@ -26,7 +26,7 @@ export interface NavItemBase {
 /** Single source of truth for app navigation — Sidebar layers live count badges on top, CommandPalette uses the flat list as-is. */
 export const NAV_CORE: NavItemBase[] = [{ href: "/dashboard", label: "Command Center", icon: LayoutDashboard }];
 
-export const NAV_TASKS: NavItemBase = { href: "/tasks", label: "Tasks", icon: Grid3X3 };
+export const NAV_TASKS: NavItemBase = { href: "/tasks", label: "Quests", icon: Grid3X3 };
 
 export const NAV_SMART_VIEWS: NavItemBase[] = [
   { href: "/tasks/today", label: "Today", icon: Sun },
