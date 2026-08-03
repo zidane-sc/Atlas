@@ -58,7 +58,7 @@ export default function CharacterContent() {
           className="p-4"
           style={{ background: "linear-gradient(135deg, var(--color-bg-panel-alt) 0%, var(--color-bg-deep) 100%)", borderBottom: "1px solid var(--color-border)" }}
         >
-          <div className="flex gap-4 items-start">
+          <div className="flex flex-wrap gap-4 items-start">
             {/* Left: Avatar */}
             <div className="relative shrink-0">
               <div
@@ -150,7 +150,7 @@ export default function CharacterContent() {
 
             {/* Right: Attributes */}
             <div className="shrink-0">
-              <div className="grid grid-cols-6 gap-3">
+              <div className="grid grid-cols-3 gap-3 sm:grid-cols-6">
                 {STATS.map((stat) => {
                   const fullNames = { STR: "Strength", DEX: "Dexterity", CON: "Constitution", INT: "Intelligence", WIS: "Wisdom", CHA: "Charisma" };
                   const descriptions = {
