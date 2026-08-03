@@ -1,7 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import type { ValidationError } from "@/lib/validation/import-validation";
+import type { ValidationError } from "@/lib/types/import-types";
 
 export interface ImportPreviewModalProps {
   isOpen: boolean;

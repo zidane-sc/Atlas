@@ -17,8 +17,6 @@ function parseDate(dateStr: string | null | undefined): Date | null {
   return date;
 }
 
-export { ValidationError, ImportValidationResult };
-
 export function validateImportPayload(payload: ImportPayload): ImportValidationResult {
   const errors: ValidationError[] = [];
 
