@@ -36,7 +36,7 @@ import { getTodayDate } from "@/lib/mock-data";
 import { purchaseDecoration as apiPurchaseDecoration, placeDecoration as apiPlaceDecoration, moveDecoration as apiMoveDecoration } from "@/lib/actions/decorations";
 import type { TaskFilters } from "@/lib/task-filters";
 import type { SavedFilterClient } from "@/lib/actions/filters";
-import { saveFilterAction as apiSaveFilter, deleteFilterAction as apiDeleteFilter } from "@/lib/actions/filters";
+import { saveFilterAction as apiSaveFilter, deleteFilterAction as apiDeleteFilter, updateFilterAction as apiUpdateFilter } from "@/lib/actions/filters";
 
 interface SheetState {
   open: boolean;
@@ -138,6 +138,7 @@ interface TasksContextValue {
   savedFilters: SavedFilterClient[];
   saveFilter: (name: string, filters: TaskFilters) => Promise<boolean>;
   deleteFilter: (id: string) => Promise<boolean>;
+  updateFilter: (id: string, name: string, filters: TaskFilters) => Promise<boolean>;
 }
 
 const TasksContext = createContext<TasksContextValue | null>(null);
@@ -724,6 +725,17 @@ export function TasksProvider({
         if (res.success) {
           setSavedFilters(res.data);
           notify("Saved filter deleted.", "success");
+          return true;
+        } else {
+          notify(res.error.message, "error");
+          return false;
+        }
+      },
+      updateFilter: async (id, name, filters) => {
+        const res = await apiUpdateFilter(id, name, filters);
+        if (res.success) {
+          setSavedFilters(res.data);
+          notify("Saved view updated.", "success");
           return true;
         } else {
           notify(res.error.message, "error");
