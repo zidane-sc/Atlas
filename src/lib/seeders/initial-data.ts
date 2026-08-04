@@ -14,6 +14,7 @@ export async function seedInitialData(userId: string): Promise<SeedResult> {
     const projects = await db.project.createMany({
       data: [
         {
+          ownerId: userId,
           name: "My Full-Time Job",
           category: "FullTime" as ProjectCategory,
           colorVar: "--color-priority-p0",
@@ -22,6 +23,7 @@ export async function seedInitialData(userId: string): Promise<SeedResult> {
           status: "active" as ProjectStatus,
         },
         {
+          ownerId: userId,
           name: "University Courses",
           category: "University" as ProjectCategory,
           colorVar: "--color-status-waiting-external",
@@ -30,6 +32,7 @@ export async function seedInitialData(userId: string): Promise<SeedResult> {
           status: "active" as ProjectStatus,
         },
         {
+          ownerId: userId,
           name: "Personal Side Project",
           category: "SideProject" as ProjectCategory,
           colorVar: "--color-status-ready",
@@ -43,6 +46,7 @@ export async function seedInitialData(userId: string): Promise<SeedResult> {
     // Get created project IDs
     const createdProjects = await db.project.findMany({
       where: {
+        ownerId: userId,
         name: { in: ["My Full-Time Job", "University Courses", "Personal Side Project"] },
       },
       select: { id: true, name: true },
@@ -64,6 +68,7 @@ export async function seedInitialData(userId: string): Promise<SeedResult> {
 
     const sprint = await db.sprint.create({
       data: {
+        ownerId: userId,
         name: "Current Sprint",
         projectId: projectMap.sideProject || projectMap.fullTime,
         startDate: today,

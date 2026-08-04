@@ -18,8 +18,8 @@ export interface CharacterSheetData {
 export async function getCharacterSheetData(ownerId: string): Promise<CharacterSheetData> {
   const [dbDoneTasks, dbProjects, dbSprints, owner] = await Promise.all([
     db.task.findMany({ where: { ownerId, deletedAt: null, status: "done" } }),
-    db.project.findMany({ where: { archivedAt: null } }),
-    db.sprint.findMany(),
+    db.project.findMany({ where: { ownerId, archivedAt: null } }),
+    db.sprint.findMany({ where: { ownerId } }),
     db.user.findUnique({ where: { id: ownerId }, select: { bonusXp: true, bonusCoins: true } }),
   ]);
 

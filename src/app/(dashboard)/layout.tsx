@@ -56,10 +56,11 @@ export default async function DashboardLayout({
       orderBy: { completedAt: "asc" },
     }),
     db.project.findMany({
-      where: { archivedAt: null },
+      where: { ownerId: owner.id, archivedAt: null },
       orderBy: { createdAt: "asc" },
     }),
     db.sprint.findMany({
+      where: { ownerId: owner.id },
       orderBy: { startDate: "asc" },
     }),
     db.activityLog.findMany({
@@ -86,10 +87,11 @@ export default async function DashboardLayout({
   if (dbProjects.length === 0 || dbSprints.length === 0) {
     await seedInitialData(owner.id);
     dbProjects = await db.project.findMany({
-      where: { archivedAt: null },
+      where: { ownerId: owner.id, archivedAt: null },
       orderBy: { createdAt: "asc" },
     });
     dbSprints = await db.sprint.findMany({
+      where: { ownerId: owner.id },
       orderBy: { startDate: "asc" },
     });
   }

@@ -32,6 +32,8 @@ model User {
   activeTimerPhase     String    @default("focus") @map("active_timer_phase")
 
   tasks        Task[]
+  projects     Project[]
+  sprints      Sprint[]
   comments     Comment[]
   activityLogs ActivityLog[]
   notes        Note[]
@@ -196,6 +198,9 @@ model Project {
   description String?
   status      ProjectStatus   @default(active)
 
+  ownerId String @map("owner_id") @db.Uuid
+  owner   User   @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
   archivedAt DateTime? @map("archived_at")
   createdAt  DateTime  @default(now()) @map("created_at")
   updatedAt  DateTime  @updatedAt @map("updated_at")
@@ -204,6 +209,7 @@ model Project {
   sprints      Sprint[]
   activityLogs ActivityLog[]
 
+  @@index([ownerId])
   @@map("projects")
 }
 
@@ -225,12 +231,16 @@ model Sprint {
   status    SprintStatus @default(planning)
   goal      String?
 
+  ownerId String @map("owner_id") @db.Uuid
+  owner   User   @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
   tasks        Task[]
   activityLogs ActivityLog[]
 
+  @@index([ownerId])
   @@map("sprints")
 }
 

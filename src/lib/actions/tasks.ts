@@ -149,7 +149,7 @@ export async function updateTask(
   }
 
   // Soft-deleted tasks (docs/02-architecture.md §4.4 `deleted_at`) are gone as far as edits are concerned.
-  const existing = await db.task.findFirst({ where: { id, deletedAt: null } });
+  const existing = await db.task.findFirst({ where: { id, ownerId: owner.id, deletedAt: null } });
   if (!existing) {
     return { success: false, error: { code: "NOT_FOUND", message: "Task not found." } };
   }
@@ -168,7 +168,7 @@ export async function updateTask(
   try {
     const task = await db.$transaction(async (tx) => {
       const updated = await tx.task.update({
-        where: { id },
+        where: { id, ownerId: owner.id },
         data: {
           ...rest,
           status,
@@ -242,13 +242,13 @@ export async function deleteTask(id: string): Promise<ActionResult<{ id: string 
 
   try {
     await db.$transaction(async (tx) => {
-      const existing = await tx.task.findFirst({ where: { id, deletedAt: null } });
+      const existing = await tx.task.findFirst({ where: { id, ownerId: owner.id, deletedAt: null } });
       if (!existing) {
         throw new Error("NOT_FOUND");
       }
 
       await tx.task.update({
-        where: { id },
+        where: { id, ownerId: owner.id },
         data: { deletedAt: new Date() },
       });
 
@@ -287,7 +287,7 @@ export async function restoreTask(id: string): Promise<ActionResult<{ id: string
       }
 
       await tx.task.update({
-        where: { id },
+        where: { id, ownerId: owner.id },
         data: { deletedAt: null },
       });
 
@@ -351,7 +351,7 @@ export async function logWorkSession(
 
   try {
     const updatedTask = await db.$transaction(async (tx) => {
-      const task = await tx.task.findUnique({ where: { id: taskId } });
+      const task = await tx.task.findFirst({ where: { id: taskId, ownerId: owner.id } });
       if (!task) {
         throw new Error("NOT_FOUND");
       }
@@ -366,7 +366,7 @@ export async function logWorkSession(
       });
 
       const updated = await tx.task.update({
-        where: { id: taskId },
+        where: { id: taskId, ownerId: owner.id },
         data: {
           timeSpentSeconds: task.timeSpentSeconds + durationSeconds,
         },
@@ -524,8 +524,8 @@ export async function resetAllTasksAction(): Promise<ActionResult<Partial<Charac
     // Delete all data
     await Promise.all([
       db.task.deleteMany({ where: { ownerId: user.id } }),
-      db.project.deleteMany({ where: {} }),
-      db.sprint.deleteMany({ where: {} }),
+      db.project.deleteMany({ where: { ownerId: user.id } }),
+      db.sprint.deleteMany({ where: { ownerId: user.id } }),
       db.note.deleteMany({ where: { userId: user.id } }),
     ]);
 

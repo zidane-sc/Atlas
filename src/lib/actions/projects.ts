@@ -31,6 +31,7 @@ export async function createProject(input: unknown): Promise<ActionResult<Projec
       const created = await tx.project.create({
         data: {
           ...parsed.data,
+          ownerId: owner.id,
           status: parsed.data.status as ProjectStatus,
           category: toDbProjectCategory(parsed.data.category) as ProjectCategory,
         },
@@ -70,7 +71,7 @@ export async function updateProject(id: string, input: unknown): Promise<ActionR
     return { success: false, error: { code: "NOT_FOUND", message: "User not found." } };
   }
 
-  const existing = await db.project.findFirst({ where: { id, archivedAt: null } });
+  const existing = await db.project.findFirst({ where: { id, ownerId: owner.id, archivedAt: null } });
   if (!existing) {
     return { success: false, error: { code: "NOT_FOUND", message: "Project not found." } };
   }
@@ -78,7 +79,7 @@ export async function updateProject(id: string, input: unknown): Promise<ActionR
   try {
     const project = await db.$transaction(async (tx) => {
       const updated = await tx.project.update({
-        where: { id },
+        where: { id, ownerId: owner.id },
         data: {
           name: parsed.data.name,
           code: parsed.data.code === null ? null : parsed.data.code,
@@ -119,13 +120,13 @@ export async function deleteProject(id: string): Promise<ActionResult<{ id: stri
 
   try {
     await db.$transaction(async (tx) => {
-      const existing = await tx.project.findFirst({ where: { id, archivedAt: null } });
+      const existing = await tx.project.findFirst({ where: { id, ownerId: owner.id, archivedAt: null } });
       if (!existing) {
         throw new Error("NOT_FOUND");
       }
 
       await tx.project.update({
-        where: { id },
+        where: { id, ownerId: owner.id },
         data: { archivedAt: new Date() },
       });
 

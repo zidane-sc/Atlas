@@ -9,9 +9,14 @@ export async function togglePin(taskId: string, pinned: boolean) {
     return { success: false, error: "Unauthorized" };
   }
 
+  const owner = await db.user.findFirst({ where: { email: session.user.email } });
+  if (!owner) {
+    return { success: false, error: "User not found" };
+  }
+
   try {
     await db.task.update({
-      where: { id: taskId },
+      where: { id: taskId, ownerId: owner.id },
       data: { pinned },
     });
 

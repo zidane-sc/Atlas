@@ -153,8 +153,8 @@ export async function getTasksForExport(): Promise<ActionResult<{ tasks: Task[];
         comments: { orderBy: { createdAt: "asc" }, include: { author: true } },
       },
     }),
-    db.project.findMany({ where: { archivedAt: null } }),
-    db.sprint.findMany(),
+    db.project.findMany({ where: { ownerId: user.id, archivedAt: null } }),
+    db.sprint.findMany({ where: { ownerId: user.id } }),
     db.note.findMany({
       where: { userId: user.id },
       orderBy: { createdAt: "asc" },
@@ -221,18 +221,19 @@ export async function importWorkspaceData(
     const taskIds = new Set(tasks.map((t) => t.id));
 
     await db.$transaction(async (tx) => {
-      // 1. Wipe existing data
-      await tx.taskStatusLog.deleteMany({});
-      await tx.comment.deleteMany({});
-      await tx.activityLog.deleteMany({});
-      await tx.workSession.deleteMany({});
-      await tx.noteTaskLink.deleteMany({});
-      await tx.noteAttachment.deleteMany({});
-      await tx.noteLink.deleteMany({});
-      await tx.note.deleteMany({});
-      await tx.task.deleteMany({});
-      await tx.project.deleteMany({});
-      await tx.sprint.deleteMany({});
+      // 1. Wipe existing data — scoped to the importing user only; this must never touch
+      // other users' rows (docs/05-backlog.md — cross-account data isolation).
+      await tx.taskStatusLog.deleteMany({ where: { task: { ownerId: user.id } } });
+      await tx.comment.deleteMany({ where: { task: { ownerId: user.id } } });
+      await tx.activityLog.deleteMany({ where: { actorId: user.id } });
+      await tx.workSession.deleteMany({ where: { task: { ownerId: user.id } } });
+      await tx.noteTaskLink.deleteMany({ where: { note: { userId: user.id } } });
+      await tx.noteAttachment.deleteMany({ where: { note: { userId: user.id } } });
+      await tx.noteLink.deleteMany({ where: { OR: [{ noteA: { userId: user.id } }, { noteB: { userId: user.id } }] } });
+      await tx.note.deleteMany({ where: { userId: user.id } });
+      await tx.task.deleteMany({ where: { ownerId: user.id } });
+      await tx.project.deleteMany({ where: { ownerId: user.id } });
+      await tx.sprint.deleteMany({ where: { ownerId: user.id } });
 
       // 2. Insert Projects
       if (projects.length > 0) {
@@ -241,6 +242,7 @@ export async function importWorkspaceData(
             try {
               return {
                 id: p.id,
+                ownerId: user.id,
                 name: p.name,
                 category: toDbProjectCategory(p.category) as ProjectCategory,
                 colorVar: p.colorVar,
@@ -262,6 +264,7 @@ export async function importWorkspaceData(
             try {
               return {
                 id: s.id,
+                ownerId: user.id,
                 name: s.name,
                 projectId: s.projectId || projects[0]?.id || "",
                 startDate: parseDate(s.startDate)!,

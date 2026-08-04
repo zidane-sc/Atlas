@@ -26,10 +26,16 @@ export async function createSprint(input: unknown): Promise<ActionResult<Sprint>
     return { success: false, error: { code: "NOT_FOUND", message: "User not found." } };
   }
 
+  const project = await db.project.findFirst({ where: { id: parsed.data.projectId, ownerId: owner.id } });
+  if (!project) {
+    return { success: false, error: { code: "NOT_FOUND", message: "Project not found." } };
+  }
+
   try {
     const sprint = await db.$transaction(async (tx) => {
       const created = await tx.sprint.create({
         data: {
+          ownerId: owner.id,
           name: parsed.data.name,
           projectId: parsed.data.projectId,
           startDate: new Date(parsed.data.startDate),
@@ -74,15 +80,22 @@ export async function updateSprint(id: string, input: unknown): Promise<ActionRe
     return { success: false, error: { code: "NOT_FOUND", message: "User not found." } };
   }
 
-  const existing = await db.sprint.findUnique({ where: { id } });
+  const existing = await db.sprint.findFirst({ where: { id, ownerId: owner.id } });
   if (!existing) {
     return { success: false, error: { code: "NOT_FOUND", message: "Sprint not found." } };
+  }
+
+  if (parsed.data.projectId) {
+    const project = await db.project.findFirst({ where: { id: parsed.data.projectId, ownerId: owner.id } });
+    if (!project) {
+      return { success: false, error: { code: "NOT_FOUND", message: "Project not found." } };
+    }
   }
 
   try {
     const sprint = await db.$transaction(async (tx) => {
       const updated = await tx.sprint.update({
-        where: { id },
+        where: { id, ownerId: owner.id },
         data: {
           name: parsed.data.name,
           projectId: parsed.data.projectId,
@@ -122,12 +135,12 @@ export async function deleteSprint(id: string): Promise<ActionResult<{ id: strin
 
   try {
     await db.$transaction(async (tx) => {
-      const existing = await tx.sprint.findUnique({ where: { id } });
+      const existing = await tx.sprint.findFirst({ where: { id, ownerId: owner.id } });
       if (!existing) {
         throw new Error("NOT_FOUND");
       }
 
-      await tx.sprint.delete({ where: { id } });
+      await tx.sprint.delete({ where: { id, ownerId: owner.id } });
 
       await logActivity(tx, owner.id, {
         sprintId: id,

@@ -29,10 +29,12 @@ export async function loadMoreTasks({
     }
 
     const projects = await db.project.findMany({
-      where: { archivedAt: null },
+      where: { ownerId: user.id, archivedAt: null },
     });
 
-    const sprints = await db.sprint.findMany();
+    const sprints = await db.sprint.findMany({
+      where: { ownerId: user.id },
+    });
 
     // No nested statusHistory/comments — on-demand only via `getTaskDetails`, same as the
     // main bulk fetch in layout.tsx (docs/05-backlog.md §8 finding #16).
