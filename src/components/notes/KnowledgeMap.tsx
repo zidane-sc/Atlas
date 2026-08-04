@@ -165,10 +165,11 @@ export function KnowledgeMap({ selectedTags, onOpenNote }: KnowledgeMapProps) {
   };
 
   const handleMouseMove = (e: React.MouseEvent) => {
-    if (!dragRef.current) return;
-    const dx = e.clientX - dragRef.current.startX;
-    const dy = e.clientY - dragRef.current.startY;
-    setTransform((t) => ({ ...t, x: dragRef.current!.originX + dx, y: dragRef.current!.originY + dy }));
+    const drag = dragRef.current;
+    if (!drag) return;
+    const dx = e.clientX - drag.startX;
+    const dy = e.clientY - drag.startY;
+    setTransform((t) => ({ ...t, x: drag.originX + dx, y: drag.originY + dy }));
   };
 
   const handleMouseUp = () => {
