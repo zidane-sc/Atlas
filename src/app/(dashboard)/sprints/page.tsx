@@ -27,7 +27,7 @@ export default function Page() {
   const sprint = sprints.find((s) => s.id === selectedId) ?? sprints[0];
   const sprintTasks = sprint ? allTasks.filter((t) => t.sprint === sprint.name) : [];
   const done = sprintTasks.filter((t) => t.status === "done").length;
-  const project = sprint ? projects.find((p) => p.id === sprint.projectId) : null;
+  const sprintProjects = sprint ? projects.filter((p) => sprint.projectIds.includes(p.id)) : [];
 
   return (
     <div className="flex h-full flex-col">
@@ -46,7 +46,7 @@ export default function Page() {
           {sprints.map((s) => {
             const colorVar = SPRINT_STATUS_COLOR_VAR[s.status];
             const active = s.id === selectedId;
-            const proj = projects.find((p) => p.id === s.projectId);
+            const sprintProjs = projects.filter((p) => s.projectIds.includes(p.id));
             return (
               <button
                 key={s.id}
@@ -62,11 +62,11 @@ export default function Page() {
                   <span className="border px-1 text-xs" style={{ color: `var(${colorVar})`, borderColor: `var(${colorVar})` }}>
                     {s.status.toUpperCase()}
                   </span>
-                  {proj && (
-                    <span className="text-[10px] text-muted-foreground opacity-80 truncate max-w-[100px]">
+                  {sprintProjs.map((proj) => (
+                    <span key={proj.id} className="text-[10px] text-muted-foreground opacity-80 truncate max-w-[100px]">
                       {proj.emoji} {proj.name}
                     </span>
-                  )}
+                  ))}
                 </div>
                 <div className="text-sm text-foreground whitespace-nowrap">{s.name}</div>
                 <div className="hidden text-sm text-muted-foreground whitespace-nowrap md:block">{formatDueDate(s.startDate)} → {formatDueDate(s.endDate)}</div>
@@ -79,8 +79,9 @@ export default function Page() {
           <div className="flex-1 overflow-y-auto p-4 md:p-6">
             <div className="mb-5">
               <div className="mb-2 flex flex-wrap items-center gap-2">
-                {project && (
+                {sprintProjects.map((project) => (
                   <span
+                    key={project.id}
                     className="border px-2 py-0.5 text-xs font-semibold tracking-wider rounded-sm"
                     style={{
                       color: project.customColor || `var(${project.colorVar})`,
@@ -90,7 +91,7 @@ export default function Page() {
                   >
                     {project.emoji} {project.name.toUpperCase()}
                   </span>
-                )}
+                ))}
                 <span
                   className="border px-2 py-0.5 text-sm"
                   style={{ color: `var(${SPRINT_STATUS_COLOR_VAR[sprint.status]})`, borderColor: `var(${SPRINT_STATUS_COLOR_VAR[sprint.status]})` }}

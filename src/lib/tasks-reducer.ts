@@ -240,11 +240,11 @@ export function mapDbProjectToClient(dbProject: DbProject): Project {
   };
 }
 
-export function mapDbSprintToClient(dbSprint: DbSprint): Sprint {
+export function mapDbSprintToClient(dbSprint: DbSprint & { projects?: { id: string }[] }): Sprint {
   return {
     id: dbSprint.id,
     name: dbSprint.name,
-    projectId: dbSprint.projectId,
+    projectIds: dbSprint.projects?.map((p) => p.id) ?? [],
     startDate: dbSprint.startDate.toISOString().split("T")[0],
     endDate: dbSprint.endDate.toISOString().split("T")[0],
     status: dbSprint.status as Sprint["status"],

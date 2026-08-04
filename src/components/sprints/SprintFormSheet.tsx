@@ -18,14 +18,6 @@ import { useProjects } from "@/components/providers/ProjectsProvider";
 import { SPRINT_STATUSES, sprintFormSchema, type SprintFormValues } from "@/lib/schemas/sprint";
 import type { Sprint } from "@/types/gamification";
 
-const EMPTY_FORM: Omit<SprintFormValues, "projectId"> = {
-  name: "",
-  startDate: "",
-  endDate: "",
-  status: "planning",
-  goal: "",
-};
-
 const SPRINT_STATUS_COLOR_VAR: Record<string, string> = {
   active: "--color-status-ready",
   completed: "--color-text-muted",
@@ -56,7 +48,7 @@ function SprintFormBody({ mode, sprint }: { mode: "create" | "edit"; sprint: Spr
     mode === "edit" && sprint
       ? {
           name: sprint.name,
-          projectId: sprint.projectId,
+          projectIds: sprint.projectIds,
           startDate: sprint.startDate,
           endDate: sprint.endDate,
           status: sprint.status,
@@ -64,7 +56,7 @@ function SprintFormBody({ mode, sprint }: { mode: "create" | "edit"; sprint: Spr
         }
       : {
           name: "",
-          projectId: projects[0]?.id ?? "",
+          projectIds: [],
           startDate: "",
           endDate: "",
           status: "planning",
@@ -142,20 +134,49 @@ function SprintFormBody({ mode, sprint }: { mode: "create" | "edit"; sprint: Spr
         </div>
 
         <div>
-          <label className={LC}>Project *</label>
+          <label className={LC}>Projects</label>
+          <div className="mb-2 flex flex-wrap gap-2">
+            {form.projectIds.map((id) => {
+              const p = projects.find((p) => p.id === id);
+              return (
+                <span
+                  key={id}
+                  className="inline-flex items-center gap-1.5 border-2 px-2 py-1 text-xs font-medium text-foreground transition-colors"
+                  style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-bg-panel-alt)" }}
+                >
+                  {p ? `${p.emoji} ${p.name}` : "Unknown project"}
+                  <button
+                    type="button"
+                    onClick={() => set("projectIds", form.projectIds.filter((pid) => pid !== id))}
+                    className="hover:opacity-70 transition-opacity"
+                    style={{ color: "var(--color-status-blocked)" }}
+                    title="Remove project"
+                  >
+                    ✕
+                  </button>
+                </span>
+              );
+            })}
+          </div>
           <select
-            aria-label="Project"
-            className={errors.projectId ? FIELD_ERROR : FIELD}
-            value={form.projectId}
-            onChange={(e) => set("projectId", e.target.value)}
+            aria-label="Add project"
+            className={errors.projectIds ? FIELD_ERROR : FIELD}
+            value=""
+            onChange={(e) => {
+              const id = e.target.value;
+              if (id) set("projectIds", [...form.projectIds, id]);
+            }}
           >
-            {projects.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.emoji} {p.name}
-              </option>
-            ))}
+            <option value="">+ Add project…</option>
+            {projects
+              .filter((p) => !form.projectIds.includes(p.id))
+              .map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.emoji} {p.name}
+                </option>
+              ))}
           </select>
-          {errors.projectId && <p className="mt-1 text-sm" style={{ color: "var(--color-status-blocked)" }}>{errors.projectId}</p>}
+          {errors.projectIds && <p className="mt-1 text-sm" style={{ color: "var(--color-status-blocked)" }}>{errors.projectIds}</p>}
         </div>
 
         <div className="grid grid-cols-2 gap-3">
@@ -202,7 +223,7 @@ function SprintFormBody({ mode, sprint }: { mode: "create" | "edit"; sprint: Spr
       <Separator />
       <div className="flex items-center justify-between p-4">
         <Button type="button" variant="ghost" onClick={closeForm}>Cancel</Button>
-        <Button type="submit" disabled={!form.name.trim() || !form.projectId || !form.startDate || !form.endDate}>
+        <Button type="submit" disabled={!form.name.trim() || !form.startDate || !form.endDate}>
           <Check size={12} /> {mode === "edit" ? "Save Changes" : "Create Sprint"}
         </Button>
       </div>

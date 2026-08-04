@@ -19,7 +19,7 @@ export async function getAchievementsPageData(): Promise<AchievementDisplay[] | 
   const [dbTasks, dbProjects, dbSprints] = await Promise.all([
     db.task.findMany({ where: { ownerId: owner.id, deletedAt: null } }),
     db.project.findMany({ where: { ownerId: owner.id, archivedAt: null } }),
-    db.sprint.findMany({ where: { ownerId: owner.id } }),
+    db.sprint.findMany({ where: { ownerId: owner.id }, include: { projects: { select: { id: true } } } }),
   ]);
 
   const tasks = dbTasks.map((t) => mapDbTaskToClient(t, dbProjects, dbSprints));

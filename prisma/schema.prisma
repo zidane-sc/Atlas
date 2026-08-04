@@ -22,10 +22,10 @@ model User {
   purchasedDecorations String[] @default([]) @map("purchased_decorations")
   placedDecorations    Json     @default("{}") @map("placed_decorations")
 
-  settings             Json     @default("[{\"key\":\"notifications\",\"label\":\"Notifications\",\"description\":\"Overdue and sprint deadline alerts\",\"type\":\"boolean\",\"value\":true},{\"key\":\"soundEnabled\",\"label\":\"Sound Effects\",\"description\":\"Subtle chimes on task complete and level-up\",\"type\":\"boolean\",\"value\":true},{\"key\":\"reduceMotion\",\"label\":\"Reduce Motion\",\"description\":\"Shortens all animation durations\",\"type\":\"boolean\",\"value\":false},{\"key\":\"defaultView\",\"label\":\"Default View\",\"description\":\"Screen shown on app open\",\"type\":\"select\",\"options\":[\"dashboard\",\"today\",\"focus\",\"kanban\"],\"value\":\"dashboard\"},{\"key\":\"focusMinutes\",\"label\":\"Focus Duration\",\"description\":\"Minutes per focus interval\",\"type\":\"number\",\"value\":25},{\"key\":\"breakMinutes\",\"label\":\"Break Duration\",\"description\":\"Minutes per break interval\",\"type\":\"number\",\"value\":5}]")
+  settings Json @default("[{\"key\":\"notifications\",\"label\":\"Notifications\",\"description\":\"Overdue and sprint deadline alerts\",\"type\":\"boolean\",\"value\":true},{\"key\":\"soundEnabled\",\"label\":\"Sound Effects\",\"description\":\"Subtle chimes on task complete and level-up\",\"type\":\"boolean\",\"value\":true},{\"key\":\"reduceMotion\",\"label\":\"Reduce Motion\",\"description\":\"Shortens all animation durations\",\"type\":\"boolean\",\"value\":false},{\"key\":\"defaultView\",\"label\":\"Default View\",\"description\":\"Screen shown on app open\",\"type\":\"select\",\"options\":[\"dashboard\",\"today\",\"focus\",\"kanban\"],\"value\":\"dashboard\"},{\"key\":\"focusMinutes\",\"label\":\"Focus Duration\",\"description\":\"Minutes per focus interval\",\"type\":\"number\",\"value\":25},{\"key\":\"breakMinutes\",\"label\":\"Break Duration\",\"description\":\"Minutes per break interval\",\"type\":\"number\",\"value\":5}]")
 
-  savedFilters         Json     @default("[]") @map("saved_filters")
-  lastQuestClaimedAt   DateTime? @map("last_quest_claimed_at")
+  savedFilters       Json      @default("[]") @map("saved_filters")
+  lastQuestClaimedAt DateTime? @map("last_quest_claimed_at")
 
   activeTimerTaskId    String?   @map("active_timer_task_id") @db.Uuid
   activeTimerStartedAt DateTime? @map("active_timer_started_at")
@@ -142,7 +142,7 @@ model Task {
   attachments  Json     @default("[]")
   deliverables Json     @default("[]")
 
-  timeSpentSeconds Int @default(0) @map("time_spent_seconds")
+  timeSpentSeconds Int     @default(0) @map("time_spent_seconds")
   pinned           Boolean @default(false)
 
   completedAt DateTime? @map("completed_at")
@@ -224,8 +224,7 @@ enum SprintStatus {
 model Sprint {
   id        String       @id @default(uuid()) @db.Uuid
   name      String
-  projectId String       @map("project_id") @db.Uuid
-  project   Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projects  Project[]
   startDate DateTime     @map("start_date") @db.Date
   endDate   DateTime     @map("end_date") @db.Date
   status    SprintStatus @default(planning)
@@ -245,12 +244,12 @@ model Sprint {
 }
 
 model TaskStatusLog {
-  id         String     @id @default(uuid()) @db.Uuid
-  taskId     String     @map("task_id") @db.Uuid
-  task       Task       @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  id         String      @id @default(uuid()) @db.Uuid
+  taskId     String      @map("task_id") @db.Uuid
+  task       Task        @relation(fields: [taskId], references: [id], onDelete: Cascade)
   fromStatus TaskStatus? @map("from_status")
   toStatus   TaskStatus  @map("to_status")
-  changedAt  DateTime   @default(now()) @map("changed_at")
+  changedAt  DateTime    @default(now()) @map("changed_at")
 
   @@map("task_status_logs")
 }
@@ -297,14 +296,14 @@ model WorkSession {
 }
 
 model Note {
-  id        String   @id @default(cuid())
-  userId    String   @db.Uuid
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id     String @id @default(cuid())
+  userId String @db.Uuid
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  title     String
-  content   String   @db.Text
-  tags      String[] @default([])
-  pinned    Boolean  @default(false)
+  title   String
+  content String   @db.Text
+  tags    String[] @default([])
+  pinned  Boolean  @default(false)
 
   attachments NoteAttachment[]
   taskLinks   NoteTaskLink[]
@@ -322,13 +321,13 @@ model Note {
 }
 
 model NoteAttachment {
-  id        String   @id @default(cuid())
-  noteId    String
-  note      Note     @relation(fields: [noteId], references: [id], onDelete: Cascade)
+  id     String @id @default(cuid())
+  noteId String
+  note   Note   @relation(fields: [noteId], references: [id], onDelete: Cascade)
 
-  url       String
-  fileName  String   @map("file_name")
-  fileType  String?  @map("file_type")
+  url      String
+  fileName String  @map("file_name")
+  fileType String? @map("file_type")
 
   createdAt DateTime @default(now()) @map("created_at")
 
@@ -337,11 +336,11 @@ model NoteAttachment {
 }
 
 model NoteTaskLink {
-  noteId    String
-  note      Note     @relation(fields: [noteId], references: [id], onDelete: Cascade)
+  noteId String
+  note   Note   @relation(fields: [noteId], references: [id], onDelete: Cascade)
 
-  taskId    String   @db.Uuid
-  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  taskId String @db.Uuid
+  task   Task   @relation(fields: [taskId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now()) @map("created_at")
 
@@ -369,4 +368,3 @@ model NoteLink {
   @@index([noteBId])
   @@map("note_links")
 }
-

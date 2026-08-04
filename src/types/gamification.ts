@@ -26,7 +26,7 @@ export interface Project {
 export interface Sprint {
   id: string;
   name: string;
-  projectId: string;
+  projectIds: string[];
   startDate: string;
   endDate: string;
   status: "planning" | "active" | "completed";

@@ -258,25 +258,26 @@ export async function importWorkspaceData(
       }
 
       // 3. Insert Sprints
-      if (sprints.length > 0) {
-        await tx.sprint.createMany({
-          data: sprints.map((s, idx) => {
-            try {
-              return {
-                id: s.id,
-                ownerId: user.id,
-                name: s.name,
-                projectId: s.projectId || projects[0]?.id || "",
-                startDate: parseDate(s.startDate)!,
-                endDate: parseDate(s.endDate)!,
-                status: validateSprintStatus(s.status),
-                goal: s.goal || null,
-              };
-            } catch (e) {
-              throw new Error(`Sprint ${idx} (${s.name}): ${e instanceof Error ? e.message : String(e)}`);
-            }
-          }),
-        });
+      const projectIdSet = new Set(projects.map((p) => p.id));
+      for (let sprintIdx = 0; sprintIdx < sprints.length; sprintIdx++) {
+        const s = sprints[sprintIdx];
+        try {
+          const validProjectIds = (s.projectIds || []).filter((id) => projectIdSet.has(id));
+          await tx.sprint.create({
+            data: {
+              id: s.id,
+              ownerId: user.id,
+              name: s.name,
+              projects: { connect: validProjectIds.map((id) => ({ id })) },
+              startDate: parseDate(s.startDate)!,
+              endDate: parseDate(s.endDate)!,
+              status: validateSprintStatus(s.status),
+              goal: s.goal || null,
+            },
+          });
+        } catch (e) {
+          throw new Error(`Sprint ${sprintIdx} (${s.name}): ${e instanceof Error ? e.message : String(e)}`);
+        }
       }
 
       // 4. Insert Tasks & nested items

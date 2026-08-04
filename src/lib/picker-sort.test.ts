@@ -16,7 +16,7 @@ const project = (name: string, status: Project["status"]): Project => ({
 const sprint = (name: string, startDate: string, status: Sprint["status"]): Sprint => ({
   id: name,
   name,
-  projectId: "dummy-project",
+  projectIds: ["dummy-project"],
   startDate,
   endDate: "2026-12-31",
   status,

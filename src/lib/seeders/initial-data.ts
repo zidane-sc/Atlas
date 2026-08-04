@@ -66,11 +66,12 @@ export async function seedInitialData(userId: string): Promise<SeedResult> {
     const today = new Date();
     const twoWeeksLater = new Date(today.getTime() + 14 * 24 * 60 * 60 * 1000);
 
+    const seedProjectId = projectMap.sideProject || projectMap.fullTime;
     const sprint = await db.sprint.create({
       data: {
         ownerId: userId,
         name: "Current Sprint",
-        projectId: projectMap.sideProject || projectMap.fullTime,
+        projects: seedProjectId ? { connect: [{ id: seedProjectId }] } : undefined,
         startDate: today,
         endDate: twoWeeksLater,
         status: "active" as SprintStatus,

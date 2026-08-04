@@ -62,6 +62,7 @@ export default async function DashboardLayout({
     db.sprint.findMany({
       where: { ownerId: owner.id },
       orderBy: { startDate: "asc" },
+      include: { projects: { select: { id: true } } },
     }),
     db.activityLog.findMany({
       where: { actorId: owner.id },
@@ -93,6 +94,7 @@ export default async function DashboardLayout({
     dbSprints = await db.sprint.findMany({
       where: { ownerId: owner.id },
       orderBy: { startDate: "asc" },
+      include: { projects: { select: { id: true } } },
     });
   }
 

@@ -100,7 +100,7 @@ export const mockSprints: Sprint[] = [
   {
     id: "s1",
     name: "Current Sprint",
-    projectId: "p3",
+    projectIds: ["p3"],
     startDate: "2026-08-03",
     endDate: "2026-08-17",
     status: "active",
