@@ -29,6 +29,8 @@ const EMPTY_FORM: ProjectFormValues = {
 const LC = "mb-1 block text-sm tracking-widest text-muted-foreground uppercase";
 const FIELD =
   "w-full border-2 border-border bg-secondary px-3 py-1.5 text-sm text-foreground outline-none focus:border-primary";
+const FIELD_ERROR =
+  "w-full border-2 border-status-blocked bg-card px-3 py-1.5 text-sm text-status-blocked outline-none focus:border-status-blocked";
 
 export function ProjectFormSheet() {
   const { sheet, closeForm } = useProjects();
@@ -57,7 +59,7 @@ function ProjectFormBody({ mode, project }: { mode: "create" | "edit"; project: 
         }
       : EMPTY_FORM
   );
-  const [error, setError] = useState<string | null>(null);
+  const [errors, setErrors] = useState<Partial<Record<keyof ProjectFormValues, string>>>({});
 
   const set = <K extends keyof ProjectFormValues>(key: K, value: ProjectFormValues[K]) =>
     setForm((f) => ({ ...f, [key]: value }));
@@ -69,9 +71,15 @@ function ProjectFormBody({ mode, project }: { mode: "create" | "edit"; project: 
       description: form.description?.trim() || undefined,
     });
     if (!result.success) {
-      setError(result.error.issues[0]?.message ?? "Invalid input");
+      const fieldErrors: Partial<Record<keyof ProjectFormValues, string>> = {};
+      for (const issue of result.error.issues) {
+        const key = issue.path[0] as keyof ProjectFormValues;
+        fieldErrors[key] = issue.message;
+      }
+      setErrors(fieldErrors);
       return;
     }
+    setErrors({});
     if (mode === "edit" && project) {
       updateProject(project.id, result.data);
     } else {
@@ -113,26 +121,30 @@ function ProjectFormBody({ mode, project }: { mode: "create" | "edit"; project: 
           <label className={LC}>Project Name *</label>
           <input
             aria-label="Project Name"
-            className={FIELD}
+            className={errors.name ? FIELD_ERROR : FIELD}
             value={form.name}
             onChange={(e) => set("name", e.target.value)}
             placeholder="e.g. My New Project"
             autoFocus
           />
-          {error && <p className="mt-1 text-xs" style={{ color: "var(--color-status-blocked)" }}>{error}</p>}
+          {errors.name && <p className="mt-1 text-xs" style={{ color: "var(--color-status-blocked)" }}>{errors.name}</p>}
         </div>
 
         <div>
           <label className={LC}>Project Code (Optional)</label>
           <input
             aria-label="Project Code"
-            className={FIELD}
+            className={errors.code ? FIELD_ERROR : FIELD}
             value={form.code || ""}
             onChange={(e) => set("code", e.target.value.toUpperCase())}
             placeholder="e.g. ATS, THX, CLI"
             maxLength={4}
           />
-          <p className="mt-1 text-xs text-muted-foreground">2-4 uppercase letters/numbers. Used to prefix task codes.</p>
+          {errors.code ? (
+            <p className="mt-1 text-xs" style={{ color: "var(--color-status-blocked)" }}>{errors.code}</p>
+          ) : (
+            <p className="mt-1 text-xs text-muted-foreground">2-4 uppercase letters/numbers. Used to prefix task codes.</p>
+          )}
         </div>
 
         <div className="grid grid-cols-2 gap-3">
@@ -149,11 +161,12 @@ function ProjectFormBody({ mode, project }: { mode: "create" | "edit"; project: 
           </div>
           <div>
             <label className={LC}>Category</label>
-            <select aria-label="Category" className={FIELD} value={form.category} onChange={(e) => set("category", e.target.value as ProjectFormValues["category"])}>
+            <select aria-label="Category" className={errors.category ? FIELD_ERROR : FIELD} value={form.category} onChange={(e) => set("category", e.target.value as ProjectFormValues["category"])}>
               {PROJECT_CATEGORIES.map((c) => (
                 <option key={c} value={c}>{c}</option>
               ))}
             </select>
+            {errors.category && <p className="mt-1 text-xs" style={{ color: "var(--color-status-blocked)" }}>{errors.category}</p>}
           </div>
         </div>
 
@@ -203,19 +216,21 @@ function ProjectFormBody({ mode, project }: { mode: "create" | "edit"; project: 
                     if (val) set("colorVar", val);
                   }
                 }}
-                className={`flex-1 ${FIELD}`}
+                className={`flex-1 ${errors.customColor ? FIELD_ERROR : FIELD}`}
               />
             </div>
+            {errors.customColor && <p className="mt-1 text-xs" style={{ color: "var(--color-status-blocked)" }}>{errors.customColor}</p>}
           </div>
         </div>
 
         <div>
           <label className={LC}>Status</label>
-          <select aria-label="Status" className={FIELD} value={form.status} onChange={(e) => set("status", e.target.value as ProjectFormValues["status"])}>
+          <select aria-label="Status" className={errors.status ? FIELD_ERROR : FIELD} value={form.status} onChange={(e) => set("status", e.target.value as ProjectFormValues["status"])}>
             <option value="active">Active</option>
             <option value="on_hold">On Hold</option>
             <option value="completed">Completed</option>
           </select>
+          {errors.status && <p className="mt-1 text-xs" style={{ color: "var(--color-status-blocked)" }}>{errors.status}</p>}
         </div>
 
         <div>

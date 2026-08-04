@@ -35,6 +35,8 @@ const SPRINT_STATUS_COLOR_VAR: Record<string, string> = {
 const LC = "mb-1 block text-sm tracking-widest text-muted-foreground uppercase";
 const FIELD =
   "w-full border-2 border-border bg-secondary px-3 py-1.5 text-sm text-foreground outline-none focus:border-primary";
+const FIELD_ERROR =
+  "w-full border-2 border-status-blocked bg-card px-3 py-1.5 text-sm text-status-blocked outline-none focus:border-status-blocked";
 
 export function SprintFormSheet() {
   const { sheet, closeForm } = useSprints();
@@ -69,7 +71,7 @@ function SprintFormBody({ mode, sprint }: { mode: "create" | "edit"; sprint: Spr
           goal: "",
         }
   );
-  const [error, setError] = useState<string | null>(null);
+  const [errors, setErrors] = useState<Partial<Record<keyof SprintFormValues, string>>>({});
 
   const set = <K extends keyof SprintFormValues>(key: K, value: SprintFormValues[K]) =>
     setForm((f) => ({ ...f, [key]: value }));
@@ -81,9 +83,15 @@ function SprintFormBody({ mode, sprint }: { mode: "create" | "edit"; sprint: Spr
       goal: form.goal?.trim() || undefined,
     });
     if (!result.success) {
-      setError(result.error.issues[0]?.message ?? "Invalid input");
+      const fieldErrors: Partial<Record<keyof SprintFormValues, string>> = {};
+      for (const issue of result.error.issues) {
+        const key = issue.path[0] as keyof SprintFormValues;
+        fieldErrors[key] = issue.message;
+      }
+      setErrors(fieldErrors);
       return;
     }
+    setErrors({});
     if (mode === "edit" && sprint) {
       updateSprint(sprint.id, result.data);
     } else {
@@ -124,20 +132,20 @@ function SprintFormBody({ mode, sprint }: { mode: "create" | "edit"; sprint: Spr
           <label className={LC}>Sprint Name *</label>
           <input
             aria-label="Sprint Name"
-            className={FIELD}
+            className={errors.name ? FIELD_ERROR : FIELD}
             value={form.name}
             onChange={(e) => set("name", e.target.value)}
             placeholder="e.g. Sprint 9 — The Reckoning"
             autoFocus
           />
-          {error && <p className="mt-1 text-sm" style={{ color: "var(--color-status-blocked)" }}>{error}</p>}
+          {errors.name && <p className="mt-1 text-sm" style={{ color: "var(--color-status-blocked)" }}>{errors.name}</p>}
         </div>
 
         <div>
           <label className={LC}>Project *</label>
           <select
             aria-label="Project"
-            className={FIELD}
+            className={errors.projectId ? FIELD_ERROR : FIELD}
             value={form.projectId}
             onChange={(e) => set("projectId", e.target.value)}
           >
@@ -147,6 +155,7 @@ function SprintFormBody({ mode, sprint }: { mode: "create" | "edit"; sprint: Spr
               </option>
             ))}
           </select>
+          {errors.projectId && <p className="mt-1 text-sm" style={{ color: "var(--color-status-blocked)" }}>{errors.projectId}</p>}
         </div>
 
         <div className="grid grid-cols-2 gap-3">
@@ -156,6 +165,7 @@ function SprintFormBody({ mode, sprint }: { mode: "create" | "edit"; sprint: Spr
               value={form.startDate}
               onChange={(date) => set("startDate", date)}
             />
+            {errors.startDate && <p className="mt-1 text-sm" style={{ color: "var(--color-status-blocked)" }}>{errors.startDate}</p>}
           </div>
           <div>
             <label className={LC}>End Date</label>
@@ -163,6 +173,7 @@ function SprintFormBody({ mode, sprint }: { mode: "create" | "edit"; sprint: Spr
               value={form.endDate}
               onChange={(date) => set("endDate", date)}
             />
+            {errors.endDate && <p className="mt-1 text-sm" style={{ color: "var(--color-status-blocked)" }}>{errors.endDate}</p>}
           </div>
         </div>
 

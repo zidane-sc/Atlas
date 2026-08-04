@@ -2,6 +2,7 @@ import type { Task, TaskStatus, TaskType, Priority, Effort, Reporter, TaskAttach
 import type { TaskFormValues } from "@/lib/schemas/task";
 import type { Task as DbTask, Project as DbProject, Sprint as DbSprint, TaskStatusLog, Comment as DbComment, User as DbUser } from "@/generated/prisma/client";
 import type { Project, Sprint } from "@/types/gamification";
+import { fromDbProjectCategory } from "@/lib/schemas/project";
 
 export const PROJECT_MAP: Record<string, string> = {
   "ATS": "a0665f80-7a0e-4364-8848-d39f60d3d5f1",
@@ -108,6 +109,7 @@ export type TasksAction =
   | { type: "delete"; id: string }
   | { type: "replaceId"; tempId: string; realId: string }
   | { type: "restore"; task: Task }
+  | { type: "insert"; task: Task }
   | { type: "sync"; task: Task }
   | { type: "addTime"; id: string; seconds: number }
   | { type: "reset"; tasks: Task[] }
@@ -196,6 +198,10 @@ export function tasksReducer(tasks: Task[], action: TasksAction): Task[] {
       if (tasks.some((t) => t.id === action.task.id)) return tasks;
       return [...tasks, action.task];
     }
+    case "insert": {
+      if (tasks.some((t) => t.id === action.task.id)) return tasks;
+      return [action.task, ...tasks];
+    }
     case "sync": {
       return tasks.map((t) => (t.id === action.task.id ? action.task : t));
     }
@@ -228,7 +234,7 @@ export function mapDbProjectToClient(dbProject: DbProject): Project {
     colorVar: dbProject.colorVar,
     customColor: dbProject.customColor ?? undefined,
     emoji: dbProject.emoji,
-    category: dbProject.category as string,
+    category: fromDbProjectCategory(dbProject.category),
     description: dbProject.description ?? "",
     status: dbProject.status as Project["status"],
   };

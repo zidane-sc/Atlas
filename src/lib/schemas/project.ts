@@ -61,4 +61,11 @@ export function toDbProjectCategory(cat: string): ProjectCategory {
   return cat as ProjectCategory;
 }
 
+/** Reverse of {@link toDbProjectCategory} — Prisma returns the compact enum form (e.g. `FullTime`), not the UI label. */
+export function fromDbProjectCategory(cat: string): (typeof PROJECT_CATEGORIES)[number] {
+  if (cat === "FullTime") return "Full-time";
+  if (cat === "SideProject") return "Side Project";
+  return cat as (typeof PROJECT_CATEGORIES)[number];
+}
+
 
