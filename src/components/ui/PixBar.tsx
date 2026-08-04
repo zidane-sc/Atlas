@@ -1,3 +1,5 @@
+import { resolveColorVar } from "@/lib/color";
+
 /** Segmented pixel-block meter — docs/03-design.md §5 ("dialogue-box" pixel aesthetic, not a smooth fill). */
 export function PixBar({
   value,
@@ -24,8 +26,8 @@ export function PixBar({
             key={i}
             className="h-2.5 flex-1 border"
             style={{
-              backgroundColor: i < filled ? `var(${colorVar})` : "var(--color-bg-panel-alt)",
-              borderColor: i < filled ? `var(${colorVar})` : "var(--color-border)",
+              backgroundColor: i < filled ? resolveColorVar(colorVar) : "var(--color-bg-panel-alt)",
+              borderColor: i < filled ? resolveColorVar(colorVar) : "var(--color-border)",
             }}
           />
         ))}

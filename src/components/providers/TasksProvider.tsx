@@ -260,7 +260,7 @@ export function TasksProvider({
           const dbProjects = projects as any[];
           const dbSprints = sprints as any[];
           const clientTask = mapDbTaskToClient(result.data.task, dbProjects, dbSprints);
-          dispatch({ type: "restore", task: clientTask });
+          dispatch({ type: "insert", task: clientTask });
           if (result.data.characterSheet) {
             checkAndEmitLevelUp(characterSheet.globalXP, result.data.characterSheet.globalXP);
             setCharacterSheet(result.data.characterSheet);

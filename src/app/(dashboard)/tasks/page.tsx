@@ -12,6 +12,7 @@ import { StatusBadge } from "@/components/tasks/StatusBadge";
 import { TaskFilterBar } from "@/components/tasks/TaskFilterBar";
 import { TaskRow } from "@/components/tasks/TaskRow";
 import { PixBar } from "@/components/ui/PixBar";
+import { resolveColorVar } from "@/lib/color";
 import { useTasks } from "@/components/providers/TasksProvider";
 import { useProjects } from "@/components/providers/ProjectsProvider";
 import { useNotifications } from "@/hooks/useNotifications";
@@ -555,7 +556,7 @@ function TimelineTab({ tasks, projects, onSelect }: { tasks: Task[]; projects: P
             <div key={p.id} className="mb-2 flex items-center">
               <div
                 className="sticky left-0 z-10 flex shrink-0 items-center gap-1 truncate text-sm"
-                style={{ width: LABEL_WIDTH_PX, color: `var(${p.colorVar})`, ...labelBg }}
+                style={{ width: LABEL_WIDTH_PX, color: resolveColorVar(p.colorVar), ...labelBg }}
               >
                 <span>{p.emoji}</span>{p.name}
               </div>
@@ -600,9 +601,9 @@ function ByProjectTab({ tasks, projects, onSelect }: { tasks: Task[]; projects: 
           const total = tasks.filter((t) => t.project === p.name).length;
           return (
             <div key={p.id}>
-              <div className="mb-2 flex items-center gap-3 border-b-2 pb-2" style={{ borderColor: `var(${p.colorVar})` }}>
+              <div className="mb-2 flex items-center gap-3 border-b-2 pb-2" style={{ borderColor: resolveColorVar(p.colorVar) }}>
                 <span className="text-xl">{p.emoji}</span>
-                <span className="text-base" style={{ color: `var(${p.colorVar})` }}>{p.name}</span>
+                <span className="text-base" style={{ color: resolveColorVar(p.colorVar) }}>{p.name}</span>
                 <span className="text-sm text-muted-foreground">{p.category} ({projectTasks.length})</span>
                 <div className="ml-auto w-40"><PixBar value={done} max={total || 1} colorVar={p.colorVar} blocks={10} /></div>
               </div>

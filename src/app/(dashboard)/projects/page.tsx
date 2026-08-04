@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { useTasks } from "@/components/providers/TasksProvider";
 import { useProjects } from "@/components/providers/ProjectsProvider";
 import { PixBar } from "@/components/ui/PixBar";
+import { resolveColorVar } from "@/lib/color";
 
 export default function Page() {
   const { tasks: allTasks } = useTasks();
@@ -46,7 +47,7 @@ export default function Page() {
                   </div>
                   <span
                     className="border px-1.5 py-0.5 text-sm whitespace-nowrap"
-                    style={{ borderColor: `var(${p.colorVar})`, color: `var(${p.colorVar})` }}
+                    style={{ borderColor: resolveColorVar(p.colorVar), color: resolveColorVar(p.colorVar) }}
                   >
                     {p.status.replace("_", " ").toUpperCase()}
                   </span>

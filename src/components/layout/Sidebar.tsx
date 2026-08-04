@@ -327,8 +327,8 @@ export function Sidebar() {
             <Moon size={collapsed ? 18 : 12} /> <span className={cn(collapsed && "lg:hidden")}>Save &amp; Quit</span>
           </button>
         </div>
-        {showQuit && <SaveAndQuitOverlay onClose={() => setShowQuit(false)} />}
       </aside>
+      {showQuit && <SaveAndQuitOverlay onClose={() => setShowQuit(false)} />}
     </>
   );
 }
