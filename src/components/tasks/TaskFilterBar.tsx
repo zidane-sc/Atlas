@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronDown, X } from "lucide-react";
+import { ChevronDown, Pencil, X } from "lucide-react";
 import { useTasks } from "@/components/providers/TasksProvider";
 import { STATUS_LABEL, STATUS_SHAPE, TYPE_ICON } from "@/lib/mock-data";
 import { countActiveFilters, EMPTY_TASK_FILTERS, normalizeFilters, type TaskFilters } from "@/lib/task-filters";
@@ -105,10 +105,28 @@ export function TaskFilterBar({
   projectNames: string[];
   tagNames: string[];
 }) {
-  const { savedFilters, saveFilter, deleteFilter } = useTasks();
+  const { savedFilters, saveFilter, deleteFilter, updateFilter } = useTasks();
   const [viewsOpen, setViewsOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [saveName, setSaveName] = useState("");
+  const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState("");
+  const [activeSavedViewId, setActiveSavedViewId] = useState<string | null>(null);
+
+  const commitRename = async (viewId: string) => {
+    const trimmed = renameValue.trim();
+    const view = savedFilters.find((v) => v.id === viewId);
+    if (!trimmed || !view || trimmed === view.name) {
+      setRenamingId(null);
+      return;
+    }
+    const ok = await updateFilter(viewId, trimmed, view.filters);
+    if (ok) setRenamingId(null);
+  };
+
+  const activeSavedView = savedFilters.find((v) => v.id === activeSavedViewId) ?? null;
+  const isDirtyFromActiveView =
+    activeSavedView !== null && JSON.stringify(filters) !== JSON.stringify(normalizeFilters(activeSavedView.filters));
 
   const activeCount = countActiveFilters(filters);
 
@@ -148,28 +166,57 @@ export function TaskFilterBar({
               {savedFilters.length === 0 ? (
                 <div className="p-2 text-sm text-muted-foreground text-center">No saved views.</div>
               ) : (
-                savedFilters.map((view) => (
-                  <div key={view.id} className="flex items-center justify-between gap-2 p-1 hover:bg-secondary">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        onChange(normalizeFilters(view.filters));
-                        setViewsOpen(false);
-                      }}
-                      className="flex-1 text-left text-sm text-foreground hover:text-primary truncate font-bold"
-                    >
-                      {view.name}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => deleteFilter(view.id)}
-                      className="text-muted-foreground hover:text-destructive p-0.5"
-                      title="Delete view"
-                    >
-                      <X size={12} style={{ color: "var(--color-priority-p0)" }} />
-                    </button>
-                  </div>
-                ))
+                savedFilters.map((view) =>
+                  renamingId === view.id ? (
+                    <div key={view.id} className="flex items-center gap-1 p-1">
+                      <input
+                        type="text"
+                        value={renameValue}
+                        onChange={(e) => setRenameValue(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") commitRename(view.id);
+                          if (e.key === "Escape") setRenamingId(null);
+                        }}
+                        onBlur={() => commitRename(view.id)}
+                        autoFocus
+                        className="flex-1 min-w-0 border border-primary bg-secondary px-1.5 py-0.5 text-sm text-foreground outline-none"
+                      />
+                    </div>
+                  ) : (
+                    <div key={view.id} className="flex items-center justify-between gap-2 p-1 hover:bg-secondary">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          onChange(normalizeFilters(view.filters));
+                          setActiveSavedViewId(view.id);
+                          setViewsOpen(false);
+                        }}
+                        className="flex-1 text-left text-sm text-foreground hover:text-primary truncate font-bold"
+                      >
+                        {view.name}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setRenamingId(view.id);
+                          setRenameValue(view.name);
+                        }}
+                        className="text-muted-foreground hover:text-primary p-0.5"
+                        title="Rename view"
+                      >
+                        <Pencil size={12} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => deleteFilter(view.id)}
+                        className="text-muted-foreground hover:text-destructive p-0.5"
+                        title="Delete view"
+                      >
+                        <X size={12} style={{ color: "var(--color-priority-p0)" }} />
+                      </button>
+                    </div>
+                  )
+                )
               )}
             </div>
           </>
@@ -274,7 +321,27 @@ export function TaskFilterBar({
                 <X size={10} />
               </button>
             </div>
-          ) : (
+          ) : activeSavedView && isDirtyFromActiveView ? (
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={async () => {
+                  await updateFilter(activeSavedView.id, activeSavedView.name, filters);
+                }}
+                className="flex items-center gap-1.5 border px-2 py-1 text-sm font-bold transition-colors"
+                style={{ borderColor: "var(--color-primary-gold)", backgroundColor: "var(--color-bg-panel)", color: "var(--color-primary-gold)" }}
+              >
+                💾 Update &quot;{activeSavedView.name}&quot;
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsSaving(true)}
+                className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+              >
+                Save as new
+              </button>
+            </div>
+          ) : !activeSavedView ? (
             <button
               type="button"
               onClick={() => setIsSaving(true)}
@@ -283,11 +350,14 @@ export function TaskFilterBar({
             >
               💾 Save View
             </button>
-          )}
+          ) : null}
 
           <button
             type="button"
-            onClick={() => onChange(EMPTY_TASK_FILTERS)}
+            onClick={() => {
+              onChange(EMPTY_TASK_FILTERS);
+              setActiveSavedViewId(null);
+            }}
             className="flex items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
           >
             <X size={12} /> Clear ({activeCount})
