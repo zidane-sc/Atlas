@@ -124,3 +124,60 @@ export async function deleteFilterAction(id: string): Promise<ActionResult<Saved
     return { success: false, error: { code: "INTERNAL", message: "Failed to delete filter." } };
   }
 }
+
+export async function updateFilterAction(
+  id: string,
+  name: string,
+  filters: TaskFilters
+): Promise<ActionResult<SavedFilterClient[]>> {
+  const session = await auth();
+  if (!session?.user?.email) {
+    return { success: false, error: { code: "UNAUTHORIZED", message: "Sign in required." } };
+  }
+
+  const parsed = saveFilterInputSchema.safeParse({ name, filters });
+  if (!parsed.success) {
+    return {
+      success: false,
+      error: { code: "VALIDATION_ERROR", message: parsed.error.issues[0]?.message ?? "Invalid input." },
+    };
+  }
+
+  try {
+    const user = await db.user.findUnique({
+      where: { email: session.user.email },
+      select: { id: true, savedFilters: true },
+    });
+
+    if (!user) {
+      return { success: false, error: { code: "NOT_FOUND", message: "User not found." } };
+    }
+
+    const currentFilters = (user.savedFilters as unknown as SavedFilterClient[]) || [];
+
+    if (!currentFilters.some((f) => f.id === id)) {
+      return { success: false, error: { code: "NOT_FOUND", message: "Saved view not found." } };
+    }
+
+    if (currentFilters.some((f) => f.id !== id && f.name.toLowerCase() === name.toLowerCase())) {
+      return { success: false, error: { code: "CONFLICT", message: "A saved filter with this name already exists." } };
+    }
+
+    const updatedFilters = currentFilters.map((f) => (f.id === id ? { id, name, filters } : f));
+
+    await db.user.update({
+      where: { id: user.id },
+      data: {
+        savedFilters: updatedFilters as unknown as Prisma.InputJsonValue,
+      },
+    });
+
+    return {
+      success: true,
+      data: updatedFilters,
+    };
+  } catch (error) {
+    console.error("Failed to update filter:", error);
+    return { success: false, error: { code: "INTERNAL", message: "Failed to update filter." } };
+  }
+}
