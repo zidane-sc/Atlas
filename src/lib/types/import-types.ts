@@ -17,32 +17,6 @@ export interface ActivityLogExport {
   createdAt: string;
 }
 
-export interface NoteAttachmentExport {
-  id: string;
-  noteId: string;
-  url: string;
-  fileName: string;
-  fileType: string | null;
-}
-
-export interface NoteTaskLinkExport {
-  noteId: string;
-  taskId: string;
-  createdAt: string;
-}
-
-export interface NoteExport {
-  id: string;
-  title: string;
-  content: string;
-  tags: string[];
-  pinned: boolean;
-  createdAt: string;
-  updatedAt: string;
-  attachments?: NoteAttachmentExport[];
-  taskLinks?: NoteTaskLinkExport[];
-}
-
 export interface ImportPayload {
   tasks: Task[];
   projects: Project[];
@@ -50,7 +24,6 @@ export interface ImportPayload {
   bonus: { xp: number; coins: number };
   workSessions?: WorkSessionExport[];
   activityLogs?: ActivityLogExport[];
-  notes?: NoteExport[];
   decorations?: { purchased: string[]; placed: Record<string, string | null> };
   savedFilters?: any[];
 }
@@ -67,7 +40,6 @@ export interface ImportValidationResult {
     tasks: number;
     projects: number;
     sprints: number;
-    notes: number;
     workSessions: number;
     activityLogs: number;
   };

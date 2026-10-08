@@ -526,7 +526,6 @@ export async function resetAllTasksAction(): Promise<ActionResult<Partial<Charac
       db.task.deleteMany({ where: { ownerId: user.id } }),
       db.project.deleteMany({ where: { ownerId: user.id } }),
       db.sprint.deleteMany({ where: { ownerId: user.id } }),
-      db.note.deleteMany({ where: { userId: user.id } }),
     ]);
 
     // Seed initial data

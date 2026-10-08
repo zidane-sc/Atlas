@@ -10,7 +10,7 @@ import { useSprints } from "@/components/providers/SprintsProvider";
 import { useSettings } from "@/components/providers/SettingsProvider";
 import { useNotifications } from "@/hooks/useNotifications";
 import { updateUserProfileAction } from "@/lib/actions/user";
-import { getWorkspaceHistoryForExport, getTasksForExport, importWorkspaceData, type ActivityLogExport, type WorkSessionExport, type NoteExport } from "@/lib/actions/import";
+import { getWorkspaceHistoryForExport, getTasksForExport, importWorkspaceData, type ActivityLogExport, type WorkSessionExport } from "@/lib/actions/import";
 import { validateImportPayload } from "@/lib/validation/import-validation";
 import { ImportPreviewModal } from "@/components/ImportPreviewModal";
 import type { Project, Sprint } from "@/types/gamification";
@@ -28,8 +28,6 @@ interface AtlasExport {
   /** Added in version 2 — absent on older export files, defaulted to [] on import. */
   workSessions?: WorkSessionExport[];
   activityLogs?: ActivityLogExport[];
-  /** Added in version 3 — notes, decorations, and saved filters. */
-  notes?: NoteExport[];
   decorations?: { purchased: string[]; placed: Record<string, string | null> };
   savedFilters?: any[];
 }
@@ -47,7 +45,7 @@ function migrateExportFormat(data: AtlasExport): AtlasExport {
   const version = (data as any).version || 1;
 
   // v1 -> v2: added workSessions and activityLogs
-  // v2 -> v3: added notes, decorations, savedFilters
+  // v2 -> v3: added decorations, savedFilters
   // No schema changes needed, just fill in defaults for missing fields
 
   return {
@@ -55,7 +53,6 @@ function migrateExportFormat(data: AtlasExport): AtlasExport {
     bonus: data.bonus ?? { xp: 0, coins: 0 },
     workSessions: data.workSessions ?? [],
     activityLogs: data.activityLogs ?? [],
-    notes: data.notes ?? [],
     decorations: data.decorations,
     savedFilters: data.savedFilters ?? [],
   };
@@ -122,7 +119,7 @@ export default function Page() {
   const [savingName, setSavingName] = useState(false);
   const [importPreviewOpen, setImportPreviewOpen] = useState(false);
   const [importPreviewData, setImportPreviewData] = useState<{
-    counts: { tasks: number; projects: number; sprints: number; notes: number; workSessions: number; activityLogs: number };
+    counts: { tasks: number; projects: number; sprints: number; workSessions: number; activityLogs: number };
     errors: Array<{ category: string; index: number; itemName: string | null; message: string }>;
     payload: any;
   } | null>(null);
@@ -172,7 +169,6 @@ export default function Page() {
       bonus: { xp: bonusXp, coins: bonusCoins },
       workSessions: history.success ? history.data.workSessions : [],
       activityLogs: history.success ? history.data.activityLogs : [],
-      notes: tasksForExport.data.notes,
       decorations: tasksForExport.data.decorations,
       savedFilters: tasksForExport.data.savedFilters,
     };
@@ -204,7 +200,6 @@ export default function Page() {
         bonus: data.bonus,
         workSessions: data.workSessions,
         activityLogs: data.activityLogs,
-        notes: data.notes,
         decorations: data.decorations,
         savedFilters: data.savedFilters,
       };
@@ -233,7 +228,7 @@ export default function Page() {
       const rawData = importPreviewData.payload;
       if (rawData.settings) setReduceMotion(rawData.settings.reduceMotion);
 
-      notify(`Imported ${importPreviewData.counts.tasks} tasks, ${importPreviewData.counts.projects} projects, ${importPreviewData.counts.sprints} sprints, ${importPreviewData.counts.notes} notes. Reloading…`);
+      notify(`Imported ${importPreviewData.counts.tasks} tasks, ${importPreviewData.counts.projects} projects, ${importPreviewData.counts.sprints} sprints. Reloading…`);
       window.location.reload();
     } catch (err) {
       notify(err instanceof Error ? err.message : "Import failed.", "error");

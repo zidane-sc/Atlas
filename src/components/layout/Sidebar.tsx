@@ -13,15 +13,11 @@ import { useSidebar } from "@/components/providers/SidebarProvider";
 import { useNotifications } from "@/hooks/useNotifications";
 import { getNextStreakMilestone, calculateStreak, completedAt, formatLocalDate } from "@/lib/gamification";
 import { updateTask as updateTaskAction } from "@/lib/actions/tasks";
-import { updateNoteAction } from "@/lib/actions/notes";
-import { listNotesAction } from "@/lib/actions/notes";
-import { pinnedNotesEmitter } from "@/lib/pinned-notes-events";
 import { MOCK_NOW } from "@/lib/mock-data";
 import { NAV_CORE, NAV_MANAGE, NAV_SMART_VIEWS, NAV_TASKS, type NavItemBase } from "@/lib/nav-items";
 import { isOverdue } from "@/lib/task-utils";
 import { cn } from "@/lib/utils";
 import type { Task } from "@/types/task";
-import type { NotePreview } from "@/types/note";
 
 type NavItem = NavItemBase & {
   count?: number;
@@ -94,25 +90,8 @@ export function Sidebar() {
   const { notify } = useNotifications();
   const { collapsed, setCollapsed, mobileOpen, setMobileOpen } = useSidebar();
   const [showQuit, setShowQuit] = useState(false);
-  const [pinnedNotes, setPinnedNotes] = useState<NotePreview[]>([]);
   const { setOpen: setCommandPaletteOpen } = useCommandPalette();
 
-  const fetchPinnedNotes = useCallback(async () => {
-    const result = await listNotesAction({ skip: 0, take: 100 });
-    if (result.success) {
-      setPinnedNotes(result.data!.notes.filter((n) => n.pinned));
-    } else {
-      notify(result.error?.message ?? "Failed to load pinned notes.", "error");
-    }
-  }, [notify]);
-
-  useEffect(() => {
-    fetchPinnedNotes();
-  }, [fetchPinnedNotes]);
-
-  useEffect(() => {
-    return pinnedNotesEmitter.subscribe(fetchPinnedNotes);
-  }, [fetchPinnedNotes]);
   const sheet = characterSheet;
   const streakDays = useMemo(() => {
     const s = calculateStreak(tasks);
@@ -282,16 +261,8 @@ export function Sidebar() {
             todayCompleted={todayCompletedCount}
             justCompleted={justCompleted}
             pinnedTasks={pinnedTasks}
-            pinnedNotes={pinnedNotes}
             onOpenTask={(task) => openEditForm(task)}
-            onOpenNote={(noteId) => router.push(`/notes?edit=${noteId}`)}
             onUnpinTask={(taskId) => togglePin(taskId, false)}
-            onUnpinNote={async (noteId) => {
-              setPinnedNotes((prev) => prev.filter((n) => n.id !== noteId));
-              await updateNoteAction({ noteId, pinned: false });
-              pinnedNotesEmitter.emit();
-            }}
-            onRefreshNotes={fetchPinnedNotes}
           />
         </div>
         <div className={cn("p-3", collapsed && "lg:px-2")}>

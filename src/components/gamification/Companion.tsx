@@ -7,7 +7,6 @@ import { getCompanionMood, type CompanionMood } from "@/lib/gamification";
 import { TYPE_ICON } from "@/lib/mock-data";
 import { PriorityMark } from "@/components/tasks/PriorityMark";
 import type { Task } from "@/types/task";
-import type { NotePreview } from "@/types/note";
 
 /** Ambient sidebar companion with pinned task hub */
 const MOOD_MESSAGES: Record<CompanionMood, string[]> = {
@@ -96,49 +95,24 @@ export function Companion({
   todayCompleted,
   justCompleted = false,
   pinnedTasks = [],
-  pinnedNotes = [],
   onOpenTask,
-  onOpenNote,
   onUnpinTask,
-  onUnpinNote,
-  onRefreshNotes,
 }: {
   level: number;
   todayCompleted: number;
   justCompleted?: boolean;
   pinnedTasks?: Task[];
-  pinnedNotes?: NotePreview[];
   onOpenTask?: (task: Task) => void;
-  onOpenNote?: (noteId: string) => void;
   onUnpinTask?: (taskId: string) => void;
-  onUnpinNote?: (noteId: string) => void;
-  onRefreshNotes?: () => Promise<void>;
 }) {
   const [showPinned, setShowPinned] = useState(false);
   const [showMood, setShowMood] = useState(false);
   const [mounted, setMounted] = useState(false);
-  const [activeTab, setActiveTab] = useState<"tasks" | "notes">("tasks");
   const [msgIdx] = useState(() => Math.floor(Math.random() * 4));
   const mood = getCompanionMood(todayCompleted, justCompleted);
   const compLv = Math.max(1, Math.round(level * 0.65));
   const colorVar = MOOD_COLOR_VAR[mood];
-  const hasPinned = (pinnedTasks && pinnedTasks.length > 0) || (pinnedNotes && pinnedNotes.length > 0);
-
-  useEffect(() => {
-    const hasOnlyTasks = pinnedTasks.length > 0 && pinnedNotes.length === 0;
-    const hasOnlyNotes = pinnedNotes.length > 0 && pinnedTasks.length === 0;
-    if (hasOnlyNotes) {
-      setActiveTab("notes");
-    } else if (hasOnlyTasks) {
-      setActiveTab("tasks");
-    }
-  }, [pinnedTasks, pinnedNotes]);
-
-  useEffect(() => {
-    if (showPinned && onRefreshNotes) {
-      onRefreshNotes();
-    }
-  }, [showPinned, onRefreshNotes]);
+  const hasPinned = pinnedTasks && pinnedTasks.length > 0;
 
   useEffect(() => {
     setMounted(true);
@@ -175,7 +149,7 @@ export function Companion({
           {hasPinned && (
             <div className="mt-2 pt-2 border-t border-gray-600">
               <div className="text-xs" style={{ color: "var(--color-primary-gold)" }}>
-                📌 {pinnedTasks.length + pinnedNotes.length} items pinned!
+                📌 {pinnedTasks.length} quest{pinnedTasks.length === 1 ? "" : "s"} pinned!
               </div>
               <div className="text-xs text-muted-foreground">Click to open 👆</div>
             </div>
@@ -186,7 +160,7 @@ export function Companion({
       {/* Pinned Hub Modal - portaled to <body> so the sidebar's translate-x transform
           (which creates a containing block for descendant `position: fixed` elements)
           doesn't confine it to the sidebar's box instead of the viewport. */}
-      {mounted && showPinned && (pinnedTasks.length > 0 || pinnedNotes.length > 0) && createPortal(
+      {mounted && showPinned && pinnedTasks.length > 0 && createPortal(
         <>
           <div
             className="fixed inset-0 z-40 bg-black/30"
@@ -205,119 +179,54 @@ export function Companion({
               animation: "pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite",
             }}
           >
-          {/* Header with Tabs */}
+          {/* Header */}
           <div
             className="px-3 py-2 border-b-2 border-border flex items-center justify-between"
             style={{ backgroundColor: "var(--color-bg-panel-alt)" }}
           >
             <span className="font-display text-xs tracking-widest" style={{ color: "var(--color-primary-gold)" }}>
-              📌 PINBOARD
+              📌 PINBOARD ({pinnedTasks.length})
             </span>
             <button onClick={() => setShowPinned(false)} className="p-0.5 hover:text-destructive transition-colors">
               <X size={14} />
             </button>
           </div>
 
-          {/* Tab Buttons */}
-          {pinnedTasks.length > 0 && pinnedNotes.length > 0 && (
-            <div className="flex border-b border-border">
-              <button
-                onClick={() => setActiveTab("tasks")}
-                className="flex-1 px-3 py-1.5 text-xs font-bold transition-colors"
-                style={{
-                  backgroundColor: activeTab === "tasks" ? "var(--color-bg-panel)" : "transparent",
-                  color: activeTab === "tasks" ? "var(--color-primary-gold)" : "var(--color-text-muted)",
-                  borderBottom: activeTab === "tasks" ? "2px solid var(--color-primary-gold)" : "none",
-                }}
-              >
-                ⚡ TASKS ({pinnedTasks.length})
-              </button>
-              <button
-                onClick={() => setActiveTab("notes")}
-                className="flex-1 px-3 py-1.5 text-xs font-bold transition-colors"
-                style={{
-                  backgroundColor: activeTab === "notes" ? "var(--color-bg-panel)" : "transparent",
-                  color: activeTab === "notes" ? "var(--color-primary-gold)" : "var(--color-text-muted)",
-                  borderBottom: activeTab === "notes" ? "2px solid var(--color-primary-gold)" : "none",
-                }}
-              >
-                📚 NOTES ({pinnedNotes.length})
-              </button>
-            </div>
-          )}
-
           {/* Content */}
           <div className="overflow-y-auto flex-1 divide-y divide-border">
-            {/* Tasks Tab */}
-            {activeTab === "tasks" && pinnedTasks.length > 0 && (
-              <>
-                {pinnedTasks.map((task) => (
-                  <div
-                    key={task.id}
-                    className="p-2.5 hover:bg-primary/10 transition-colors flex gap-2 group cursor-pointer"
-                    onClick={() => {
-                      onOpenTask?.(task);
-                      setShowPinned(false);
-                    }}
-                  >
-                    <span className="text-base shrink-0">{TYPE_ICON[task.type]}</span>
-                    <div className="flex-1 min-w-0">
-                      <h3 className="text-xs font-bold text-foreground line-clamp-2 group-hover:text-primary transition-colors mb-1">
-                        {task.title}
-                      </h3>
-                      <div className="flex items-center gap-1 flex-wrap">
-                        <PriorityMark priority={task.priority} />
-                        <span className="text-xs px-1.5 py-0.5 border border-border whitespace-nowrap text-xs font-bold" style={{ backgroundColor: "var(--color-bg-panel-alt)" }}>
-                          {task.status.replace(/_/g, " ").toUpperCase()}
-                        </span>
-                        {task.dueDate && <span className="text-xs text-muted-foreground">📅 {task.dueDate.slice(5)}</span>}
-                      </div>
-                    </div>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onUnpinTask?.(task.id);
-                      }}
-                      className="p-0.5 hover:text-destructive transition-colors shrink-0 opacity-0 group-hover:opacity-100"
-                    >
-                      <X size={12} />
-                    </button>
+            {pinnedTasks.map((task) => (
+              <div
+                key={task.id}
+                className="p-2.5 hover:bg-primary/10 transition-colors flex gap-2 group cursor-pointer"
+                onClick={() => {
+                  onOpenTask?.(task);
+                  setShowPinned(false);
+                }}
+              >
+                <span className="text-base shrink-0">{TYPE_ICON[task.type]}</span>
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-xs font-bold text-foreground line-clamp-2 group-hover:text-primary transition-colors mb-1">
+                    {task.title}
+                  </h3>
+                  <div className="flex items-center gap-1 flex-wrap">
+                    <PriorityMark priority={task.priority} />
+                    <span className="text-xs px-1.5 py-0.5 border border-border whitespace-nowrap text-xs font-bold" style={{ backgroundColor: "var(--color-bg-panel-alt)" }}>
+                      {task.status.replace(/_/g, " ").toUpperCase()}
+                    </span>
+                    {task.dueDate && <span className="text-xs text-muted-foreground">📅 {task.dueDate.slice(5)}</span>}
                   </div>
-                ))}
-              </>
-            )}
-
-            {/* Notes Tab */}
-            {activeTab === "notes" && pinnedNotes.length > 0 && (
-              <>
-                {pinnedNotes.map((note) => (
-                  <div
-                    key={note.id}
-                    className="p-2.5 hover:bg-primary/10 transition-colors flex gap-2 group cursor-pointer"
-                    onClick={() => {
-                      onOpenNote?.(note.id);
-                      setShowPinned(false);
-                    }}
-                  >
-                    <div className="flex-1 min-w-0">
-                      <h3 className="text-xs font-bold text-foreground line-clamp-2 group-hover:text-primary transition-colors mb-1">
-                        {note.title}
-                      </h3>
-                      <p className="text-xs text-muted-foreground line-clamp-1">{note.preview}</p>
-                    </div>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onUnpinNote?.(note.id);
-                      }}
-                      className="p-0.5 hover:text-destructive transition-colors shrink-0 opacity-0 group-hover:opacity-100"
-                    >
-                      <X size={12} />
-                    </button>
-                  </div>
-                ))}
-              </>
-            )}
+                </div>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onUnpinTask?.(task.id);
+                  }}
+                  className="p-0.5 hover:text-destructive transition-colors shrink-0 opacity-0 group-hover:opacity-100"
+                >
+                  <X size={12} />
+                </button>
+              </div>
+            ))}
           </div>
 
           <style>{`

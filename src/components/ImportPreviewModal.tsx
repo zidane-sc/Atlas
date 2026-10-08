@@ -9,7 +9,6 @@ export interface ImportPreviewModalProps {
     tasks: number;
     projects: number;
     sprints: number;
-    notes: number;
     workSessions: number;
     activityLogs: number;
   };
@@ -21,7 +20,7 @@ export interface ImportPreviewModalProps {
 
 export function ImportPreviewModal({
   isOpen,
-  counts = { tasks: 0, projects: 0, sprints: 0, notes: 0, workSessions: 0, activityLogs: 0 },
+  counts = { tasks: 0, projects: 0, sprints: 0, workSessions: 0, activityLogs: 0 },
   errors = [],
   isLoading = false,
   onCancel,
@@ -56,10 +55,6 @@ export function ImportPreviewModal({
               <div className="flex justify-between">
                 <span>Sprints</span>
                 <span className="text-foreground font-medium">{counts.sprints}</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Notes</span>
-                <span className="text-foreground font-medium">{counts.notes}</span>
               </div>
               <div className="flex justify-between">
                 <span>Work Sessions</span>

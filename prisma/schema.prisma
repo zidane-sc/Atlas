@@ -36,7 +36,6 @@ model User {
   sprints      Sprint[]
   comments     Comment[]
   activityLogs ActivityLog[]
-  notes        Note[]
 
   @@map("users")
 }
@@ -156,7 +155,6 @@ model Task {
   comments      Comment[]
   activityLogs  ActivityLog[]
   workSessions  WorkSession[]
-  noteLinks     NoteTaskLink[]
 
   @@unique([ownerId, code])
   @@index([status])
@@ -293,78 +291,4 @@ model WorkSession {
   durationSeconds Int      @map("duration_seconds")
 
   @@map("work_sessions")
-}
-
-model Note {
-  id     String @id @default(cuid())
-  userId String @db.Uuid
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  title   String
-  content String   @db.Text
-  tags    String[] @default([])
-  pinned  Boolean  @default(false)
-
-  attachments NoteAttachment[]
-  taskLinks   NoteTaskLink[]
-  linksAsA    NoteLink[]       @relation("NoteLinkA")
-  linksAsB    NoteLink[]       @relation("NoteLinkB")
-
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-
-  @@index([userId])
-  @@index([userId, createdAt])
-  @@index([userId, pinned])
-  @@index([createdAt])
-  @@map("notes")
-}
-
-model NoteAttachment {
-  id     String @id @default(cuid())
-  noteId String
-  note   Note   @relation(fields: [noteId], references: [id], onDelete: Cascade)
-
-  url      String
-  fileName String  @map("file_name")
-  fileType String? @map("file_type")
-
-  createdAt DateTime @default(now()) @map("created_at")
-
-  @@index([noteId])
-  @@map("note_attachments")
-}
-
-model NoteTaskLink {
-  noteId String
-  note   Note   @relation(fields: [noteId], references: [id], onDelete: Cascade)
-
-  taskId String @db.Uuid
-  task   Task   @relation(fields: [taskId], references: [id], onDelete: Cascade)
-
-  createdAt DateTime @default(now()) @map("created_at")
-
-  @@id([noteId, taskId])
-  @@index([taskId])
-  @@map("note_task_links")
-}
-
-/**
- * Note-to-note linking — docs/01-product.md §14, the one piece of the original Notes idea
- * that wasn't built alongside the rest (docs/05-backlog.md EPIC-28). Undirected: one row per
- * pair, stored with noteAId as the lexicographically smaller id so a pair is never inserted
- * twice in either direction — enforced at the application layer, not by a DB constraint.
- */
-model NoteLink {
-  id      String @id @default(cuid())
-  noteAId String
-  noteA   Note   @relation("NoteLinkA", fields: [noteAId], references: [id], onDelete: Cascade)
-  noteBId String
-  noteB   Note   @relation("NoteLinkB", fields: [noteBId], references: [id], onDelete: Cascade)
-
-  createdAt DateTime @default(now()) @map("created_at")
-
-  @@unique([noteAId, noteBId])
-  @@index([noteBId])
-  @@map("note_links")
 }

@@ -139,7 +139,6 @@ export function validateImportPayload(payload: ImportPayload): ImportValidationR
       tasks: payload.tasks?.length ?? 0,
       projects: payload.projects?.length ?? 0,
       sprints: payload.sprints?.length ?? 0,
-      notes: payload.notes?.length ?? 0,
       workSessions: payload.workSessions?.length ?? 0,
       activityLogs: payload.activityLogs?.length ?? 0,
     },

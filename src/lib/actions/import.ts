@@ -10,10 +10,10 @@ import { Prisma } from "@/generated/prisma/client";
 import type { ProjectCategory, ProjectStatus, SprintStatus, TaskStatus, TaskType, TaskPriority, TaskEffort, TaskReporter } from "@/generated/prisma/client";
 import { mapDbTaskToClient } from "@/lib/tasks-reducer";
 import { validateImportPayload } from "@/lib/validation/import-validation";
-import type { ImportPayload, WorkSessionExport, ActivityLogExport, NoteExport, NoteAttachmentExport, NoteTaskLinkExport } from "@/lib/types/import-types";
+import type { ImportPayload, WorkSessionExport, ActivityLogExport } from "@/lib/types/import-types";
 
 export { validateImportPayload };
-export type { ImportPayload, WorkSessionExport, ActivityLogExport, NoteExport, NoteAttachmentExport, NoteTaskLinkExport } from "@/lib/types/import-types";
+export type { ImportPayload, WorkSessionExport, ActivityLogExport } from "@/lib/types/import-types";
 
 function parseDate(dateStr: string | null | undefined): Date | null {
   if (!dateStr) return null;
@@ -133,7 +133,7 @@ export async function getWorkspaceHistoryForExport(): Promise<
  * with no `take` limit, same one-time-cost tradeoff already accepted by
  * `getWorkspaceHistoryForExport` above.
  */
-export async function getTasksForExport(): Promise<ActionResult<{ tasks: Task[]; notes: NoteExport[]; decorations: { purchased: string[]; placed: Record<string, string | null> }; savedFilters: any[] }>> {
+export async function getTasksForExport(): Promise<ActionResult<{ tasks: Task[]; decorations: { purchased: string[]; placed: Record<string, string | null> }; savedFilters: any[] }>> {
   const session = await auth();
   if (!session?.user?.email) {
     return { success: false, error: { code: "UNAUTHORIZED", message: "Sign in required." } };
@@ -144,7 +144,7 @@ export async function getTasksForExport(): Promise<ActionResult<{ tasks: Task[];
     return { success: false, error: { code: "NOT_FOUND", message: "User not found." } };
   }
 
-  const [dbTasks, dbProjects, dbSprints, dbNotes] = await Promise.all([
+  const [dbTasks, dbProjects, dbSprints] = await Promise.all([
     db.task.findMany({
       where: { ownerId: user.id, deletedAt: null },
       orderBy: { createdAt: "asc" },
@@ -155,41 +155,12 @@ export async function getTasksForExport(): Promise<ActionResult<{ tasks: Task[];
     }),
     db.project.findMany({ where: { ownerId: user.id, archivedAt: null } }),
     db.sprint.findMany({ where: { ownerId: user.id } }),
-    db.note.findMany({
-      where: { userId: user.id },
-      orderBy: { createdAt: "asc" },
-      include: {
-        attachments: true,
-        taskLinks: true,
-      },
-    }),
   ]);
 
   return {
     success: true,
     data: {
       tasks: dbTasks.map((t) => mapDbTaskToClient(t, dbProjects, dbSprints)),
-      notes: dbNotes.map((n) => ({
-        id: n.id,
-        title: n.title,
-        content: n.content,
-        tags: n.tags,
-        pinned: n.pinned,
-        createdAt: n.createdAt.toISOString(),
-        updatedAt: n.updatedAt.toISOString(),
-        attachments: n.attachments.map((a) => ({
-          id: a.id,
-          noteId: a.noteId,
-          url: a.url,
-          fileName: a.fileName,
-          fileType: a.fileType,
-        })),
-        taskLinks: n.taskLinks.map((l) => ({
-          noteId: l.noteId,
-          taskId: l.taskId,
-          createdAt: l.createdAt.toISOString(),
-        })),
-      })),
       decorations: {
         purchased: (user.purchasedDecorations as string[]) || [],
         placed: (user.placedDecorations as Record<string, string | null>) || {},
@@ -217,7 +188,7 @@ export async function importWorkspaceData(
       return { success: false, error: { code: "NOT_FOUND", message: "User not found." } };
     }
 
-    const { tasks, projects, sprints, bonus, workSessions = [], activityLogs = [], notes = [], decorations, savedFilters = [] } = payload;
+    const { tasks, projects, sprints, bonus, workSessions = [], activityLogs = [], decorations, savedFilters = [] } = payload;
     const taskIds = new Set(tasks.map((t) => t.id));
 
     await db.$transaction(async (tx) => {
@@ -227,10 +198,6 @@ export async function importWorkspaceData(
       await tx.comment.deleteMany({ where: { task: { ownerId: user.id } } });
       await tx.activityLog.deleteMany({ where: { actorId: user.id } });
       await tx.workSession.deleteMany({ where: { task: { ownerId: user.id } } });
-      await tx.noteTaskLink.deleteMany({ where: { note: { userId: user.id } } });
-      await tx.noteAttachment.deleteMany({ where: { note: { userId: user.id } } });
-      await tx.noteLink.deleteMany({ where: { OR: [{ noteA: { userId: user.id } }, { noteB: { userId: user.id } }] } });
-      await tx.note.deleteMany({ where: { userId: user.id } });
       await tx.task.deleteMany({ where: { ownerId: user.id } });
       await tx.project.deleteMany({ where: { ownerId: user.id } });
       await tx.sprint.deleteMany({ where: { ownerId: user.id } });
@@ -357,51 +324,7 @@ export async function importWorkspaceData(
         }
       }
 
-      // 5. Insert Notes with attachments and task links
-      if (notes.length > 0) {
-        await tx.note.createMany({
-          data: notes.map((n) => ({
-            id: n.id,
-            userId: user.id,
-            title: n.title,
-            content: n.content,
-            tags: n.tags,
-            pinned: n.pinned,
-            createdAt: parseDate(n.createdAt)!,
-            updatedAt: parseDate(n.updatedAt)!,
-          })),
-        });
-
-        // Insert Note Attachments
-        const allAttachments = notes.flatMap((n) =>
-          (n.attachments ?? []).map((a) => ({
-            id: a.id,
-            noteId: a.noteId,
-            url: a.url,
-            fileName: a.fileName,
-            fileType: a.fileType,
-          }))
-        );
-        if (allAttachments.length > 0) {
-          await tx.noteAttachment.createMany({ data: allAttachments });
-        }
-
-        // Insert Note Task Links (only if tasks were imported)
-        const validTaskLinks = notes
-          .flatMap((n) =>
-            (n.taskLinks ?? []).map((l) => ({
-              noteId: l.noteId,
-              taskId: l.taskId,
-              createdAt: parseDate(l.createdAt) || new Date(),
-            }))
-          )
-          .filter((l) => taskIds.has(l.taskId));
-        if (validTaskLinks.length > 0) {
-          await tx.noteTaskLink.createMany({ data: validTaskLinks });
-        }
-      }
-
-      // 6. Restore Focus Timer history and the activity feed — previously dropped on
+      // 5. Restore Focus Timer history and the activity feed — previously dropped on
       // re-import even though the wipe step above deletes both (docs/05-backlog.md §6).
       const validWorkSessions = workSessions.filter((w) => taskIds.has(w.taskId));
       if (validWorkSessions.length > 0) {

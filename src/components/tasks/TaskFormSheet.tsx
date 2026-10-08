@@ -43,7 +43,6 @@ import { sortSprintsForPicker } from "@/lib/picker-sort";
 import { sortTasksForPicker } from "@/lib/picker-sort";
 import { handleDropdownKeydown, type DropdownNavState } from "@/lib/dropdown-nav";
 import { updateDrawerLastSelectedAction } from "@/lib/actions/user";
-import { TaskNoteLinks } from "@/components/notes/TaskNoteLinks";
 import { STATUS_LABEL, TYPE_ICON } from "@/lib/mock-data";
 import type {
   AttachmentType,
@@ -947,8 +946,6 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
                 <CommentInput taskId={task.id} onAdded={refreshTaskDetail} />
               </div>
             </Section>
-
-            <TaskNoteLinks taskId={task.id} />
 
             <Section title="History" shape="◫">
               <ul className="flex flex-col gap-1">
