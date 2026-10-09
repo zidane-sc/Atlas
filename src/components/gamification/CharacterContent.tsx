@@ -4,13 +4,13 @@ import { useMemo, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useTasks } from "@/components/providers/TasksProvider";
 import { useNotifications } from "@/hooks/useNotifications";
-import { SKILL_META, STATS, calculateStreak, completedAt } from "@/lib/gamification";
+import { SKILL_META, STATS, calculateStreak, completedAt, formatLocalDate } from "@/lib/gamification";
 import { TYPE_ICON } from "@/lib/mock-data";
 import { updateUserProfileAction } from "@/lib/actions/user";
 
 export default function CharacterContent() {
   const { data: session, update: updateSession } = useSession();
-  const { tasks, characterSheet } = useTasks();
+  const { tasks, allTimeTasks, characterSheet } = useTasks();
   const { notify } = useNotifications();
   const [isEditing, setIsEditing] = useState(false);
   const [formName, setFormName] = useState("");
@@ -33,16 +33,16 @@ export default function CharacterContent() {
     setSaving(false);
   };
   const sheet = characterSheet;
-  const streakDays = useMemo(() => calculateStreak(tasks), [tasks]);
+  const streakDays = useMemo(() => calculateStreak(allTimeTasks), [allTimeTasks]);
   const taskXp = sheet.globalXP;
 
   const todayCompletedCount = useMemo(() => {
     const today = new Date();
-    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+    const todayStr = formatLocalDate(today);
     return tasks.filter((t) => {
       if (t.status !== "done") return false;
       const doneAt = completedAt(t);
-      return doneAt ? doneAt.startsWith(todayStr) : false;
+      return doneAt ? formatLocalDate(doneAt) === todayStr : false;
     }).length;
   }, [tasks]);
 

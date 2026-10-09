@@ -485,7 +485,7 @@ function CalendarTab({ tasks, onSelect }: { tasks: Task[]; onSelect: (t: Task) =
                                   className="cursor-pointer truncate px-1 py-0.5 text-sm hover:bg-secondary"
                                   style={{ color: `var(${taskColorVar(t)})`, borderLeft: `2px solid var(${taskColorVar(t)})` }}
                                 >
-                                  {isOverdue(t.dueDate, MOCK_NOW) && t.status !== "done" && "⚠ "}{TYPE_ICON[t.type]} <span style={{ fontSize: "11px", fontWeight: "bold", color: "var(--color-primary-gold)", marginLeft: "2px" }}>{t.code}</span> <span style={{ fontSize: "11px", fontWeight: "bold", color: "var(--color-primary-gold)" }}>{t.code}</span> {t.title}
+                                  {isOverdue(t.dueDate, MOCK_NOW) && t.status !== "done" && "⚠ "}{TYPE_ICON[t.type]} <span style={{ fontSize: "11px", fontWeight: "bold", color: "var(--color-primary-gold)", marginLeft: "2px" }}>{t.code}</span> {t.title}
                                 </div>
                               ))}
                             </div>
@@ -567,14 +567,14 @@ function TimelineTab({ tasks, projects, onSelect }: { tasks: Task[]; projects: P
                     <button
                       key={t.id}
                       type="button"
-                      title={t.title}
+                      title={`${t.code}: ${t.title}`}
                       onClick={() => onSelect(t)}
-                      className="absolute top-1 h-5 max-w-[140px] min-w-[90px] cursor-pointer overflow-hidden px-1.5 transition-opacity hover:opacity-70"
+                      className="absolute top-0.5 h-6 max-w-[160px] min-w-[90px] cursor-pointer overflow-hidden px-1.5 transition-opacity hover:opacity-70 rounded-xs"
                       style={{ left: `${pct}%`, backgroundColor: `var(--color-priority-${t.priority})`, border: `1px solid var(${STATUS_COLOR_VAR[t.status]})` }}
                     >
-                      <div style={{ display: "flex", flexDirection: "column", gap: "2px", fontSize: "10px" }}>
-                        <span style={{ fontWeight: "bold", textTransform: "uppercase" }}>{t.code}</span>
-                        <span className="block truncate text-sm font-bold" style={{ color: `var(${PRIORITY_BAR_TEXT_VAR[t.priority]})` }}>
+                      <div className="flex h-full items-center gap-1 overflow-hidden text-[11px] leading-none">
+                        <span className="shrink-0 font-mono font-bold uppercase" style={{ color: `var(${PRIORITY_BAR_TEXT_VAR[t.priority]})` }}>{t.code}</span>
+                        <span className="truncate font-medium" style={{ color: `var(${PRIORITY_BAR_TEXT_VAR[t.priority]})` }}>
                           {t.title}
                         </span>
                       </div>

@@ -371,10 +371,10 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
       </SheetHeader>
 
       <div className="flex items-center gap-4 border-b border-border px-4 py-2 text-sm" style={{ backgroundColor: "var(--color-bg-panel-alt)" }}>
-        <span className="flex items-center gap-1" style={{ color: "var(--color-xp-gold)" }} title={`XP = (Priority * 20) + (Story Points * 5)\nP0: 100, P1: 80, P2: 60, P3: 40, P4: 20`}>
+        <span className="flex items-center gap-1" style={{ color: "var(--color-xp-gold)" }} title={`XP = (Base XP + SP * 10) * (On-Time 1.2x)\nBase XP: P0: 100, P1: 60, P2: 30, P3: 15, P4: 5`}>
           ⚡ +{previewXP} XP on complete <Info size={12} className="opacity-50" style={{ cursor: "help" }} />
         </span>
-        <span className="flex items-center gap-1" style={{ color: "var(--color-coin)" }} title="Coins = Priority * Story Points * 2">
+        <span className="flex items-center gap-1" style={{ color: "var(--color-coin)" }} title={`Coins = Story Points + Priority Bonus\nBonus: P0: +5, P1: +3, P2: +1, P3/P4: 0`}>
           🪙 +{previewCoins} coins <Info size={12} className="opacity-50" style={{ cursor: "help" }} />
         </span>
       </div>

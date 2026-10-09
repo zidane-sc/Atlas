@@ -86,22 +86,19 @@ function GroupLabel({ children, collapsed }: { children: React.ReactNode; collap
 
 export function Sidebar() {
   const router = useRouter();
-  const { tasks, characterSheet, openCreateForm, openEditForm, justCompleted, updateTask, togglePin } = useTasks();
+  const { tasks, allTimeTasks, characterSheet, openCreateForm, openEditForm, justCompleted, updateTask, togglePin } = useTasks();
   const { notify } = useNotifications();
   const { collapsed, setCollapsed, mobileOpen, setMobileOpen } = useSidebar();
   const [showQuit, setShowQuit] = useState(false);
   const { setOpen: setCommandPaletteOpen } = useCommandPalette();
+  const pathname = usePathname();
+
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [pathname, setMobileOpen]);
 
   const sheet = characterSheet;
-  const streakDays = useMemo(() => {
-    const s = calculateStreak(tasks);
-
-    tasks.forEach(t => {
-      const at = completedAt(t);
-      const local = at ? formatLocalDate(at) : null;
-    });
-    return s;
-  }, [tasks]);
+  const streakDays = useMemo(() => calculateStreak(allTimeTasks), [allTimeTasks]);
   const todayCompletedCount = useMemo(() => {
     const today = new Date();
     const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
@@ -113,7 +110,6 @@ export function Sidebar() {
   }, [tasks]);
   const pinnedTasks = useMemo(() => tasks.filter((t) => t.pinned), [tasks]);
   const milestone = getNextStreakMilestone(streakDays);
-  const pathname = usePathname();
 
   const smartViews: NavItem[] = NAV_SMART_VIEWS.map((item) => ({
     ...item,

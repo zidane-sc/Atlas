@@ -18,10 +18,10 @@ import { MOCK_NOW, TYPE_ICON, todaysDailyQuest } from "@/lib/mock-data";
 export default function Page() {
   const { settings } = useSettings();
   const compactView = settings.find((s) => s.key === "compactView")?.value ?? false;
-  const { tasks, characterSheet, activityLogs, lastQuestClaimedAt, claimDailyQuest } = useTasks();
+  const { tasks, allTimeTasks, characterSheet, activityLogs, lastQuestClaimedAt, claimDailyQuest } = useTasks();
   const { sprints } = useSprints();
   const sheet = characterSheet;
-  const streakDays = useMemo(() => calculateStreak(tasks), [tasks]);
+  const streakDays = useMemo(() => calculateStreak(allTimeTasks), [allTimeTasks]);
   const { classTitle } = sheet;
   const dailyQuestClaimed = lastQuestClaimedAt != null && lastQuestClaimedAt.slice(0, 10) === MOCK_NOW;
 
