@@ -35,6 +35,14 @@ export async function createComment(input: unknown): Promise<ActionResult<{ id: 
 
   try {
     const comment = await db.$transaction(async (tx) => {
+      const task = await tx.task.findFirst({
+        where: { id: parsed.data.taskId, ownerId: owner.id, deletedAt: null },
+        select: { id: true },
+      });
+      if (!task) {
+        throw new Error("NOT_FOUND");
+      }
+
       const created = await tx.comment.create({
         data: {
           taskId: parsed.data.taskId,
@@ -62,7 +70,10 @@ export async function createComment(input: unknown): Promise<ActionResult<{ id: 
         createdAt: comment.createdAt.toISOString(),
       },
     };
-  } catch {
+  } catch (err) {
+    if (err instanceof Error && err.message === "NOT_FOUND") {
+      return { success: false, error: { code: "NOT_FOUND", message: "Task not found." } };
+    }
     return { success: false, error: { code: "INTERNAL", message: "Failed to post comment." } };
   }
 }

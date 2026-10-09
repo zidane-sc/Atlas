@@ -241,6 +241,7 @@ export async function importWorkspaceData(
                 status: validateSprintStatus(s.status),
                 goal: s.goal || null,
               },
+              select: { id: true },
             });
           } catch (e) {
             throw new Error(`Sprint ${sprintIdx} (${s.name}): ${e instanceof Error ? e.message : String(e)}`);

@@ -40,7 +40,7 @@ export async function loadMoreTasks({
       }),
       db.task.findMany({
         where: { ownerId: user.id, deletedAt: null },
-        orderBy: { createdAt: "desc" },
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
         take: limit,
         skip: 1,
         cursor: { id: cursor },
