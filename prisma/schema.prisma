@@ -159,10 +159,13 @@ model Task {
   @@unique([ownerId, code])
   @@index([status])
   @@index([projectId])
+  @@index([sprintId])
   @@index([dueDate])
   @@index([ownerId])
   @@index([ownerId, status])
   @@index([ownerId, deletedAt])
+  @@index([ownerId, deletedAt, status])
+  @@index([ownerId, deletedAt, createdAt])
   @@map("tasks")
 }
 
@@ -208,6 +211,7 @@ model Project {
   activityLogs ActivityLog[]
 
   @@index([ownerId])
+  @@index([ownerId, archivedAt])
   @@map("projects")
 }
 
@@ -249,6 +253,7 @@ model TaskStatusLog {
   toStatus   TaskStatus  @map("to_status")
   changedAt  DateTime    @default(now()) @map("changed_at")
 
+  @@index([taskId])
   @@map("task_status_logs")
 }
 
@@ -261,6 +266,8 @@ model Comment {
   content   String
   createdAt DateTime @default(now()) @map("created_at")
 
+  @@index([taskId])
+  @@index([authorId])
   @@map("comments")
 }
 
@@ -279,6 +286,9 @@ model ActivityLog {
   createdAt DateTime @default(now()) @map("created_at")
 
   @@index([actorId])
+  @@index([taskId])
+  @@index([projectId])
+  @@index([sprintId])
   @@map("activity_logs")
 }
 
@@ -290,5 +300,6 @@ model WorkSession {
   endedAt         DateTime @map("ended_at")
   durationSeconds Int      @map("duration_seconds")
 
+  @@index([taskId])
   @@map("work_sessions")
 }

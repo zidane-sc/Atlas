@@ -9,7 +9,7 @@ export async function togglePin(taskId: string, pinned: boolean) {
     return { success: false, error: "Unauthorized" };
   }
 
-  const owner = await db.user.findFirst({ where: { email: session.user.email } });
+  const owner = await db.user.findUnique({ where: { email: session.user.email }, select: { id: true } });
   if (!owner) {
     return { success: false, error: "User not found" };
   }

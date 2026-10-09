@@ -25,7 +25,7 @@ export async function createSprint(input: unknown): Promise<ActionResult<SprintW
     };
   }
 
-  const owner = await db.user.findFirst({ where: { email: session.user.email } });
+  const owner = await db.user.findUnique({ where: { email: session.user.email }, select: { id: true } });
   if (!owner) {
     return { success: false, error: { code: "NOT_FOUND", message: "User not found." } };
   }
@@ -81,12 +81,15 @@ export async function updateSprint(id: string, input: unknown): Promise<ActionRe
     };
   }
 
-  const owner = await db.user.findFirst({ where: { email: session.user.email } });
+  const owner = await db.user.findUnique({ where: { email: session.user.email }, select: { id: true } });
   if (!owner) {
     return { success: false, error: { code: "NOT_FOUND", message: "User not found." } };
   }
 
-  const existing = await db.sprint.findFirst({ where: { id, ownerId: owner.id } });
+  const existing = await db.sprint.findFirst({
+    where: { id, ownerId: owner.id },
+    select: { id: true, name: true },
+  });
   if (!existing) {
     return { success: false, error: { code: "NOT_FOUND", message: "Sprint not found." } };
   }
@@ -134,14 +137,17 @@ export async function deleteSprint(id: string): Promise<ActionResult<{ id: strin
     return { success: false, error: { code: "UNAUTHORIZED", message: "Sign in required." } };
   }
 
-  const owner = await db.user.findFirst({ where: { email: session.user.email } });
+  const owner = await db.user.findUnique({ where: { email: session.user.email }, select: { id: true } });
   if (!owner) {
     return { success: false, error: { code: "NOT_FOUND", message: "User not found." } };
   }
 
   try {
     await db.$transaction(async (tx) => {
-      const existing = await tx.sprint.findFirst({ where: { id, ownerId: owner.id } });
+      const existing = await tx.sprint.findFirst({
+        where: { id, ownerId: owner.id },
+        select: { id: true, name: true },
+      });
       if (!existing) {
         throw new Error("NOT_FOUND");
       }

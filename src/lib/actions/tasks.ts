@@ -153,13 +153,23 @@ export async function updateTask(
     };
   }
 
-  const owner = await db.user.findFirst({ where: { email: session.user.email } });
+  const owner = await db.user.findUnique({ where: { email: session.user.email }, select: { id: true } });
   if (!owner) {
     return { success: false, error: { code: "NOT_FOUND", message: "User not found." } };
   }
 
   // Soft-deleted tasks (docs/02-architecture.md §4.4 `deleted_at`) are gone as far as edits are concerned.
-  const existing = await db.task.findFirst({ where: { id, ownerId: owner.id, deletedAt: null } });
+  const existing = await db.task.findFirst({
+    where: { id, ownerId: owner.id, deletedAt: null },
+    select: {
+      status: true,
+      priority: true,
+      effort: true,
+      storyPoint: true,
+      title: true,
+      type: true,
+    },
+  });
   if (!existing) {
     return { success: false, error: { code: "NOT_FOUND", message: "Task not found." } };
   }
@@ -255,14 +265,17 @@ export async function deleteTask(id: string): Promise<ActionResult<{ id: string 
     return { success: false, error: { code: "UNAUTHORIZED", message: "Sign in required." } };
   }
 
-  const owner = await db.user.findFirst({ where: { email: session.user.email } });
+  const owner = await db.user.findUnique({ where: { email: session.user.email }, select: { id: true } });
   if (!owner) {
     return { success: false, error: { code: "NOT_FOUND", message: "User not found." } };
   }
 
   try {
     await db.$transaction(async (tx) => {
-      const existing = await tx.task.findFirst({ where: { id, ownerId: owner.id, deletedAt: null } });
+      const existing = await tx.task.findFirst({
+        where: { id, ownerId: owner.id, deletedAt: null },
+        select: { title: true },
+      });
       if (!existing) {
         throw new Error("NOT_FOUND");
       }
@@ -294,14 +307,17 @@ export async function restoreTask(id: string): Promise<ActionResult<{ id: string
     return { success: false, error: { code: "UNAUTHORIZED", message: "Sign in required." } };
   }
 
-  const owner = await db.user.findFirst({ where: { email: session.user.email } });
+  const owner = await db.user.findUnique({ where: { email: session.user.email }, select: { id: true } });
   if (!owner) {
     return { success: false, error: { code: "NOT_FOUND", message: "User not found." } };
   }
 
   try {
     await db.$transaction(async (tx) => {
-      const existing = await tx.task.findFirst({ where: { id, ownerId: owner.id, deletedAt: { not: null } } });
+      const existing = await tx.task.findFirst({
+        where: { id, ownerId: owner.id, deletedAt: { not: null } },
+        select: { title: true },
+      });
       if (!existing) {
         throw new Error("NOT_FOUND");
       }
@@ -335,7 +351,7 @@ export async function listDeletedTasks(): Promise<
     return { success: false, error: { code: "UNAUTHORIZED", message: "Sign in required." } };
   }
 
-  const owner = await db.user.findFirst({ where: { email: session.user.email } });
+  const owner = await db.user.findUnique({ where: { email: session.user.email }, select: { id: true } });
   if (!owner) {
     return { success: false, error: { code: "NOT_FOUND", message: "User not found." } };
   }
@@ -364,14 +380,17 @@ export async function logWorkSession(
     return { success: false, error: { code: "UNAUTHORIZED", message: "Sign in required." } };
   }
 
-  const owner = await db.user.findFirst({ where: { email: session.user.email } });
+  const owner = await db.user.findUnique({ where: { email: session.user.email }, select: { id: true } });
   if (!owner) {
     return { success: false, error: { code: "NOT_FOUND", message: "User not found." } };
   }
 
   try {
     const updatedTask = await db.$transaction(async (tx) => {
-      const task = await tx.task.findFirst({ where: { id: taskId, ownerId: owner.id } });
+      const task = await tx.task.findFirst({
+        where: { id: taskId, ownerId: owner.id },
+        select: { timeSpentSeconds: true },
+      });
       if (!task) {
         throw new Error("NOT_FOUND");
       }

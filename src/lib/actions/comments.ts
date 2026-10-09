@@ -25,7 +25,10 @@ export async function createComment(input: unknown): Promise<ActionResult<{ id: 
     };
   }
 
-  const owner = await db.user.findFirst({ where: { email: session.user.email } });
+  const owner = await db.user.findUnique({
+    where: { email: session.user.email },
+    select: { id: true, name: true, email: true },
+  });
   if (!owner) {
     return { success: false, error: { code: "NOT_FOUND", message: "User not found." } };
   }

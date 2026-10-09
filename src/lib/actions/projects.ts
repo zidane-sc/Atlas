@@ -21,7 +21,7 @@ export async function createProject(input: unknown): Promise<ActionResult<Projec
     };
   }
 
-  const owner = await db.user.findFirst({ where: { email: session.user.email } });
+  const owner = await db.user.findUnique({ where: { email: session.user.email }, select: { id: true } });
   if (!owner) {
     return { success: false, error: { code: "NOT_FOUND", message: "User not found." } };
   }
@@ -66,12 +66,15 @@ export async function updateProject(id: string, input: unknown): Promise<ActionR
     };
   }
 
-  const owner = await db.user.findFirst({ where: { email: session.user.email } });
+  const owner = await db.user.findUnique({ where: { email: session.user.email }, select: { id: true } });
   if (!owner) {
     return { success: false, error: { code: "NOT_FOUND", message: "User not found." } };
   }
 
-  const existing = await db.project.findFirst({ where: { id, ownerId: owner.id, archivedAt: null } });
+  const existing = await db.project.findFirst({
+    where: { id, ownerId: owner.id, archivedAt: null },
+    select: { id: true, name: true },
+  });
   if (!existing) {
     return { success: false, error: { code: "NOT_FOUND", message: "Project not found." } };
   }
@@ -113,14 +116,17 @@ export async function deleteProject(id: string): Promise<ActionResult<{ id: stri
     return { success: false, error: { code: "UNAUTHORIZED", message: "Sign in required." } };
   }
 
-  const owner = await db.user.findFirst({ where: { email: session.user.email } });
+  const owner = await db.user.findUnique({ where: { email: session.user.email }, select: { id: true } });
   if (!owner) {
     return { success: false, error: { code: "NOT_FOUND", message: "User not found." } };
   }
 
   try {
     await db.$transaction(async (tx) => {
-      const existing = await tx.project.findFirst({ where: { id, ownerId: owner.id, archivedAt: null } });
+      const existing = await tx.project.findFirst({
+        where: { id, ownerId: owner.id, archivedAt: null },
+        select: { id: true, name: true },
+      });
       if (!existing) {
         throw new Error("NOT_FOUND");
       }
