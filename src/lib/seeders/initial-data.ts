@@ -77,6 +77,7 @@ export async function seedInitialData(userId: string): Promise<SeedResult> {
         status: "active" as SprintStatus,
         goal: "Rename this sprint and set your goals",
       },
+      select: { id: true },
     });
 
     return {

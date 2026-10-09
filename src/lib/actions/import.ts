@@ -376,6 +376,7 @@ export async function importWorkspaceData(
           placedDecorations: decorations?.placed || {},
           savedFilters: savedFilters || [],
         },
+        select: { id: true },
       });
     });
 

@@ -576,12 +576,16 @@ export async function resetAllTasksAction(): Promise<ActionResult<Partial<Charac
   }
 
   try {
-    // Delete all data
-    await Promise.all([
-      db.task.deleteMany({ where: { ownerId: user.id } }),
-      db.project.deleteMany({ where: { ownerId: user.id } }),
-      db.sprint.deleteMany({ where: { ownerId: user.id } }),
-    ]);
+    // Delete all user data in a single atomic transaction
+    await db.$transaction(async (tx) => {
+      await tx.taskStatusLog.deleteMany({ where: { task: { ownerId: user.id } } });
+      await tx.comment.deleteMany({ where: { task: { ownerId: user.id } } });
+      await tx.activityLog.deleteMany({ where: { actorId: user.id } });
+      await tx.workSession.deleteMany({ where: { task: { ownerId: user.id } } });
+      await tx.task.deleteMany({ where: { ownerId: user.id } });
+      await tx.project.deleteMany({ where: { ownerId: user.id } });
+      await tx.sprint.deleteMany({ where: { ownerId: user.id } });
+    });
 
     // Seed initial data
     await seedInitialData(user.id);
