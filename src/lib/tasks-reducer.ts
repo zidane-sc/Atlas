@@ -6,11 +6,11 @@ import { fromDbProjectCategory } from "@/lib/schemas/project";
 
 export type DbTaskWithLogs = Partial<DbTask> & {
   id: string;
-  title: string;
   status: DbTask["status"];
   type: DbTask["type"];
   priority: DbTask["priority"];
   createdAt: Date;
+  title?: string;
   statusHistory?: TaskStatusLog[];
   comments?: (DbComment & { author: DbUser })[];
 };
@@ -25,7 +25,7 @@ export function mapDbTaskToClient(
   return {
     id: dbTask.id,
     code: dbTask.code || `TEMP-${dbTask.id.slice(0, 8)}`,
-    title: dbTask.title,
+    title: dbTask.title || "",
     description: dbTask.description ?? undefined,
     project: project ? project.name : "Atlas",
     status: dbTask.status as TaskStatus,

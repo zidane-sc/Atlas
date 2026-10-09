@@ -408,6 +408,7 @@ export async function logWorkSession(
           endedAt: new Date(endedAtStr),
           durationSeconds,
         },
+        select: { id: true },
       });
 
       const updated = await tx.task.update({
@@ -415,6 +416,7 @@ export async function logWorkSession(
         data: {
           timeSpentSeconds: task.timeSpentSeconds + durationSeconds,
         },
+        select: { timeSpentSeconds: true },
       });
 
       await logActivity(tx, owner.id, {

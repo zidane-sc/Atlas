@@ -63,6 +63,7 @@ export async function purchaseDecoration(itemId: string): Promise<ActionResult<{
         bonusCoins: newBonusCoins,
         purchasedDecorations: newPurchased,
       },
+      select: { id: true },
     });
 
     return {
@@ -121,6 +122,7 @@ export async function moveDecoration(
       data: {
         placedDecorations: newPlaced,
       },
+      select: { id: true },
     });
 
     return {
@@ -184,6 +186,7 @@ export async function placeDecoration(
       data: {
         placedDecorations: newPlaced,
       },
+      select: { id: true },
     });
 
     return {

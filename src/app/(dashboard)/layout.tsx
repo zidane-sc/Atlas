@@ -58,8 +58,6 @@ export default async function DashboardLayout({
       orderBy: { completedAt: "asc" },
       select: {
         id: true,
-        code: true,
-        title: true,
         status: true,
         type: true,
         priority: true,
@@ -91,7 +89,6 @@ export default async function DashboardLayout({
         task: { select: { title: true } },
         project: { select: { emoji: true, name: true } },
         sprint: { select: { name: true } },
-        actor: { select: { name: true, email: true } },
       },
     }),
   ]);
@@ -128,7 +125,7 @@ export default async function DashboardLayout({
     id: l.id,
     action: l.action,
     createdAt: l.createdAt.toISOString(),
-    actorName: l.actor.name || l.actor.email,
+    actorName: owner.name || owner.email,
     taskTitle: l.task?.title || undefined,
     projectEmoji: l.project?.emoji || undefined,
     projectName: l.project?.name || undefined,

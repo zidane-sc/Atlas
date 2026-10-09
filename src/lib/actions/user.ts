@@ -96,6 +96,7 @@ export async function updateUserSettingAction(
       data: {
         settings: updatedSettings as unknown as Prisma.InputJsonValue,
       },
+      select: { settings: true },
     });
 
     return {
