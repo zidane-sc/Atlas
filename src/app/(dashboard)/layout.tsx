@@ -39,7 +39,7 @@ export default async function DashboardLayout({
     create: { email: session.user.email, name: session.user.name ?? session.user.email },
   });
 
-  const [dbTasks, rawDbAllDoneTasks, rawDbProjects, rawDbSprints, rawDbActivityLogs, characterSheetData] = await Promise.all([
+  const [dbTasks, rawDbAllDoneTasks, rawDbProjects, rawDbSprints, rawDbActivityLogs] = await Promise.all([
     // No nested `statusHistory`/`comments` here — both are now on-demand only, fetched by
     // `getTaskDetails` when TaskFormSheet opens a specific task. `createdAt`/`completedAt` are
     // direct scalar columns (see Task.createdAt, types/task.ts), so nothing in the bulk views
@@ -80,7 +80,6 @@ export default async function DashboardLayout({
         actor: { select: { name: true, email: true } },
       },
     }),
-    getCharacterSheetData(owner.id),
   ]);
 
   let dbProjects = rawDbProjects;
@@ -104,6 +103,13 @@ export default async function DashboardLayout({
   const allDoneTasks = rawDbAllDoneTasks.map((t) => mapDbTaskToClient(t, dbProjects, dbSprints));
   const projects = dbProjects.map(mapDbProjectToClient);
   const sprints = dbSprints.map(mapDbSprintToClient);
+  const characterSheetData = await getCharacterSheetData(owner.id, {
+    tasks: allDoneTasks,
+    projects,
+    sprints,
+    bonusXp: owner.bonusXp,
+    bonusCoins: owner.bonusCoins,
+  });
   const activityLogs = rawDbActivityLogs.map((l) => ({
     id: l.id,
     action: l.action,

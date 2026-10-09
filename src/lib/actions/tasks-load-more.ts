@@ -28,23 +28,22 @@ export async function loadMoreTasks({
       return { success: false, error: { code: "NOT_FOUND", message: "User not found." } };
     }
 
-    const projects = await db.project.findMany({
-      where: { ownerId: user.id, archivedAt: null },
-    });
-
-    const sprints = await db.sprint.findMany({
-      where: { ownerId: user.id },
-    });
-
-    // No nested statusHistory/comments — on-demand only via `getTaskDetails`, same as the
-    // main bulk fetch in layout.tsx (docs/05-backlog.md §8 finding #16).
-    const tasks = await db.task.findMany({
-      where: { ownerId: user.id, deletedAt: null },
-      orderBy: { createdAt: "desc" },
-      take: limit,
-      skip: 1,
-      cursor: { id: cursor },
-    });
+    // Parallel fetch projects, sprints, and tasks instead of sequential waterfall
+    const [projects, sprints, tasks] = await Promise.all([
+      db.project.findMany({
+        where: { ownerId: user.id, archivedAt: null },
+      }),
+      db.sprint.findMany({
+        where: { ownerId: user.id },
+      }),
+      db.task.findMany({
+        where: { ownerId: user.id, deletedAt: null },
+        orderBy: { createdAt: "desc" },
+        take: limit,
+        skip: 1,
+        cursor: { id: cursor },
+      }),
+    ]);
 
     return {
       success: true,

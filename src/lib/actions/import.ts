@@ -226,102 +226,107 @@ export async function importWorkspaceData(
 
       // 3. Insert Sprints
       const projectIdSet = new Set(projects.map((p) => p.id));
-      for (let sprintIdx = 0; sprintIdx < sprints.length; sprintIdx++) {
-        const s = sprints[sprintIdx];
-        try {
-          const validProjectIds = (s.projectIds || []).filter((id) => projectIdSet.has(id));
-          await tx.sprint.create({
-            data: {
-              id: s.id,
-              ownerId: user.id,
-              name: s.name,
-              projects: { connect: validProjectIds.map((id) => ({ id })) },
-              startDate: parseDate(s.startDate)!,
-              endDate: parseDate(s.endDate)!,
-              status: validateSprintStatus(s.status),
-              goal: s.goal || null,
-            },
-          });
-        } catch (e) {
-          throw new Error(`Sprint ${sprintIdx} (${s.name}): ${e instanceof Error ? e.message : String(e)}`);
-        }
-      }
+      await Promise.all(
+        sprints.map((s, sprintIdx) => {
+          try {
+            const validProjectIds = (s.projectIds || []).filter((id) => projectIdSet.has(id));
+            return tx.sprint.create({
+              data: {
+                id: s.id,
+                ownerId: user.id,
+                name: s.name,
+                projects: { connect: validProjectIds.map((id) => ({ id })) },
+                startDate: parseDate(s.startDate)!,
+                endDate: parseDate(s.endDate)!,
+                status: validateSprintStatus(s.status),
+                goal: s.goal || null,
+              },
+            });
+          } catch (e) {
+            throw new Error(`Sprint ${sprintIdx} (${s.name}): ${e instanceof Error ? e.message : String(e)}`);
+          }
+        })
+      );
 
-      // 4. Insert Tasks & nested items
+      // 4. Insert Tasks & nested items (batch insertion)
+      const projectNameMap = new Map(projects.map((p) => [p.name, p.id]));
+      const sprintNameMap = new Map(sprints.map((s) => [s.name, s.id]));
+
+      const taskCreateData: Prisma.TaskCreateManyInput[] = [];
+      const allComments: Prisma.CommentCreateManyInput[] = [];
+      const allStatusLogs: Prisma.TaskStatusLogCreateManyInput[] = [];
+
       for (let taskIdx = 0; taskIdx < tasks.length; taskIdx++) {
         const t = tasks[taskIdx];
         try {
-          // Resolve project and sprint IDs by name if they exist
-          let projectId: string | null = null;
-          if (t.project) {
-            const prj = projects.find((p) => p.name === t.project);
-            if (!prj && t.project) {
-              console.warn(`Task ${taskIdx} (${t.title}): Project "${t.project}" not found in import, will be unlinked`);
-            }
-            projectId = prj?.id ?? null;
+          const projectId = t.project ? (projectNameMap.get(t.project) ?? null) : null;
+          if (t.project && !projectId) {
+            console.warn(`Task ${taskIdx} (${t.title}): Project "${t.project}" not found in import, will be unlinked`);
           }
 
-          let sprintId: string | null = null;
-          if (t.sprint) {
-            const spr = sprints.find((s) => s.name === t.sprint);
-            if (!spr && t.sprint) {
-              console.warn(`Task ${taskIdx} (${t.title}): Sprint "${t.sprint}" not found in import, will be unlinked`);
-            }
-            sprintId = spr?.id ?? null;
+          const sprintId = t.sprint ? (sprintNameMap.get(t.sprint) ?? null) : null;
+          if (t.sprint && !sprintId) {
+            console.warn(`Task ${taskIdx} (${t.title}): Sprint "${t.sprint}" not found in import, will be unlinked`);
           }
 
-          await tx.task.create({
-            data: {
-              id: t.id,
-              title: t.title,
-              description: t.description || null,
-              projectId,
-              sprintId,
-              status: validateTaskStatus(t.status),
-              type: validateTaskType(t.type),
-              priority: validateTaskPriority(t.priority),
-              effort: validateTaskEffort(t.effort),
-              storyPoint: t.storyPoint || null,
-              reporter: (t.reporter as TaskReporter) || "self",
-              ownerId: user.id,
-              tags: t.tags || [],
-              relations: t.relations as unknown as Prisma.InputJsonValue,
-              attachments: t.attachments as unknown as Prisma.InputJsonValue,
-              deliverables: t.deliverables as unknown as Prisma.InputJsonValue,
-              timeSpentSeconds: t.timeSpentSeconds || 0,
-              dueDate: t.dueDate ? parseDate(t.dueDate) : null,
-              completedAt: t.status === "done" ? new Date() : null,
-            },
+          taskCreateData.push({
+            id: t.id,
+            title: t.title,
+            description: t.description || null,
+            projectId,
+            sprintId,
+            status: validateTaskStatus(t.status),
+            type: validateTaskType(t.type),
+            priority: validateTaskPriority(t.priority),
+            effort: validateTaskEffort(t.effort),
+            storyPoint: t.storyPoint || null,
+            reporter: (t.reporter as TaskReporter) || "self",
+            ownerId: user.id,
+            tags: t.tags || [],
+            relations: (t.relations ?? []) as unknown as Prisma.InputJsonValue,
+            attachments: (t.attachments ?? []) as unknown as Prisma.InputJsonValue,
+            deliverables: (t.deliverables ?? []) as unknown as Prisma.InputJsonValue,
+            timeSpentSeconds: t.timeSpentSeconds || 0,
+            dueDate: t.dueDate ? parseDate(t.dueDate) : null,
+            completedAt: t.status === "done" ? new Date() : null,
           });
+
+          if (t.comments && t.comments.length > 0) {
+            for (const c of t.comments) {
+              allComments.push({
+                id: c.id,
+                taskId: t.id,
+                authorId: user.id,
+                content: `[${c.authorName}]: ${c.content}`,
+                createdAt: parseDate(c.createdAt) || new Date(),
+              });
+            }
+          }
+
+          if (t.statusHistory && t.statusHistory.length > 0) {
+            for (const h of t.statusHistory) {
+              allStatusLogs.push({
+                id: crypto.randomUUID(),
+                taskId: t.id,
+                fromStatus: h.fromStatus as TaskStatus | null,
+                toStatus: h.toStatus as TaskStatus,
+                changedAt: parseDate(h.changedAt) || new Date(),
+              });
+            }
+          }
         } catch (e) {
           throw new Error(`Task ${taskIdx} (${t.title}): ${e instanceof Error ? e.message : String(e)}`);
         }
+      }
 
-        // Insert Comments for this task, preserving original author info
-        if (t.comments && t.comments.length > 0) {
-          await tx.comment.createMany({
-            data: t.comments.map((c) => ({
-              id: c.id,
-              taskId: t.id,
-              authorId: user.id,
-              content: `[${c.authorName}]: ${c.content}`,
-              createdAt: parseDate(c.createdAt) || new Date(),
-            })),
-          });
-        }
-
-        // Insert Status History logs for this task
-        if (t.statusHistory && t.statusHistory.length > 0) {
-          await tx.taskStatusLog.createMany({
-            data: t.statusHistory.map((h) => ({
-              id: crypto.randomUUID(),
-              taskId: t.id,
-              fromStatus: h.fromStatus as TaskStatus | null,
-              toStatus: h.toStatus as TaskStatus,
-              changedAt: parseDate(h.changedAt) || new Date(),
-            })),
-          });
-        }
+      if (taskCreateData.length > 0) {
+        await tx.task.createMany({ data: taskCreateData });
+      }
+      if (allComments.length > 0) {
+        await tx.comment.createMany({ data: allComments });
+      }
+      if (allStatusLogs.length > 0) {
+        await tx.taskStatusLog.createMany({ data: allStatusLogs });
       }
 
       // 5. Restore Focus Timer history and the activity feed — previously dropped on

@@ -100,10 +100,12 @@ export async function createTask(
         return created;
       });
       let sheetData: CharacterSheetData | undefined;
-      try {
-        sheetData = await getCharacterSheetData(owner.id);
-      } catch (sheetErr) {
-        console.error("Failed to compute character sheet after task create:", sheetErr);
+      if (rest.status === "done") {
+        try {
+          sheetData = await getCharacterSheetData(owner.id);
+        } catch (sheetErr) {
+          console.error("Failed to compute character sheet after task create:", sheetErr);
+        }
       }
       return { success: true, data: { task, ...sheetData } };
     } catch (err) {
@@ -222,11 +224,21 @@ export async function updateTask(
       return updated;
     });
 
+    const affectsGamification =
+      (status !== undefined && status !== existing.status && (status === "done" || existing.status === "done")) ||
+      (existing.status === "done" && (
+        (parsed.data.storyPoint !== undefined && parsed.data.storyPoint !== existing.storyPoint) ||
+        (parsed.data.priority !== undefined && parsed.data.priority !== existing.priority) ||
+        (parsed.data.type !== undefined && parsed.data.type !== existing.type)
+      ));
+
     let sheetData: CharacterSheetData | undefined;
-    try {
-      sheetData = await getCharacterSheetData(owner.id);
-    } catch (sheetErr) {
-      console.error("Failed to compute character sheet after task update:", sheetErr);
+    if (affectsGamification) {
+      try {
+        sheetData = await getCharacterSheetData(owner.id);
+      } catch (sheetErr) {
+        console.error("Failed to compute character sheet after task update:", sheetErr);
+      }
     }
     return { success: true, data: { task, ...sheetData } };
   } catch (err) {
