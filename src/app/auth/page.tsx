@@ -115,6 +115,43 @@ export default async function AuthPage({
           </form>
         )}
 
+        {/* Passcode bypass — only rendered when ATLAS_PASSCODE is set */}
+        {process.env.ATLAS_PASSCODE && (
+          <form
+            className="mt-3"
+            action={async (formData: FormData) => {
+              "use server";
+              const passcode = formData.get("passcode") as string;
+              try {
+                await signIn("passcode", { passcode, redirectTo: "/dashboard" });
+              } catch (err) {
+                if (err instanceof AuthError) {
+                  redirect(`/auth?error=${err.type}`);
+                }
+                throw err;
+              }
+            }}
+          >
+            <div className="flex flex-col gap-2">
+              <input
+                name="passcode"
+                type="password"
+                placeholder="Enter passcode"
+                className="px-3 py-2 border-2 text-center"
+                style={{ backgroundColor: "var(--color-bg-panel)", borderColor: "var(--color-border)", color: "var(--color-text)" }}
+                required
+              />
+              <button
+                type="submit"
+                className="pixel-button flex w-full cursor-pointer items-center justify-center gap-2 border-2 px-6 py-2.5 transition-colors"
+                style={{ backgroundColor: "transparent", borderColor: "var(--color-status-ready)", color: "var(--color-status-ready)" }}
+              >
+                <span className="text-base tracking-wide">◆ PASSCODE LOGIN</span>
+              </button>
+            </div>
+          </form>
+        )}
+
         <p className="mt-7 text-sm" style={{ color: "var(--color-dim)" }}>
           Restricted to one account — no public sign-up.
         </p>

@@ -7,28 +7,51 @@ const allowedEmails = (process.env.ALLOWED_EMAIL ?? "")
   .map((email) => email.trim())
   .filter(Boolean);
 
+const passcode = process.env.ATLAS_PASSCODE ?? "";
+
 // Next.js always sets NODE_ENV=production for `next build`/`next start`/Vercel deploys,
 // so this provider is unreachable outside `next dev` — no separate opt-in flag needed.
 const isDev = process.env.NODE_ENV !== "production";
 
-export const { handlers, auth, signIn, signOut } = NextAuth({
-  providers: [
-    GitHub,
-    ...(isDev
-      ? [
-          Credentials({
-            id: "dev",
-            name: "Dev Login",
-            credentials: {},
-            authorize() {
+const providers = [
+  GitHub,
+  ...(isDev
+    ? [
+        Credentials({
+          id: "dev",
+          name: "Dev Login",
+          credentials: {},
+          authorize() {
+            const email = allowedEmails[0];
+            if (!email) return null;
+            return { id: "dev-user", email, name: "Dev" };
+          },
+        }),
+      ]
+    : []),
+  // Passcode bypass — only enabled when ATLAS_PASSCODE is explicitly set (prod or dev).
+  ...(passcode
+    ? [
+        Credentials({
+          id: "passcode",
+          name: "Passcode",
+          credentials: {
+            passcode: { label: "Passcode", type: "password", placeholder: "Enter passcode" },
+          },
+          authorize(credentials) {
+            if (credentials?.passcode === passcode) {
               const email = allowedEmails[0];
-              if (!email) return null;
-              return { id: "dev-user", email, name: "Dev" };
-            },
-          }),
-        ]
-      : []),
-  ],
+              return { id: "passcode-user", email, name: "Passcode" };
+            }
+            return null;
+          },
+        }),
+      ]
+    : []),
+];
+
+export const { handlers, auth, signIn, signOut } = NextAuth({
+  providers,
   trustHost: true,
   session: { strategy: "jwt" },
   pages: {
