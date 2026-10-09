@@ -62,5 +62,23 @@ describe("getNextTaskCodeNumber", () => {
     const result = await getNextTaskCodeNumber(mockDb, "user1");
     expect(result).toBe(6);
   });
+
+  it("correctly handles numeric sorting across 9 and 10 via findMany", async () => {
+    const mockDb = {
+      task: {
+        findMany: async (args: any) => {
+          expect(args.where.code.startsWith).toBe("ATS-");
+          return [
+            { code: "ATS-1" },
+            { code: "ATS-9" },
+            { code: "ATS-10" },
+            { code: "ATS-2" },
+          ];
+        },
+      },
+    };
+    const result = await getNextTaskCodeNumber(mockDb, "user1", "ats");
+    expect(result).toBe(11);
+  });
 });
 

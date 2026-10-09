@@ -160,35 +160,35 @@ export async function updateTask(
     return { success: false, error: { code: "NOT_FOUND", message: "User not found." } };
   }
 
-  // Soft-deleted tasks (docs/02-architecture.md §4.4 `deleted_at`) are gone as far as edits are concerned.
-  const existing = await db.task.findFirst({
-    where: { id, ownerId: owner.id, deletedAt: null },
-    select: {
-      status: true,
-      priority: true,
-      effort: true,
-      storyPoint: true,
-      title: true,
-      type: true,
-    },
-  });
-  if (!existing) {
-    return { success: false, error: { code: "NOT_FOUND", message: "Task not found." } };
-  }
-
   const { startDate, dueDate, status, ...rest } = parsed.data;
 
-  // completed_at is set when status → done, and cleared when a done task is reopened —
-  // docs/02-architecture.md §4.4 note on that column.
-  let completedAt: Date | null | undefined;
-  if (status && status !== existing.status && status === "done") {
-    completedAt = new Date();
-  } else if (status && status !== existing.status && existing.status === "done") {
-    completedAt = null;
-  }
-
   try {
-    const task = await db.$transaction(async (tx) => {
+    const { task, affectsGamification } = await db.$transaction(async (tx) => {
+      // Soft-deleted tasks (docs/02-architecture.md §4.4 `deleted_at`) are gone as far as edits are concerned.
+      const existing = await tx.task.findFirst({
+        where: { id, ownerId: owner.id, deletedAt: null },
+        select: {
+          status: true,
+          priority: true,
+          effort: true,
+          storyPoint: true,
+          title: true,
+          type: true,
+        },
+      });
+      if (!existing) {
+        throw new Error("NOT_FOUND");
+      }
+
+      // completed_at is set when status → done, and cleared when a done task is reopened —
+      // docs/02-architecture.md §4.4 note on that column.
+      let completedAt: Date | null | undefined;
+      if (status && status !== existing.status && status === "done") {
+        completedAt = new Date();
+      } else if (status && status !== existing.status && existing.status === "done") {
+        completedAt = null;
+      }
+
       const updated = await tx.task.update({
         where: { id, ownerId: owner.id },
         data: {
@@ -234,16 +234,16 @@ export async function updateTask(
         details: { changes, title: updated.title },
       });
 
-      return updated;
-    });
+      const affectsGamification =
+        (status !== undefined && status !== existing.status && (status === "done" || existing.status === "done")) ||
+        (existing.status === "done" && (
+          (parsed.data.storyPoint !== undefined && parsed.data.storyPoint !== existing.storyPoint) ||
+          (parsed.data.priority !== undefined && parsed.data.priority !== existing.priority) ||
+          (parsed.data.type !== undefined && parsed.data.type !== existing.type)
+        ));
 
-    const affectsGamification =
-      (status !== undefined && status !== existing.status && (status === "done" || existing.status === "done")) ||
-      (existing.status === "done" && (
-        (parsed.data.storyPoint !== undefined && parsed.data.storyPoint !== existing.storyPoint) ||
-        (parsed.data.priority !== undefined && parsed.data.priority !== existing.priority) ||
-        (parsed.data.type !== undefined && parsed.data.type !== existing.type)
-      ));
+      return { task: updated, affectsGamification };
+    });
 
     let sheetData: CharacterSheetData | undefined;
     if (affectsGamification) {
@@ -255,6 +255,9 @@ export async function updateTask(
     }
     return { success: true, data: { task, ...sheetData } };
   } catch (err) {
+    if (err instanceof Error && err.message === "NOT_FOUND") {
+      return { success: false, error: { code: "NOT_FOUND", message: "Task not found." } };
+    }
     if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2003") {
       return { success: false, error: { code: "NOT_FOUND", message: "Related project or sprint not found." } };
     }

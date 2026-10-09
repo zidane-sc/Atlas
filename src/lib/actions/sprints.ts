@@ -30,15 +30,15 @@ export async function createSprint(input: unknown): Promise<ActionResult<SprintW
     return { success: false, error: { code: "NOT_FOUND", message: "User not found." } };
   }
 
-  if (parsed.data.projectIds.length > 0) {
-    const count = await db.project.count({ where: { id: { in: parsed.data.projectIds }, ownerId: owner.id } });
-    if (count !== parsed.data.projectIds.length) {
-      return { success: false, error: { code: "NOT_FOUND", message: "Project not found." } };
-    }
-  }
-
   try {
     const sprint = await db.$transaction(async (tx) => {
+      if (parsed.data.projectIds.length > 0) {
+        const count = await tx.project.count({ where: { id: { in: parsed.data.projectIds }, ownerId: owner.id } });
+        if (count !== parsed.data.projectIds.length) {
+          throw new Error("PROJECT_NOT_FOUND");
+        }
+      }
+
       const created = await tx.sprint.create({
         data: {
           ownerId: owner.id,
@@ -62,7 +62,10 @@ export async function createSprint(input: unknown): Promise<ActionResult<SprintW
     });
 
     return { success: true, data: sprint };
-  } catch {
+  } catch (err) {
+    if (err instanceof Error && err.message === "PROJECT_NOT_FOUND") {
+      return { success: false, error: { code: "NOT_FOUND", message: "Project not found." } };
+    }
     return { success: false, error: { code: "INTERNAL", message: "Failed to create sprint." } };
   }
 }
@@ -86,23 +89,23 @@ export async function updateSprint(id: string, input: unknown): Promise<ActionRe
     return { success: false, error: { code: "NOT_FOUND", message: "User not found." } };
   }
 
-  const existing = await db.sprint.findFirst({
-    where: { id, ownerId: owner.id },
-    select: { id: true, name: true },
-  });
-  if (!existing) {
-    return { success: false, error: { code: "NOT_FOUND", message: "Sprint not found." } };
-  }
-
-  if (parsed.data.projectIds && parsed.data.projectIds.length > 0) {
-    const count = await db.project.count({ where: { id: { in: parsed.data.projectIds }, ownerId: owner.id } });
-    if (count !== parsed.data.projectIds.length) {
-      return { success: false, error: { code: "NOT_FOUND", message: "Project not found." } };
-    }
-  }
-
   try {
     const sprint = await db.$transaction(async (tx) => {
+      const existing = await tx.sprint.findFirst({
+        where: { id, ownerId: owner.id },
+        select: { id: true, name: true },
+      });
+      if (!existing) {
+        throw new Error("NOT_FOUND");
+      }
+
+      if (parsed.data.projectIds && parsed.data.projectIds.length > 0) {
+        const count = await tx.project.count({ where: { id: { in: parsed.data.projectIds }, ownerId: owner.id } });
+        if (count !== parsed.data.projectIds.length) {
+          throw new Error("PROJECT_NOT_FOUND");
+        }
+      }
+
       const updated = await tx.sprint.update({
         where: { id, ownerId: owner.id },
         data: {
@@ -126,7 +129,13 @@ export async function updateSprint(id: string, input: unknown): Promise<ActionRe
     });
 
     return { success: true, data: sprint };
-  } catch {
+  } catch (err) {
+    if (err instanceof Error && err.message === "NOT_FOUND") {
+      return { success: false, error: { code: "NOT_FOUND", message: "Sprint not found." } };
+    }
+    if (err instanceof Error && err.message === "PROJECT_NOT_FOUND") {
+      return { success: false, error: { code: "NOT_FOUND", message: "Project not found." } };
+    }
     return { success: false, error: { code: "INTERNAL", message: "Failed to update sprint." } };
   }
 }

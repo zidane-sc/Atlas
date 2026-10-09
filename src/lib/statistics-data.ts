@@ -158,7 +158,10 @@ export async function getStatisticsPageData(): Promise<StatisticsData | null> {
         createdAt: true,
       },
     }),
-    db.project.findMany({ where: { ownerId: owner.id, archivedAt: null } }),
+    db.project.findMany({
+      where: { ownerId: owner.id, archivedAt: null },
+      select: { id: true, name: true, emoji: true, colorVar: true },
+    }),
   ]);
 
   const tasks = dbTasks.map((t) => mapDbTaskToClient(t, dbProjects));

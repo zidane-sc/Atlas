@@ -71,16 +71,16 @@ export async function updateProject(id: string, input: unknown): Promise<ActionR
     return { success: false, error: { code: "NOT_FOUND", message: "User not found." } };
   }
 
-  const existing = await db.project.findFirst({
-    where: { id, ownerId: owner.id, archivedAt: null },
-    select: { id: true, name: true },
-  });
-  if (!existing) {
-    return { success: false, error: { code: "NOT_FOUND", message: "Project not found." } };
-  }
-
   try {
     const project = await db.$transaction(async (tx) => {
+      const existing = await tx.project.findFirst({
+        where: { id, ownerId: owner.id, archivedAt: null },
+        select: { id: true, name: true },
+      });
+      if (!existing) {
+        throw new Error("NOT_FOUND");
+      }
+
       const updated = await tx.project.update({
         where: { id, ownerId: owner.id },
         data: {
@@ -105,7 +105,10 @@ export async function updateProject(id: string, input: unknown): Promise<ActionR
     });
 
     return { success: true, data: project };
-  } catch {
+  } catch (err) {
+    if (err instanceof Error && err.message === "NOT_FOUND") {
+      return { success: false, error: { code: "NOT_FOUND", message: "Project not found." } };
+    }
     return { success: false, error: { code: "INTERNAL", message: "Failed to update project." } };
   }
 }

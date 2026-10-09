@@ -15,7 +15,11 @@ export type DbTaskWithLogs = Partial<DbTask> & {
   comments?: (DbComment & { author: DbUser })[];
 };
 
-export function mapDbTaskToClient(dbTask: DbTaskWithLogs, dbProjects?: DbProject[], dbSprints?: DbSprint[]): Task {
+export function mapDbTaskToClient(
+  dbTask: DbTaskWithLogs,
+  dbProjects?: (Partial<DbProject> & { id: string; name: string })[],
+  dbSprints?: (Partial<DbSprint> & { id: string; name: string })[]
+): Task {
   const project = dbProjects?.find((p) => p.id === dbTask.projectId);
   const sprint = dbSprints?.find((s) => s.id === dbTask.sprintId);
   return {
@@ -208,7 +212,9 @@ export function tasksReducer(tasks: Task[], action: TasksAction): Task[] {
   }
 }
 
-export function mapDbProjectToClient(dbProject: DbProject): Project {
+export function mapDbProjectToClient(
+  dbProject: Partial<DbProject> & { id: string; name: string; colorVar: string; emoji: string }
+): Project {
   return {
     id: dbProject.id,
     name: dbProject.name,
@@ -216,9 +222,9 @@ export function mapDbProjectToClient(dbProject: DbProject): Project {
     colorVar: dbProject.colorVar,
     customColor: dbProject.customColor ?? undefined,
     emoji: dbProject.emoji,
-    category: fromDbProjectCategory(dbProject.category),
+    category: dbProject.category ? fromDbProjectCategory(dbProject.category) : "Other",
     description: dbProject.description ?? "",
-    status: dbProject.status as Project["status"],
+    status: (dbProject.status as Project["status"]) ?? "active",
   };
 }
 
