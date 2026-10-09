@@ -1,4 +1,4 @@
-import { completedAt } from "@/lib/gamification";
+import { completedAt, formatLocalDate } from "@/lib/gamification";
 import { MOCK_NOW, todaysDailyQuest } from "@/lib/mock-data";
 import type { Task } from "@/types/task";
 
@@ -13,8 +13,12 @@ export function DailyQuestCard({
   onClaim: () => void;
 }) {
   const q = todaysDailyQuest;
+  const isDoneToday = (t: Task) => {
+    const at = completedAt(t);
+    return at ? formatLocalDate(at) === MOCK_NOW : false;
+  };
   const progress = Math.min(
-    tasks.filter((t) => t.status === "done" && completedAt(t)?.startsWith(MOCK_NOW) && q.matches(t)).length,
+    tasks.filter((t) => t.status === "done" && isDoneToday(t) && q.matches(t)).length,
     q.goal
   );
   const done = progress >= q.goal;

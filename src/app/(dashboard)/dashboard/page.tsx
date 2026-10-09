@@ -11,7 +11,7 @@ import { TaskListView } from "@/components/tasks/TaskListView";
 import { useTasks } from "@/components/providers/TasksProvider";
 import { useSettings } from "@/components/providers/SettingsProvider";
 import { useSprints } from "@/components/providers/SprintsProvider";
-import { calcTaskCoins, calcTaskXP, completedAt, isTaskOnTime, calculateStreak } from "@/lib/gamification";
+import { calcTaskCoins, calcTaskXP, completedAt, isTaskOnTime, calculateStreak, formatLocalDate } from "@/lib/gamification";
 import { formatDueDate, isDueToday, isOverdue } from "@/lib/task-utils";
 import { MOCK_NOW, TYPE_ICON, todaysDailyQuest } from "@/lib/mock-data";
 
@@ -23,7 +23,7 @@ export default function Page() {
   const sheet = characterSheet;
   const streakDays = useMemo(() => calculateStreak(allTimeTasks), [allTimeTasks]);
   const { classTitle } = sheet;
-  const dailyQuestClaimed = lastQuestClaimedAt != null && lastQuestClaimedAt.slice(0, 10) === MOCK_NOW;
+  const dailyQuestClaimed = lastQuestClaimedAt != null && formatLocalDate(lastQuestClaimedAt) === MOCK_NOW;
 
   const notDone = tasks.filter((t) => t.status !== "done");
   const dueToday = notDone.filter((t) => isDueToday(t.dueDate, MOCK_NOW)).length;

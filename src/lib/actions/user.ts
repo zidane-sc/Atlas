@@ -7,6 +7,7 @@ import { z } from "zod";
 import type { ActionResult } from "@/lib/actions/types";
 import type { UserSetting } from "@/types/settings";
 import { getCharacterSheetData, type CharacterSheetData } from "@/lib/character-sheet-data";
+import { formatLocalDate } from "@/lib/gamification";
 const updateStatsSchema = z.object({
   bonusXp: z.number().int().min(0),
   bonusCoins: z.number().int().min(0),
@@ -146,7 +147,7 @@ export async function claimDailyQuestAction(
       return { success: false, error: { code: "NOT_FOUND", message: "User not found." } };
     }
 
-    if (user.lastQuestClaimedAt && user.lastQuestClaimedAt.toISOString().slice(0, 10) === parsed.data.dateStr) {
+    if (user.lastQuestClaimedAt && formatLocalDate(user.lastQuestClaimedAt) === parsed.data.dateStr) {
       return { success: false, error: { code: "CONFLICT", message: "Daily quest already claimed for today." } };
     }
 

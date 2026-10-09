@@ -21,8 +21,7 @@ const MOOD_COLOR_VAR: Record<CompanionMood, string> = {
 };
 
 function todayStr(): string {
-  const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+  return formatLocalDate(new Date());
 }
 
 function StatCard({
@@ -55,7 +54,7 @@ function StatCard({
 }
 
 export function SaveAndQuitOverlay({ onClose }: { onClose: () => void }) {
-  const { tasks, characterSheet } = useTasks();
+  const { tasks, allTimeTasks, characterSheet } = useTasks();
   const [saving, setSaving] = useState(false);
   const savingRef = useRef(false);
   const timeoutRef = useRef<number | null>(null);
@@ -83,7 +82,7 @@ export function SaveAndQuitOverlay({ onClose }: { onClose: () => void }) {
     [tasks, today]
   );
 
-  const streakDays = useMemo(() => calculateStreak(tasks), [tasks]);
+  const streakDays = useMemo(() => calculateStreak(allTimeTasks), [allTimeTasks]);
   const totalCoins = characterSheet.totalCoins;
 
   const farewell = getFarewell(todayCompletedCount, streakDays);
