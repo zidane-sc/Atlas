@@ -141,7 +141,23 @@ export async function getStatisticsPageData(): Promise<StatisticsData | null> {
   if (!owner) return null;
 
   const [dbTasks, dbProjects] = await Promise.all([
-    db.task.findMany({ where: { ownerId: owner.id, deletedAt: null } }),
+    db.task.findMany({
+      where: { ownerId: owner.id, deletedAt: null },
+      select: {
+        id: true,
+        code: true,
+        title: true,
+        status: true,
+        type: true,
+        priority: true,
+        storyPoint: true,
+        timeSpentSeconds: true,
+        projectId: true,
+        completedAt: true,
+        dueDate: true,
+        createdAt: true,
+      },
+    }),
     db.project.findMany({ where: { ownerId: owner.id, archivedAt: null } }),
   ]);
 

@@ -4,7 +4,13 @@ import type { Task as DbTask, Project as DbProject, Sprint as DbSprint, TaskStat
 import type { Project, Sprint } from "@/types/gamification";
 import { fromDbProjectCategory } from "@/lib/schemas/project";
 
-export type DbTaskWithLogs = DbTask & {
+export type DbTaskWithLogs = Partial<DbTask> & {
+  id: string;
+  title: string;
+  status: DbTask["status"];
+  type: DbTask["type"];
+  priority: DbTask["priority"];
+  createdAt: Date;
   statusHistory?: TaskStatusLog[];
   comments?: (DbComment & { author: DbUser })[];
 };
@@ -23,15 +29,15 @@ export function mapDbTaskToClient(dbTask: DbTaskWithLogs, dbProjects?: DbProject
     priority: dbTask.priority as Priority,
     effort: (dbTask.effort ?? undefined) as Effort | undefined,
     storyPoint: dbTask.storyPoint ?? undefined,
-    timeSpentSeconds: dbTask.timeSpentSeconds,
-    pinned: dbTask.pinned,
+    timeSpentSeconds: dbTask.timeSpentSeconds ?? 0,
+    pinned: dbTask.pinned ?? false,
     startDate: dbTask.startDate ? dbTask.startDate.toISOString().split("T")[0] : undefined,
     dueDate: dbTask.dueDate ? dbTask.dueDate.toISOString().split("T")[0] : undefined,
     completedAt: dbTask.completedAt ? dbTask.completedAt.toISOString() : undefined,
     createdAt: dbTask.createdAt.toISOString(),
     sprint: sprint ? sprint.name : undefined,
-    reporter: dbTask.reporter as Reporter,
-    tags: dbTask.tags,
+    reporter: (dbTask.reporter as Reporter) || "self",
+    tags: dbTask.tags ?? [],
     relations: (dbTask.relations as unknown as TaskRelation[]) || [],
     attachments: (dbTask.attachments as unknown as TaskAttachment[]) || [],
     deliverables: (dbTask.deliverables as unknown as TaskDeliverable[]) || [],
@@ -83,6 +89,7 @@ export type TasksAction =
   | { type: "sync"; task: Task }
   | { type: "addTime"; id: string; seconds: number }
   | { type: "reset"; tasks: Task[] }
+  | { type: "append"; tasks: Task[] }
   | { type: "togglePin"; id: string; pinned: boolean }
   | { type: "addComment"; taskId: string; comment: TaskComment };
 
@@ -180,6 +187,11 @@ export function tasksReducer(tasks: Task[], action: TasksAction): Task[] {
     }
     case "reset": {
       return action.tasks;
+    }
+    case "append": {
+      const existingIds = new Set(tasks.map((t) => t.id));
+      const newTasks = action.tasks.filter((t) => !existingIds.has(t.id));
+      return [...tasks, ...newTasks];
     }
     case "togglePin": {
       return tasks.map((t) => (t.id === action.id ? { ...t, pinned: action.pinned } : t));

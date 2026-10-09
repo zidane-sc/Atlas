@@ -17,7 +17,28 @@ export async function getAchievementsPageData(): Promise<AchievementDisplay[] | 
   if (!owner) return null;
 
   const [dbTasks, dbProjects, dbSprints] = await Promise.all([
-    db.task.findMany({ where: { ownerId: owner.id, deletedAt: null } }),
+    db.task.findMany({
+      where: { ownerId: owner.id, deletedAt: null },
+      select: {
+        id: true,
+        code: true,
+        title: true,
+        status: true,
+        type: true,
+        priority: true,
+        storyPoint: true,
+        projectId: true,
+        sprintId: true,
+        timeSpentSeconds: true,
+        pinned: true,
+        reporter: true,
+        completedAt: true,
+        dueDate: true,
+        startDate: true,
+        createdAt: true,
+        tags: true,
+      },
+    }),
     db.project.findMany({ where: { ownerId: owner.id, archivedAt: null } }),
     db.sprint.findMany({ where: { ownerId: owner.id }, include: { projects: { select: { id: true } } } }),
   ]);

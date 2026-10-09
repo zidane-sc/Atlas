@@ -32,9 +32,11 @@ export async function loadMoreTasks({
     const [projects, sprints, tasks] = await Promise.all([
       db.project.findMany({
         where: { ownerId: user.id, archivedAt: null },
+        select: { id: true, name: true },
       }),
       db.sprint.findMany({
         where: { ownerId: user.id },
+        select: { id: true, name: true },
       }),
       db.task.findMany({
         where: { ownerId: user.id, deletedAt: null },
@@ -47,7 +49,7 @@ export async function loadMoreTasks({
 
     return {
       success: true,
-      data: tasks.map((t) => mapDbTaskToClient(t, projects, sprints)),
+      data: tasks.map((t) => mapDbTaskToClient(t, projects as any, sprints as any)),
     };
   } catch (error) {
     console.error("Failed to load more tasks:", error);

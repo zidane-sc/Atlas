@@ -37,11 +37,23 @@ const PRIORITY_ORDER: Priority[] = ["p0", "p1", "p2", "p3", "p4"];
 
 export default function Page() {
   const searchParams = useSearchParams();
-  const { tasks: allTasks, openEditForm, openCreateForm } = useTasks();
+  const { tasks: allTasks, openEditForm, openCreateForm, loadMore, hasMore } = useTasks();
   const { projects } = useProjects();
   const [tab, setTab] = useState<Tab>("kanban");
   const [listMode, setListMode] = useState<"list" | "table">("list");
   const [filters, setFilters] = useState<TaskFilters>(EMPTY_TASK_FILTERS);
+  const [loadingMore, setLoadingMore] = useState(false);
+
+  const handleLoadMore = async () => {
+    if (!hasMore || loadingMore || allTasks.length === 0) return;
+    setLoadingMore(true);
+    try {
+      const lastTask = allTasks[allTasks.length - 1];
+      await loadMore(lastTask.id);
+    } finally {
+      setLoadingMore(false);
+    }
+  };
 
   useEffect(() => {
     const filterParam = searchParams.get("filter");
@@ -106,22 +118,66 @@ export default function Page() {
         )}
       </div>
 
-      <TaskFilterBar filters={filters} onChange={setFilters} projectNames={projectNames} tagNames={tagNames} />
+      <TaskFilterBar
+        filters={filters}
+        onChange={setFilters}
+        projectNames={projectNames}
+        tagNames={tagNames}
+      />
 
       <div className="flex-1 overflow-hidden">
         {tab === "kanban" && <KanbanBoard tasks={filteredTasks} />}
-        {tab === "list" && listMode === "list" && <ListTab tasks={filteredTasks} hideDoneByDefault={!hasStatusFilter} onSelect={openEditForm} />}
-        {tab === "list" && listMode === "table" && <TableTab tasks={filteredTasks} onSelect={openEditForm} />}
+        {tab === "list" && listMode === "list" && (
+          <ListTab
+            tasks={filteredTasks}
+            hideDoneByDefault={!hasStatusFilter}
+            onSelect={openEditForm}
+            hasMore={hasMore}
+            loadingMore={loadingMore}
+            onLoadMore={handleLoadMore}
+          />
+        )}
+        {tab === "list" && listMode === "table" && (
+          <TableTab
+            tasks={filteredTasks}
+            onSelect={openEditForm}
+            hasMore={hasMore}
+            loadingMore={loadingMore}
+            onLoadMore={handleLoadMore}
+          />
+        )}
         {tab === "calendar" && <CalendarTab tasks={filteredTasks} onSelect={openEditForm} />}
         {tab === "timeline" && <TimelineTab tasks={filteredTasks} projects={projects} onSelect={openEditForm} />}
         {tab === "by-project" && <ByProjectTab tasks={filteredTasks} projects={projects} onSelect={openEditForm} />}
-        {tab === "archive" && <ArchiveTab tasks={filteredTasks} onSelect={openEditForm} />}
+        {tab === "archive" && (
+          <ArchiveTab
+            tasks={filteredTasks}
+            onSelect={openEditForm}
+            hasMore={hasMore}
+            loadingMore={loadingMore}
+            onLoadMore={handleLoadMore}
+          />
+        )}
       </div>
     </div>
   );
 }
 
-function ListTab({ tasks, hideDoneByDefault, onSelect }: { tasks: Task[]; hideDoneByDefault: boolean; onSelect: (t: Task) => void }) {
+function ListTab({
+  tasks,
+  hideDoneByDefault,
+  onSelect,
+  hasMore,
+  loadingMore,
+  onLoadMore,
+}: {
+  tasks: Task[];
+  hideDoneByDefault: boolean;
+  onSelect: (t: Task) => void;
+  hasMore?: boolean;
+  loadingMore?: boolean;
+  onLoadMore?: () => void;
+}) {
   const [sort, setSort] = useState<"priority" | "due" | "status">("priority");
 
   const filtered = useMemo(() => {
@@ -159,11 +215,22 @@ function ListTab({ tasks, hideDoneByDefault, onSelect }: { tasks: Task[]; hideDo
         ) : (
           filtered.map((t) => <TaskRow key={t.id} task={t} onSelect={onSelect} />)
         )}
+        {hasMore && (
+          <div className="p-4 text-center border-t border-border">
+            <button
+              type="button"
+              disabled={loadingMore}
+              onClick={onLoadMore}
+              className="px-4 py-1.5 text-xs font-mono border border-border bg-secondary hover:bg-accent text-foreground disabled:opacity-50 transition-colors"
+            >
+              {loadingMore ? "LOADING..." : "▼ LOAD MORE QUESTS (100)"}
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
 }
-
 type SortCol = "priority" | "title" | "status" | "due" | "sp";
 
 function SortableCol({ col, ch, sc, sd, onSort }: { col: SortCol; ch: string; sc: SortCol; sd: "asc" | "desc"; onSort: (col: SortCol) => void }) {
@@ -178,7 +245,19 @@ function SortableCol({ col, ch, sc, sd, onSort }: { col: SortCol; ch: string; sc
   );
 }
 
-function TableTab({ tasks, onSelect }: { tasks: Task[]; onSelect: (t: Task) => void }) {
+function TableTab({
+  tasks,
+  onSelect,
+  hasMore,
+  loadingMore,
+  onLoadMore,
+}: {
+  tasks: Task[];
+  onSelect: (t: Task) => void;
+  hasMore?: boolean;
+  loadingMore?: boolean;
+  onLoadMore?: () => void;
+}) {
   const [sc, setSc] = useState<SortCol>("priority");
   const [sd, setSd] = useState<"asc" | "desc">("asc");
 
@@ -234,6 +313,18 @@ function TableTab({ tasks, onSelect }: { tasks: Task[]; onSelect: (t: Task) => v
           })}
         </tbody>
       </table>
+      {hasMore && (
+        <div className="p-4 text-center border-t border-border">
+          <button
+            type="button"
+            disabled={loadingMore}
+            onClick={onLoadMore}
+            className="px-4 py-1.5 text-xs font-mono border border-border bg-secondary hover:bg-accent text-foreground disabled:opacity-50 transition-colors"
+          >
+            {loadingMore ? "LOADING..." : "▼ LOAD MORE QUESTS (100)"}
+          </button>
+        </div>
+      )}
     </div>
   );
 }
@@ -620,7 +711,19 @@ function ByProjectTab({ tasks, projects, onSelect }: { tasks: Task[]; projects: 
   );
 }
 
-function ArchiveTab({ tasks, onSelect }: { tasks: Task[]; onSelect: (t: Task) => void }) {
+function ArchiveTab({
+  tasks,
+  onSelect,
+  hasMore,
+  loadingMore,
+  onLoadMore,
+}: {
+  tasks: Task[];
+  onSelect: (t: Task) => void;
+  hasMore?: boolean;
+  loadingMore?: boolean;
+  onLoadMore?: () => void;
+}) {
   const archived = tasks
     .filter((t) => t.status === "done")
     .map((t) => ({ task: t, completedAt: completedAt(t) }))
@@ -654,6 +757,18 @@ function ArchiveTab({ tasks, onSelect }: { tasks: Task[]; onSelect: (t: Task) =>
               </button>
             );
           })
+        )}
+        {hasMore && (
+          <div className="p-4 text-center border-t border-border">
+            <button
+              type="button"
+              disabled={loadingMore}
+              onClick={onLoadMore}
+              className="px-4 py-1.5 text-xs font-mono border border-border bg-secondary hover:bg-accent text-foreground disabled:opacity-50 transition-colors"
+            >
+              {loadingMore ? "LOADING..." : "▼ LOAD MORE QUESTS (100)"}
+            </button>
+          </div>
         )}
       </div>
       <TrashSection />

@@ -38,7 +38,23 @@ export async function getCharacterSheetData(
   }
 
   const [dbDoneTasks, dbProjects, dbSprints, owner] = await Promise.all([
-    db.task.findMany({ where: { ownerId, deletedAt: null, status: "done" } }),
+    db.task.findMany({
+      where: { ownerId, deletedAt: null, status: "done" },
+      select: {
+        id: true,
+        code: true,
+        title: true,
+        status: true,
+        type: true,
+        priority: true,
+        storyPoint: true,
+        projectId: true,
+        sprintId: true,
+        completedAt: true,
+        dueDate: true,
+        createdAt: true,
+      },
+    }),
     db.project.findMany({ where: { ownerId, archivedAt: null } }),
     db.sprint.findMany({ where: { ownerId }, include: { projects: { select: { id: true } } } }),
     db.user.findUnique({ where: { id: ownerId }, select: { bonusXp: true, bonusCoins: true } }),

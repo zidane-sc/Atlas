@@ -32,14 +32,19 @@ export async function purchaseDecoration(itemId: string): Promise<ActionResult<{
       return { success: false, error: { code: "CONFLICT", message: "You already own this item." } };
     }
 
-    // Calculate user's total coins (task coins + bonusCoins)
-    const doneTasks = await db.task.findMany({
+    // Calculate user's total coins (task coins + bonusCoins) using Postgres groupBy aggregation
+    const grouped = await db.task.groupBy({
+      by: ["priority"],
       where: { ownerId: user.id, status: "done", deletedAt: null },
-      select: { storyPoint: true, priority: true },
+      _sum: { storyPoint: true },
+      _count: { _all: true },
     });
 
-    const taskCoins = doneTasks.reduce(
-      (sum, t) => sum + (t.storyPoint ?? 0) + PRIORITY_COIN_BONUS[t.priority as Priority],
+    const taskCoins = grouped.reduce(
+      (sum, g) =>
+        sum +
+        (g._sum.storyPoint ?? 0) +
+        g._count._all * (PRIORITY_COIN_BONUS[g.priority as Priority] ?? 0),
       0
     );
     const totalCoins = taskCoins + user.bonusCoins;

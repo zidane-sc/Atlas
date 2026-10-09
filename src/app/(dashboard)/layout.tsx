@@ -56,6 +56,20 @@ export default async function DashboardLayout({
     db.task.findMany({
       where: { ownerId: owner.id, deletedAt: null, status: "done" },
       orderBy: { completedAt: "asc" },
+      select: {
+        id: true,
+        code: true,
+        title: true,
+        status: true,
+        type: true,
+        priority: true,
+        storyPoint: true,
+        projectId: true,
+        sprintId: true,
+        completedAt: true,
+        dueDate: true,
+        createdAt: true,
+      },
     }),
     db.project.findMany({
       where: { ownerId: owner.id, archivedAt: null },

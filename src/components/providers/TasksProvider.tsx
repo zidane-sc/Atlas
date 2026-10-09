@@ -653,7 +653,7 @@ export function TasksProvider({
       loadMore: async (lastTaskId) => {
         const result = await apiLoadMoreTasks({ cursor: lastTaskId, limit: 100 });
         if (result.success && result.data) {
-          dispatch({ type: "reset", tasks: [...tasks, ...result.data] });
+          dispatch({ type: "append", tasks: result.data });
           setHasMore(result.data.length >= 100);
         }
       },
@@ -664,7 +664,7 @@ export function TasksProvider({
         if (lastTask) {
           const result = await apiLoadMoreTasks({ cursor: lastTask.id, limit: 100 });
           if (result.success && result.data) {
-            dispatch({ type: "reset", tasks: [...tasks, ...result.data] });
+            dispatch({ type: "append", tasks: result.data });
             setHasMore(result.data.length >= 100);
           }
         }
