@@ -23,58 +23,6 @@ import { seedInitialData } from "@/lib/seeders/initial-data";
 import type { SavedFilterClient } from "@/lib/actions/filters";
 import type { UserSetting } from "@/types/settings";
 
-const getDashboardData = unstable_cache(
-  async (ownerId: string) => {
-    const [dbTasks, rawDbAllDoneTasks, rawDbProjects, rawDbSprints, rawDbActivityLogs, characterSheetData] = await Promise.all([
-      // No nested `statusHistory`/`comments` here — both are now on-demand only, fetched by
-      // `getTaskDetails` when TaskFormSheet opens a specific task. `createdAt`/`completedAt` are
-      // direct scalar columns (see Task.createdAt, types/task.ts), so nothing in the bulk views
-      // needs the nested include anymore (docs/05-backlog.md §8 finding #16).
-      db.task.findMany({
-        where: { ownerId, deletedAt: null },
-        orderBy: { createdAt: "desc" },
-        take: 200,
-      }),
-      // Unbounded (no `take`) — the 200-cap above exists for the interactive views, but
-      // gamification/statistics need lifetime totals (XP, achievement tiers, longest-ever
-      // streak, completion rate, focus hours), which would otherwise silently drop older
-      // completions once total task count passes 200. See docs/05-backlog.md §8 finding #15.
-      db.task.findMany({
-        where: { ownerId, deletedAt: null, status: "done" },
-        orderBy: { completedAt: "asc" },
-      }),
-      db.project.findMany({
-        where: { ownerId, archivedAt: null },
-        orderBy: { createdAt: "asc" },
-      }),
-      db.sprint.findMany({
-        where: { ownerId },
-        orderBy: { startDate: "asc" },
-        include: { projects: { select: { id: true } } },
-      }),
-      db.activityLog.findMany({
-        where: { actorId: ownerId },
-        orderBy: { createdAt: "desc" },
-        take: 10,
-        select: {
-          id: true,
-          action: true,
-          createdAt: true,
-          task: { select: { title: true } },
-          project: { select: { emoji: true, name: true } },
-          sprint: { select: { name: true } },
-          actor: { select: { name: true, email: true } },
-        },
-      }),
-      getCharacterSheetData(ownerId),
-    ]);
-
-    return { dbTasks, rawDbAllDoneTasks, rawDbProjects, rawDbSprints, rawDbActivityLogs, characterSheetData };
-  },
-  ["dashboard-data"],
-  { tags: ["dashboard"], revalidate: 60 }
-);
-
 export default async function DashboardLayout({
   children,
 }: {
@@ -91,7 +39,49 @@ export default async function DashboardLayout({
     create: { email: session.user.email, name: session.user.name ?? session.user.email },
   });
 
-  const { dbTasks, rawDbAllDoneTasks, rawDbProjects, rawDbSprints, rawDbActivityLogs, characterSheetData } = await getDashboardData(owner.id);
+  const [dbTasks, rawDbAllDoneTasks, rawDbProjects, rawDbSprints, rawDbActivityLogs, characterSheetData] = await Promise.all([
+    // No nested `statusHistory`/`comments` here — both are now on-demand only, fetched by
+    // `getTaskDetails` when TaskFormSheet opens a specific task. `createdAt`/`completedAt` are
+    // direct scalar columns (see Task.createdAt, types/task.ts), so nothing in the bulk views
+    // needs the nested include anymore (docs/05-backlog.md §8 finding #16).
+    db.task.findMany({
+      where: { ownerId: owner.id, deletedAt: null },
+      orderBy: { createdAt: "desc" },
+      take: 200,
+    }),
+    // Unbounded (no `take`) — the 200-cap above exists for the interactive views, but
+    // gamification/statistics need lifetime totals (XP, achievement tiers, longest-ever
+    // streak, completion rate, focus hours), which would otherwise silently drop older
+    // completions once total task count passes 200. See docs/05-backlog.md §8 finding #15.
+    db.task.findMany({
+      where: { ownerId: owner.id, deletedAt: null, status: "done" },
+      orderBy: { completedAt: "asc" },
+    }),
+    db.project.findMany({
+      where: { ownerId: owner.id, archivedAt: null },
+      orderBy: { createdAt: "asc" },
+    }),
+    db.sprint.findMany({
+      where: { ownerId: owner.id },
+      orderBy: { startDate: "asc" },
+      include: { projects: { select: { id: true } } },
+    }),
+    db.activityLog.findMany({
+      where: { actorId: owner.id },
+      orderBy: { createdAt: "desc" },
+      take: 10,
+      select: {
+        id: true,
+        action: true,
+        createdAt: true,
+        task: { select: { title: true } },
+        project: { select: { emoji: true, name: true } },
+        sprint: { select: { name: true } },
+        actor: { select: { name: true, email: true } },
+      },
+    }),
+    getCharacterSheetData(owner.id),
+  ]);
 
   let dbProjects = rawDbProjects;
   let dbSprints = rawDbSprints;
