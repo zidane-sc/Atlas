@@ -35,6 +35,14 @@ export async function createTask(
     };
   }
 
+  // Prevent self-relation on create (mirrors updateTask check — docs/05-backlog.md §8 finding #5)
+  if (parsed.data.relations?.some((r) => r.taskId === "SELF")) {
+    return {
+      success: false,
+      error: { code: "VALIDATION_ERROR", message: "A task cannot be related to itself." },
+    };
+  }
+
   // owner_id defaults to the sole user (docs/02-architecture.md §4.4) — resolved from the
   // session, never trusted from client input. No Auth.js adapter persists this on sign-in
   // (JWT sessions, docs/02-architecture.md §6), so upsert it here instead.

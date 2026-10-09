@@ -1,6 +1,7 @@
 import NextAuth from "next-auth";
 import GitHub from "next-auth/providers/github";
 import Credentials from "next-auth/providers/credentials";
+import { timingSafeEqual } from "crypto";
 
 const allowedEmails = (process.env.ALLOWED_EMAIL ?? "")
   .split(",")
@@ -12,6 +13,14 @@ const passcode = process.env.ATLAS_PASSCODE ?? "";
 // Next.js always sets NODE_ENV=production for `next build`/`next start`/Vercel deploys,
 // so this provider is unreachable outside `next dev` — no separate opt-in flag needed.
 const isDev = process.env.NODE_ENV !== "production";
+
+function verifyPasscode(input: string, expected: string): boolean {
+  if (!expected) return false;
+  const inputBuf = Buffer.from(input);
+  const expectedBuf = Buffer.from(expected);
+  if (inputBuf.length !== expectedBuf.length) return false;
+  return timingSafeEqual(inputBuf, expectedBuf);
+}
 
 const providers = [
   GitHub,
@@ -39,7 +48,8 @@ const providers = [
             passcode: { label: "Passcode", type: "password", placeholder: "Enter passcode" },
           },
           authorize(credentials) {
-            if (credentials?.passcode === passcode) {
+            const input = credentials?.passcode;
+            if (typeof input === "string" && verifyPasscode(input, passcode)) {
               const email = allowedEmails[0];
               return { id: "passcode-user", email, name: "Passcode" };
             }

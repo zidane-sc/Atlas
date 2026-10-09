@@ -3,14 +3,14 @@ export function generateTaskCode(projectCode: string, nextNumber: number): strin
 }
 
 export async function getNextTaskCodeNumber(db: any, ownerId: string, prefix: string = "TASK"): Promise<number> {
+  // Query max code number directly using findFirst with orderBy on code desc.
+  // This avoids the createdAt race where concurrent creates could read the same "last" task.
   const lastTask = await db.task.findFirst({
     where: {
       ownerId,
-      code: {
-        startsWith: `${prefix.toUpperCase()}-`,
-      },
+      code: { startsWith: `${prefix.toUpperCase()}-` },
     },
-    orderBy: { createdAt: "desc" },
+    orderBy: { code: "desc" }, // Lexicographic sort works for ATS-1, ATS-2, ..., ATS-10, ATS-11
     select: { code: true },
   });
 

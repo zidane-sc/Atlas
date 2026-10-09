@@ -306,9 +306,9 @@ export function TasksProvider({
           const xp = calcTaskXP(values.priority, values.storyPoint, onTime);
           const cid = crypto.randomUUID();
 
-          const oldStreak = calculateStreak(tasks);
-          const updatedTasks = tasks.map((t) => t.id === id ? { ...t, status: "done" as const } : t);
-          const newStreak = calculateStreak(updatedTasks);
+          const oldStreak = calculateStreak(allTimeTasks);
+          const updatedAllTime = allTimeTasks.map((t) => t.id === id ? { ...t, status: "done" as const } : t);
+          const newStreak = calculateStreak(updatedAllTime);
           const streakExtended = newStreak > oldStreak;
 
           // Level-up/achievement-unlock detection happens after the server round-trip below

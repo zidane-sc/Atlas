@@ -25,25 +25,38 @@ export function xpForLevel(n: number): number {
   return Math.round((100 * Math.pow(n, 1.5)) / 10) * 10;
 }
 
+/** Precomputed cumulative XP for levels 1-100 for O(1) lookup.
+ * CUMULATIVE_XP[n] = total XP required to REACH level n (i.e., complete levels 1..n-1).
+ * Level 1 starts at 0 XP. Level 2 starts at 100 XP. Level 3 starts at 380 XP, etc.
+ */
+const CUMULATIVE_XP: number[] = (() => {
+  const arr = [0]; // index 0 unused
+  let cumulative = 0;
+  for (let n = 1; n <= 100; n++) {
+    arr.push(cumulative); // XP needed to START level n
+    cumulative += xpForLevel(n);
+  }
+  return arr;
+})();
+
 export function getLevelInfo(xp: number): {
   level: number;
   currentXP: number;
   nextLevelXP: number;
 } {
-  // Not currently reachable (storyPoint/bonusXp are both validated non-negative), but the XP
-  // double-counting bug (docs/05-backlog.md §8 finding #1) showed the bonus ledger isn't as
-  // isolated as assumed — guard defensively rather than return a negative currentXP.
   xp = Math.max(0, xp);
-  let cumulative = 0;
-  let level = 1;
-  while (true) {
-    const need = xpForLevel(level);
-    if (cumulative + need > xp) {
-      return { level, currentXP: xp - cumulative, nextLevelXP: need };
-    }
-    cumulative += need;
-    level++;
+  // Binary search on precomputed cumulative XP — find highest level where start XP <= xp
+  let lo = 1;
+  let hi = CUMULATIVE_XP.length - 1;
+  while (lo <= hi) {
+    const mid = (lo + hi) >> 1;
+    if (CUMULATIVE_XP[mid] <= xp) lo = mid + 1;
+    else hi = mid - 1;
   }
+  const level = hi; // highest level where start XP <= xp (1 = level 1)
+  const cumulative = CUMULATIVE_XP[level];
+  const nextLevelXP = xpForLevel(level);
+  return { level, currentXP: xp - cumulative, nextLevelXP };
 }
 
 /** Per-task XP — docs/03-design.md §11.1 */
