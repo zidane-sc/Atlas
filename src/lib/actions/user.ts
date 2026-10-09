@@ -43,6 +43,7 @@ export async function updateUserStats(input: unknown): Promise<ActionResult<{ bo
         bonusXp: parsed.data.bonusXp,
         bonusCoins: parsed.data.bonusCoins,
       },
+      select: { bonusXp: true, bonusCoins: true },
     });
 
     let sheetData: CharacterSheetData | undefined;
@@ -158,6 +159,7 @@ export async function claimDailyQuestAction(
         bonusCoins: user.bonusCoins + parsed.data.coins,
         lastQuestClaimedAt: new Date(),
       },
+      select: { bonusXp: true, bonusCoins: true, lastQuestClaimedAt: true },
     });
 
     let sheetData: CharacterSheetData | undefined;

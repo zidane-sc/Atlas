@@ -50,6 +50,7 @@ export async function createTask(
     where: { email: session.user.email },
     update: {},
     create: { email: session.user.email, name: session.user.name ?? session.user.email },
+    select: { id: true },
   });
 
   const { startDate, dueDate, ...rest } = parsed.data;
@@ -89,6 +90,7 @@ export async function createTask(
             fromStatus: null,
             toStatus: created.status,
           },
+          select: { id: true },
         });
 
         await logActivity(tx, owner.id, {
@@ -208,6 +210,7 @@ export async function updateTask(
             fromStatus: existing.status,
             toStatus: updated.status,
           },
+          select: { id: true },
         });
       }
 
@@ -443,6 +446,7 @@ export async function startFocusTimerAction(taskId: string, phase: "focus" | "br
         activeTimerStartedAt: new Date(),
         activeTimerPhase: phase,
       },
+      select: { id: true },
     });
     return { success: true, data: { success: true } };
   } catch (error) {
@@ -483,6 +487,7 @@ export async function stopFocusTimerAction(): Promise<
         activeTimerStartedAt: null,
         activeTimerPhase: "focus",
       },
+      select: { id: true },
     });
 
     return {
@@ -517,8 +522,19 @@ export async function getTaskDetails(
   const task = await db.task.findFirst({
     where: { id: taskId, owner: { email: session.user.email } },
     select: {
-      statusHistory: { orderBy: { changedAt: "asc" } },
-      comments: { orderBy: { createdAt: "asc" }, include: { author: true } },
+      statusHistory: {
+        orderBy: { changedAt: "asc" },
+        select: { fromStatus: true, toStatus: true, changedAt: true },
+      },
+      comments: {
+        orderBy: { createdAt: "asc" },
+        select: {
+          id: true,
+          content: true,
+          createdAt: true,
+          author: { select: { name: true, email: true } },
+        },
+      },
     },
   });
 

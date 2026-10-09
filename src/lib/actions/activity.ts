@@ -22,5 +22,6 @@ export async function logActivity(
       action: params.action,
       details: params.details || undefined,
     },
+    select: { id: true },
   });
 }

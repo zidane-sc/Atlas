@@ -18,6 +18,7 @@ export async function togglePin(taskId: string, pinned: boolean) {
     await db.task.update({
       where: { id: taskId, ownerId: owner.id },
       data: { pinned },
+      select: { id: true },
     });
 
     return { success: true };

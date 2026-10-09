@@ -41,6 +41,7 @@ export async function createComment(input: unknown): Promise<ActionResult<{ id: 
           content: parsed.data.content,
           authorId: owner.id,
         },
+        select: { id: true, content: true, createdAt: true },
       });
 
       await logActivity(tx, owner.id, {
