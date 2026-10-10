@@ -22,10 +22,9 @@ export async function GET(req: Request) {
     const appliedNames = new Set(appliedRows.map((r) => r.migration_name));
     logs.push(`Currently applied: ${Array.from(appliedNames).join(", ")}`);
 
-    // 2. Migration 1: 20261010000000_align_schema
-    if (!appliedNames.has("20261010000000_align_schema")) {
-      logs.push("Applying 20261010000000_align_schema...");
-      await db.$executeRawUnsafe(`
+    // 2. Migration 1: 20261010000000_align_schema (Ensure tables exist regardless of _prisma_migrations record)
+    logs.push("Ensuring align_schema tables exist...");
+    await db.$executeRawUnsafe(`
         DO $$ BEGIN CREATE TYPE "attachment_type" AS ENUM ('github_pr', 'github_issue', 'confluence', 'figma', 'slack', 'discord', 'google_docs', 'google_drive', 'meeting_recording', 'website', 'file_upload', 'other'); EXCEPTION WHEN duplicate_object THEN null; END $$;
         DO $$ BEGIN CREATE TYPE "deliverable_type" AS ENUM ('pr', 'confluence', 'presentation', 'meeting_notes', 'design', 'video', 'pdf', 'research'); EXCEPTION WHEN duplicate_object THEN null; END $$;
         DO $$ BEGIN CREATE TYPE "task_relation_type" AS ENUM ('blocks', 'related', 'duplicate', 'caused_by', 'generated_from'); EXCEPTION WHEN duplicate_object THEN null; END $$;
@@ -103,8 +102,6 @@ export async function GET(req: Request) {
             CONSTRAINT "achievements_pkey" PRIMARY KEY ("id")
         );
 
-        ALTER TABLE "tasks" ADD COLUMN IF NOT EXISTS "parent_id" UUID;
-
         DO $$ BEGIN CREATE UNIQUE INDEX "settings_user_id_key_key" ON "settings"("user_id", "key"); EXCEPTION WHEN duplicate_table OR duplicate_object THEN null; END $$;
         DO $$ BEGIN CREATE UNIQUE INDEX "tags_name_key" ON "tags"("name"); EXCEPTION WHEN duplicate_table OR duplicate_object THEN null; END $$;
         DO $$ BEGIN CREATE INDEX "attachments_task_id_idx" ON "attachments"("task_id"); EXCEPTION WHEN duplicate_table OR duplicate_object THEN null; END $$;
@@ -124,13 +121,8 @@ export async function GET(req: Request) {
         DO $$ BEGIN ALTER TABLE "task_relations" ADD CONSTRAINT "task_relations_related_task_id_fkey" FOREIGN KEY ("related_task_id") REFERENCES "tasks"("id") ON DELETE CASCADE ON UPDATE CASCADE; EXCEPTION WHEN duplicate_object THEN null; END $$;
         DO $$ BEGIN ALTER TABLE "xp_logs" ADD CONSTRAINT "xp_logs_task_id_fkey" FOREIGN KEY ("task_id") REFERENCES "tasks"("id") ON DELETE SET NULL ON UPDATE CASCADE; EXCEPTION WHEN duplicate_object THEN null; END $$;
         DO $$ BEGIN ALTER TABLE "xp_logs" ADD CONSTRAINT "xp_logs_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE; EXCEPTION WHEN duplicate_object THEN null; END $$;
-
-        INSERT INTO _prisma_migrations (id, checksum, finished_at, migration_name, logs, rolled_back_at, started_at, applied_steps_count)
-        VALUES (gen_random_uuid(), '99e24e177a5a7e1b781c69c4ea536443aac8b7beda7918c0c369da869a305e5f', NOW(), '20261010000000_align_schema', NULL, NULL, NOW(), 1)
-        ON CONFLICT (id) DO NOTHING;
-      `);
-      logs.push("Applied 20261010000000_align_schema ✅");
-    }
+    `);
+    logs.push("Ensured align_schema tables exist ✅");
 
     // 3. Migration 2: 20261011000000_simplify_schema
     if (!appliedNames.has("20261011000000_simplify_schema")) {
