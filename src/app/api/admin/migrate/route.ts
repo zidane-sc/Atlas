@@ -363,20 +363,6 @@ export async function GET(req: Request) {
       SELECT id, user_id, type, created_at FROM sync_events ORDER BY created_at DESC LIMIT 5;
     `);
 
-    if (url.searchParams.get("testSync") === "true") {
-      const user = await db.user.findFirst({ select: { id: true } });
-      if (user) {
-        await db.syncEvent.create({
-          data: {
-            userId: user.id,
-            type: "test:ping",
-            data: { test: true, timestamp: Date.now() },
-          },
-        });
-        logs.push("Inserted test sync event ✅");
-      }
-    }
-
     return NextResponse.json({
       success: true,
       message: "Database schema migration completed successfully",
