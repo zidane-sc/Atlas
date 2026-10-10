@@ -28,16 +28,14 @@ const SMART_VIEW_BADGE_COLOR: Record<string, string> = {
   "/tasks/today": "--color-primary-gold",
   "/tasks/inbox": "--color-text-muted",
   "/tasks/overdue": "--color-status-blocked",
-  "/tasks/waiting": "--color-status-waiting-external",
   "/tasks/focus": "--color-priority-p1",
 };
 
 const SMART_VIEW_COUNT: Record<string, (tasks: Task[]) => number> = {
   "/tasks/today": (tasks) => tasks.filter((t) => t.status !== "done" && (t.dueDate === MOCK_NOW || t.status === "in_progress")).length,
-  "/tasks/inbox": (tasks) => tasks.filter((t) => t.status === "inbox").length,
+  "/tasks/inbox": (tasks) => tasks.filter((t) => t.status === "backlog").length,
   "/tasks/overdue": (tasks) => tasks.filter((t) => t.status !== "done" && isOverdue(t.dueDate, MOCK_NOW)).length,
-  "/tasks/waiting": (tasks) => tasks.filter((t) => t.status === "waiting_external").length,
-  "/tasks/focus": (tasks) => tasks.filter((t) => (t.status === "ready" || t.status === "in_progress") && (t.priority === "p0" || t.priority === "p1")).length,
+  "/tasks/focus": (tasks) => tasks.filter((t) => (t.status === "todo" || t.status === "in_progress") && (t.priority === "high" || t.priority === "medium")).length,
 };
 
 function NavLink({ href, label, icon: Icon, count, badgeColorVar, collapsed }: NavItem & { collapsed?: boolean }) {

@@ -7,7 +7,7 @@ import { STATUS_LABEL, STATUS_SHAPE, TYPE_ICON } from "@/lib/mock-data";
 import { countActiveFilters, EMPTY_TASK_FILTERS, normalizeFilters, type TaskFilters } from "@/lib/task-filters";
 import type { Priority, TaskStatus, TaskType } from "@/types/task";
 
-const PRIORITIES: Priority[] = ["p0", "p1", "p2", "p3", "p4"];
+const PRIORITIES: Priority[] = ["high", "medium", "low"];
 const STATUSES = Object.keys(STATUS_LABEL) as TaskStatus[];
 const TYPES = Object.keys(TYPE_ICON) as TaskType[];
 

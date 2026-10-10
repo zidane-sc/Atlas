@@ -5,19 +5,15 @@ import { isDueSoon, isOverdue } from "@/lib/task-utils";
 
 /** Priority base XP and coin bonus — docs/03-design.md §11.1, §11.5 */
 export const PRIORITY_XP_BASE: Record<Priority, number> = {
-  p0: 100,
-  p1: 60,
-  p2: 30,
-  p3: 15,
-  p4: 5,
+  high: 100,
+  medium: 30,
+  low: 5,
 };
 
 export const PRIORITY_COIN_BONUS: Record<Priority, number> = {
-  p0: 5,
-  p1: 3,
-  p2: 1,
-  p3: 0,
-  p4: 0,
+  high: 5,
+  medium: 2,
+  low: 0,
 };
 
 /** XP required to go from level n to n+1 — docs/03-design.md §11.4 */
@@ -59,19 +55,47 @@ export function getLevelInfo(xp: number): {
   return { level, currentXP: xp - cumulative, nextLevelXP };
 }
 
+export const SIZE_XP_BONUS: Record<string, number> = {
+  xs: 10,
+  s: 20,
+  m: 40,
+  l: 80,
+  xl: 160,
+};
+
+export const SIZE_COIN_BONUS: Record<string, number> = {
+  xs: 1,
+  s: 2,
+  m: 5,
+  l: 10,
+  xl: 20,
+};
+
 /** Per-task XP — docs/03-design.md §11.1 */
 export function calcTaskXP(
   priority: Priority,
-  storyPoint: number | undefined,
-  onTime: boolean
+  sizeOrSp?: string | number,
+  onTime: boolean = true
 ): number {
-  const sp = storyPoint ?? 0;
-  return Math.round((PRIORITY_XP_BASE[priority] + sp * 10) * (onTime ? 1.2 : 1));
+  let bonus = 0;
+  if (typeof sizeOrSp === "number") {
+    bonus = sizeOrSp * 10;
+  } else if (typeof sizeOrSp === "string") {
+    bonus = SIZE_XP_BONUS[sizeOrSp.toLowerCase()] ?? 0;
+  }
+  const base = PRIORITY_XP_BASE[priority] ?? 30;
+  return Math.round((base + bonus) * (onTime ? 1.2 : 1));
 }
 
 /** Per-task coins — docs/03-design.md §11.5 */
-export function calcTaskCoins(priority: Priority, storyPoint: number | undefined): number {
-  return (storyPoint ?? 0) + PRIORITY_COIN_BONUS[priority];
+export function calcTaskCoins(priority: Priority, sizeOrSp?: string | number): number {
+  let bonus = 0;
+  if (typeof sizeOrSp === "number") {
+    bonus = sizeOrSp;
+  } else if (typeof sizeOrSp === "string") {
+    bonus = SIZE_COIN_BONUS[sizeOrSp.toLowerCase()] ?? 0;
+  }
+  return (PRIORITY_COIN_BONUS[priority] ?? 2) + bonus;
 }
 
 export function completedAt(task: Task): string | null {
@@ -99,20 +123,12 @@ export const SKILL_META: Record<
   { title: string; desc: string; statName: string; colorVar: string }
 > = {
   coding: { title: "Coder", desc: "Writing and shipping functional code", statName: "INT", colorVar: "--color-status-ready" },
-  investigation: { title: "Investigator", desc: "Diagnosing and tracing down root causes", statName: "WIS", colorVar: "--color-status-testing" },
-  study: { title: "Scholar", desc: "Learning, reading, and absorbing knowledge", statName: "INT", colorVar: "--color-status-waiting-external" },
-  analysis: { title: "Analyst", desc: "Breaking down data and complex systems", statName: "WIS", colorVar: "--color-status-in-progress" },
-  documentation: { title: "Chronicler", desc: "Capturing knowledge and writing clear docs", statName: "CHA", colorVar: "--color-text-muted" },
-  bug: { title: "Bug Slayer", desc: "Hunting and eliminating defects", statName: "STR", colorVar: "--color-priority-p0" },
-  deployment: { title: "Deployer", desc: "Shipping to production reliably", statName: "DEX", colorVar: "--color-status-done" },
-  testing: { title: "Tester", desc: "Ensuring quality through systematic checks", statName: "WIS", colorVar: "--color-status-testing" },
-  meeting: { title: "Diplomat", desc: "Communicating and aligning with others", statName: "CHA", colorVar: "--color-status-waiting-external" },
   research: { title: "Explorer", desc: "Discovering new ideas and possibilities", statName: "WIS", colorVar: "--color-status-ready" },
   design: { title: "Artisan", desc: "Crafting interfaces and visual experiences", statName: "CHA", colorVar: "--color-streak-flame" },
-  maintenance: { title: "Keeper", desc: "Maintaining and improving existing systems", statName: "CON", colorVar: "--color-text-muted" },
-  refactor: { title: "Refiner", desc: "Improving code without changing behavior", statName: "INT", colorVar: "--color-primary-gold" },
-  incident: { title: "Firefighter", desc: "Responding fast under pressure", statName: "STR", colorVar: "--color-priority-p0" },
-  communication: { title: "Herald", desc: "Keeping stakeholders informed and aligned", statName: "CHA", colorVar: "--color-status-waiting-external" },
+  documentation: { title: "Chronicler", desc: "Capturing knowledge and writing clear docs", statName: "CHA", colorVar: "--color-text-muted" },
+  bug: { title: "Bug Slayer", desc: "Hunting and eliminating defects", statName: "STR", colorVar: "--color-priority-p0" },
+  meeting: { title: "Diplomat", desc: "Communicating and aligning with others", statName: "CHA", colorVar: "--color-status-waiting-external" },
+  admin: { title: "Keeper", desc: "Maintaining and improving existing systems", statName: "CON", colorVar: "--color-text-muted" },
 };
 
 export const STATS = ["STR", "DEX", "CON", "INT", "WIS", "CHA"] as const;
@@ -150,10 +166,10 @@ export function computeCharacterSheet(tasks: Task[], bonusXp = 0, bonusCoins = 0
   const typeCount: Partial<Record<TaskType, number>> = {};
   let totalCoins = bonusCoins;
   for (const t of done) {
-    const earned = calcTaskXP(t.priority, t.storyPoint, isTaskOnTime(t));
+    const earned = calcTaskXP(t.priority, t.size, isTaskOnTime(t));
     typeXP[t.type] = (typeXP[t.type] ?? 0) + earned;
     typeCount[t.type] = (typeCount[t.type] ?? 0) + 1;
-    totalCoins += calcTaskCoins(t.priority, t.storyPoint);
+    totalCoins += calcTaskCoins(t.priority, t.size);
   }
 
   const globalXP = Object.values(typeXP).reduce((s, v) => s + (v ?? 0), 0) + bonusXp;
@@ -244,7 +260,6 @@ export function computeRecapGrade(done: number, created: number): RecapGrade {
   return "D";
 }
 
-/** Every currently-known achievement id — the switch in computeAchievementProgress covers each one. */
 export const ACHIEVEMENT_IDS = ["a1", "a2", "a3", "a4", "a5", "a6", "a7", "a8", "a9", "a10", "a11", "a12", "a13", "a14"] as const;
 
 /** Countable progress toward a locked achievement's threshold — docs/03-design.md §11.7 */
@@ -255,8 +270,8 @@ export function computeAchievementProgress(
   sprints: Sprint[]
 ): { current: number; max: number } | null {
   const done = tasks.filter((t) => t.status === "done");
-  const universityProjects = new Set(
-    projects.filter((p) => p.category === "University").map((p) => p.name)
+  const learningProjects = new Set(
+    projects.filter((p) => p.category === "learning").map((p) => p.name)
   );
   switch (id) {
     case "a1": // First Blood
@@ -275,12 +290,12 @@ export function computeAchievementProgress(
     }
     case "a4": // Bug Hunter
       return { current: done.filter((t) => t.type === "bug").length, max: 50 };
-    case "a5": { // Sprint Hero — every quest in the active sprint done
-      const active = sprints.find((s) => s.status === "active");
+    case "a5": { // Project Hero — every quest in a project done
+      const active = projects.find((p) => p.status === "active");
       if (!active) return null;
-      const sprintTasks = tasks.filter((t) => t.sprint === active.name);
-      if (sprintTasks.length === 0) return null;
-      return { current: sprintTasks.filter((t) => t.status === "done").length, max: sprintTasks.length };
+      const projectTasks = tasks.filter((t) => t.project === active.name);
+      if (projectTasks.length === 0) return null;
+      return { current: projectTasks.filter((t) => t.status === "done").length, max: projectTasks.length };
     }
     case "a6": // 100 Quests
       return { current: done.length, max: 100 };
@@ -291,8 +306,8 @@ export function computeAchievementProgress(
     case "a9": // Code Warrior
       return { current: done.filter((t) => t.type === "coding").length, max: 100 };
     case "a10": // Scholar
-      return { current: done.filter((t) => universityProjects.has(t.project)).length, max: 50 };
-    case "a11": { // Guild Master — the project with the best completion ratio among projects with ≥1 task
+      return { current: done.filter((t) => learningProjects.has(t.project)).length, max: 50 };
+    case "a11": { // Project Master — the project with the best completion ratio among projects with ≥1 task
       let best: { current: number; max: number } | null = null;
       for (const p of projects) {
         const projectTasks = tasks.filter((t) => t.project === p.name);
@@ -368,14 +383,21 @@ function findUnlockDate(id: string, done: Task[], projects: Project[]): string |
       return completedAtOf(coding[99]);
     }
     case "a10": {
-      const universityProjects = new Set(projects.filter((p) => p.category === "University").map((p) => p.name));
-      const uni = sortedByCompletion.filter((t) => universityProjects.has(t.project));
+      const learningProjects = new Set(projects.filter((p) => p.category === "learning").map((p) => p.name));
+      const uni = sortedByCompletion.filter((t) => learningProjects.has(t.project));
       return completedAtOf(uni[49]);
     }
     case "a7":
       return completedAtOf(sortedByCompletion.find((t) => isCompletedInHourRange(t, 22, 4)));
     case "a8":
       return completedAtOf(sortedByCompletion.find((t) => isCompletedInHourRange(t, 0, 7)));
+    case "a11": {
+      for (const p of projects) {
+        const pTasks = sortedByCompletion.filter((t) => t.project === p.name);
+        if (pTasks.length > 0) return completedAtOf(pTasks.at(-1));
+      }
+      return null;
+    }
     case "a3": {
       const perDay: Record<string, string[]> = {};
       for (const t of sortedByCompletion) {

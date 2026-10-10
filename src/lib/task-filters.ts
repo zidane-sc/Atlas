@@ -1,6 +1,6 @@
 import type { Priority, Task, TaskStatus, TaskType } from "@/types/task";
 
-const PRIORITY_ORDER: Priority[] = ["p0", "p1", "p2", "p3", "p4"];
+const PRIORITY_ORDER: Priority[] = ["high", "medium", "low"];
 
 export type StatusOp = "is" | "is_not";
 export type PriorityOp = "any" | "gte" | "lte";
@@ -63,7 +63,7 @@ export function countActiveFilters(rawFilters: TaskFilters): number {
  * Universal search — docs/01-product.md §9.3: matches task title/tags, the task's
  * project name, and attachment labels/URLs, not just the title.
  */
-function matchesQuery(t: Task, q: string): boolean {
+export function matchesQuery(t: Task, q: string): boolean {
   if (t.title.toLowerCase().includes(q)) return true;
   if (t.tags.some((tag) => tag.includes(q))) return true;
   if (t.project.toLowerCase().includes(q)) return true;
@@ -78,8 +78,8 @@ function matchesStatus(t: Task, filters: TaskFilters): boolean {
 
 function matchesPriority(t: Task, filters: TaskFilters): boolean {
   if (filters.priorityOp === "any") return filters.priorities.includes(t.priority);
-  // gte/lte compare against the first selected priority as the threshold — P0 is most
-  // urgent (index 0), so "at least as urgent as P2" means index <= index(P2).
+  // gte/lte compare against the first selected priority as the threshold — high is most
+  // urgent (index 0), so "at least as urgent as medium" means index <= index(medium).
   const threshold = PRIORITY_ORDER.indexOf(filters.priorities[0]);
   const taskIndex = PRIORITY_ORDER.indexOf(t.priority);
   return filters.priorityOp === "gte" ? taskIndex <= threshold : taskIndex >= threshold;

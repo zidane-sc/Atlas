@@ -6,7 +6,6 @@ import { Plus, Search } from "lucide-react";
 import { useCommandPalette } from "@/components/providers/CommandPaletteProvider";
 import { useTasks } from "@/components/providers/TasksProvider";
 import { useProjects } from "@/components/providers/ProjectsProvider";
-import { useSprints } from "@/components/providers/SprintsProvider";
 import { PRIORITY_SHAPE_GLYPH } from "@/components/tasks/PriorityMark";
 import { PRIORITY_SHAPE, STATUS_LABEL, STATUS_SHAPE } from "@/lib/mock-data";
 import { NAV_ITEMS_FLAT } from "@/lib/nav-items";
@@ -23,11 +22,9 @@ function taskToFormValues(t: Task, status: TaskFormValues["status"]): TaskFormVa
     status,
     type: t.type,
     priority: t.priority,
-    effort: t.effort,
-    storyPoint: t.storyPoint,
+    size: t.size,
     startDate: t.startDate,
     dueDate: t.dueDate,
-    sprint: t.sprint,
     waitingOn: t.waitingOn,
     reporter: t.reporter,
     tags: t.tags,
@@ -56,7 +53,6 @@ export function CommandPalette() {
 function CommandPaletteBody({ onClose }: { onClose: () => void }) {
   const { tasks, openEditForm, openCreateForm, updateTask } = useTasks();
   const { projects, openEditForm: openProjectEditForm } = useProjects();
-  const { sprints, openEditForm: openSprintEditForm } = useSprints();
   const router = useRouter();
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState(0);
@@ -113,7 +109,7 @@ function CommandPaletteBody({ onClose }: { onClose: () => void }) {
       { key: "action-new", label: "New Quest", sub: "Create a task", shape: "+", action: () => { openCreateForm(); onClose(); } },
     ].filter((a) => !q || a.label.toLowerCase().includes(q));
 
-    // Projects/sprints only surface once the user actually searches — browsing them isn't
+    // Projects only surface once the user actually searches — browsing them isn't
     // this palette's default job, unlike nav items and recent tasks.
     const projectItems: Item[] = q
       ? projects.filter((p) => p.name.toLowerCase().includes(q)).map((p) => ({
@@ -125,20 +121,21 @@ function CommandPaletteBody({ onClose }: { onClose: () => void }) {
         }))
       : [];
 
-    const sprintItems: Item[] = q
-      ? sprints.filter((s) => s.name.toLowerCase().includes(q)).map((s) => ({
-          key: `sprint-${s.id}`,
-          label: s.name,
-          sub: "Sprint",
-          shape: "⚡",
-          action: () => { openSprintEditForm(s); onClose(); },
-        }))
-      : [];
+    // Sprint removed
+    // const sprintItems: Item[] = q
+    //   ? sprints.filter((s) => s.name.toLowerCase().includes(q)).map((s) => ({
+    //       key: `sprint-${s.id}`,
+    //       label: s.name,
+    //       sub: "Sprint",
+    //       shape: "⚡",
+    //       action: () => { openSprintEditForm(s); onClose(); },
+    //     }))
+    //   : [];
 
     return q
-      ? [...taskItems, ...projectItems, ...sprintItems, ...navItems, ...actionItems]
+      ? [...taskItems, ...projectItems, ...navItems, ...actionItems]
       : [...actionItems, ...navItems, ...taskItems.slice(0, 5)];
-  }, [query, tasks, projects, sprints, router, openEditForm, openProjectEditForm, openSprintEditForm, openCreateForm, updateTask, onClose]);
+  }, [query, tasks, projects, router, openEditForm, openProjectEditForm, openCreateForm, updateTask, onClose]);
 
   const onQueryChange = (value: string) => {
     setQuery(value);
@@ -181,7 +178,7 @@ function CommandPaletteBody({ onClose }: { onClose: () => void }) {
         </div>
         <div className="max-h-[400px] overflow-y-auto">
           {items.length === 0 ? (
-            <div className="py-10 text-center text-sm text-muted-foreground">[ NO RESULTS FOR &quot;{query}&quot; ]</div>
+            <div className="py-10 text-center text-sm text-muted-foreground">[ NO RESULTS FOR "{query}" ]</div>
           ) : (
             items.map((item, i) => (
               <div

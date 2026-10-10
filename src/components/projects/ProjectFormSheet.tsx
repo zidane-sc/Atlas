@@ -20,7 +20,7 @@ const EMPTY_FORM: ProjectFormValues = {
   name: "",
   code: "",
   emoji: "🚀",
-  category: "Side Project",
+  category: "Personal",
   colorVar: PROJECT_COLOR_OPTIONS[2].colorVar,
   status: "active",
   customColor: undefined,

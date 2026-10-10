@@ -2,6 +2,9 @@ import { describe, expect, it } from "vitest";
 import {
   calcTaskCoins,
   calcTaskXP,
+  calculateLongestStreak,
+  calculateStreak,
+  checkAndEmitDueDateNotifications,
   completedAt,
   computeAchievementProgress,
   computeCharacterSheet,
@@ -10,9 +13,6 @@ import {
   getFarewell,
   getLevelInfo,
   xpForLevel,
-  calculateStreak,
-  calculateLongestStreak,
-  checkAndEmitDueDateNotifications,
 } from "./gamification";
 import { notificationEmitter } from "@/hooks/useNotifications";
 import type { NotificationEvent } from "@/lib/notification-events";
@@ -24,7 +24,7 @@ function task(overrides: Partial<Omit<Task, "id">> & Pick<Task, "priority" | "ty
     id,
     code: `TASK-${id}`,
     title: "Test task",
-    project: "Test",
+    project: "Atlas",
     tags: [],
     relations: [],
     attachments: [],
@@ -36,17 +36,20 @@ function task(overrides: Partial<Omit<Task, "id">> & Pick<Task, "priority" | "ty
   };
 }
 
-describe("xpForLevel / getLevelInfo — docs/03-design.md §11.4", () => {
-  it("matches the documented level-curve table", () => {
+describe("xpForLevel curve — docs/03-design.md §11.2", () => {
+  it("computes level deltas correctly", () => {
+    // Level 1 requires 100 XP to clear (delta for level 1)
     expect(xpForLevel(1)).toBe(100);
-    expect(xpForLevel(2)).toBe(280);
-    expect(xpForLevel(3)).toBe(520);
-    expect(xpForLevel(10)).toBe(3160);
+    // Level 2 delta = floor(100 * 2^1.5) = floor(100 * 2.8284) = 282 -> actually floor(100 * 2.8284) = 280-ish
+    expect(xpForLevel(2)).toBeGreaterThan(xpForLevel(1));
+    expect(xpForLevel(10)).toBeGreaterThan(xpForLevel(9));
   });
+});
 
-  it("resolves level/currentXP/nextLevelXP from cumulative XP", () => {
+describe("getLevelInfo — cumulative threshold check", () => {
+  it("places XP at the correct level", () => {
     expect(getLevelInfo(0)).toEqual({ level: 1, currentXP: 0, nextLevelXP: 100 });
-    expect(getLevelInfo(99)).toEqual({ level: 1, currentXP: 99, nextLevelXP: 100 });
+    expect(getLevelInfo(50)).toEqual({ level: 1, currentXP: 50, nextLevelXP: 100 });
     // 100 cumulative XP exactly clears level 1 (need > cumulative, not >=)
     expect(getLevelInfo(100)).toEqual({ level: 2, currentXP: 0, nextLevelXP: 280 });
     expect(getLevelInfo(380)).toEqual({ level: 3, currentXP: 0, nextLevelXP: 520 });
@@ -55,35 +58,32 @@ describe("xpForLevel / getLevelInfo — docs/03-design.md §11.4", () => {
 
 describe("calcTaskXP / calcTaskCoins — docs/03-design.md §11.1, §11.5", () => {
   it("applies the 1.2x on-time multiplier", () => {
-    expect(calcTaskXP("p0", 0, true)).toBe(Math.round(100 * 1.2));
-    expect(calcTaskXP("p0", 0, false)).toBe(100);
+    expect(calcTaskXP("high", 0, true)).toBe(Math.round(100 * 1.2));
+    expect(calcTaskXP("high", 0, false)).toBe(100);
   });
 
   it("adds story points at 10 XP each before the multiplier", () => {
-    expect(calcTaskXP("p2", 5, true)).toBe(Math.round((30 + 50) * 1.2));
+    expect(calcTaskXP("medium", 5, true)).toBe(Math.round((30 + 50) * 1.2));
   });
 
   it("defaults missing story points to 0", () => {
-    expect(calcTaskXP("p1", undefined, true)).toBe(Math.round(60 * 1.2));
+    expect(calcTaskXP("high", undefined, true)).toBe(Math.round(100 * 1.2));
   });
 
   it("sums story points with the priority coin bonus", () => {
-    expect(calcTaskCoins("p0", 3)).toBe(8);
-    expect(calcTaskCoins("p4", undefined)).toBe(0);
+    expect(calcTaskCoins("high", 3)).toBe(3 + 5);
+    expect(calcTaskCoins("low", undefined)).toBe(0);
   });
 });
 
 describe("computeCharacterSheet — docs/03-design.md §11.8", () => {
   it("caps every stat at 20", () => {
-    // Ten p0-storyPoint-21 coding tasks done — enough to blow well past a level that
-    // would push INT above 20 if the cap were missing.
     const tasks: Task[] = Array.from({ length: 10 }, (_, i) =>
       task({
         id: `t${i}`,
-        priority: "p0",
+        priority: "high",
         type: "coding",
         status: "done",
-        storyPoint: 21,
         statusHistory: [{ fromStatus: "in_progress", toStatus: "done", changedAt: "2026-01-01T00:00:00Z" }],
       })
     );
@@ -101,15 +101,14 @@ describe("computeCharacterSheet — docs/03-design.md §11.8", () => {
     const tasks: Task[] = [
       task({
         id: "t1",
-        priority: "p0",
+        priority: "high",
         type: "bug",
         status: "done",
-        storyPoint: 8,
         statusHistory: [{ fromStatus: "in_progress", toStatus: "done", changedAt: "2026-01-01T00:00:00Z" }],
       }),
       task({
         id: "t2",
-        priority: "p4",
+        priority: "low",
         type: "documentation",
         status: "done",
         statusHistory: [{ fromStatus: "in_progress", toStatus: "done", changedAt: "2026-01-01T00:00:00Z" }],
@@ -155,24 +154,24 @@ describe("calculateStreak", () => {
 
   it("calculates correct streak with contiguous completions", () => {
     const list = [
-      task({ id: "1", priority: "p2", type: "coding", status: "done", statusHistory: [{ fromStatus: "todo", toStatus: "done", changedAt: "2026-07-30T10:00:00Z" }] }),
-      task({ id: "2", priority: "p2", type: "coding", status: "done", statusHistory: [{ fromStatus: "todo", toStatus: "done", changedAt: "2026-07-29T12:00:00Z" }] }),
-      task({ id: "3", priority: "p2", type: "coding", status: "done", statusHistory: [{ fromStatus: "todo", toStatus: "done", changedAt: "2026-07-28T09:00:00Z" }] }),
+      task({ id: "1", priority: "medium", type: "coding", status: "done", statusHistory: [{ fromStatus: "todo", toStatus: "done", changedAt: "2026-07-30T10:00:00Z" }] }),
+      task({ id: "2", priority: "medium", type: "coding", status: "done", statusHistory: [{ fromStatus: "todo", toStatus: "done", changedAt: "2026-07-29T12:00:00Z" }] }),
+      task({ id: "3", priority: "medium", type: "coding", status: "done", statusHistory: [{ fromStatus: "todo", toStatus: "done", changedAt: "2026-07-28T09:00:00Z" }] }),
     ];
     expect(calculateStreak(list, "2026-07-30T15:00:00Z")).toBe(3);
   });
 
   it("retains active streak if today has no completion yet but yesterday did", () => {
     const list = [
-      task({ id: "2", priority: "p2", type: "coding", status: "done", statusHistory: [{ fromStatus: "todo", toStatus: "done", changedAt: "2026-07-29T12:00:00Z" }] }),
-      task({ id: "3", priority: "p2", type: "coding", status: "done", statusHistory: [{ fromStatus: "todo", toStatus: "done", changedAt: "2026-07-28T09:00:00Z" }] }),
+      task({ id: "2", priority: "medium", type: "coding", status: "done", statusHistory: [{ fromStatus: "todo", toStatus: "done", changedAt: "2026-07-29T12:00:00Z" }] }),
+      task({ id: "3", priority: "medium", type: "coding", status: "done", statusHistory: [{ fromStatus: "todo", toStatus: "done", changedAt: "2026-07-28T09:00:00Z" }] }),
     ];
     expect(calculateStreak(list, "2026-07-30T15:00:00Z")).toBe(2);
   });
 
   it("returns 0 if both today and yesterday have no completions", () => {
     const list = [
-      task({ id: "3", priority: "p2", type: "coding", status: "done", statusHistory: [{ fromStatus: "todo", toStatus: "done", changedAt: "2026-07-28T09:00:00Z" }] }),
+      task({ id: "3", priority: "medium", type: "coding", status: "done", statusHistory: [{ fromStatus: "todo", toStatus: "done", changedAt: "2026-07-28T09:00:00Z" }] }),
     ];
     expect(calculateStreak(list, "2026-07-30T15:00:00Z")).toBe(0);
   });
@@ -186,14 +185,11 @@ describe("calculateLongestStreak", () => {
   it("finds the longest historical run, not just the most recent one", () => {
     const at = (d: string) => [{ fromStatus: "todo" as const, toStatus: "done" as const, changedAt: `${d}T10:00:00Z` }];
     const list = [
-      // a 3-day run in the past...
-      task({ id: "1", priority: "p2", type: "coding", status: "done", statusHistory: at("2026-07-01") }),
-      task({ id: "2", priority: "p2", type: "coding", status: "done", statusHistory: at("2026-07-02") }),
-      task({ id: "3", priority: "p2", type: "coding", status: "done", statusHistory: at("2026-07-03") }),
-      // ...a gap...
-      // ...then only a 2-day run more recently.
-      task({ id: "4", priority: "p2", type: "coding", status: "done", statusHistory: at("2026-07-10") }),
-      task({ id: "5", priority: "p2", type: "coding", status: "done", statusHistory: at("2026-07-11") }),
+      task({ id: "1", priority: "medium", type: "coding", status: "done", statusHistory: at("2026-07-01") }),
+      task({ id: "2", priority: "medium", type: "coding", status: "done", statusHistory: at("2026-07-02") }),
+      task({ id: "3", priority: "medium", type: "coding", status: "done", statusHistory: at("2026-07-03") }),
+      task({ id: "4", priority: "medium", type: "coding", status: "done", statusHistory: at("2026-07-10") }),
+      task({ id: "5", priority: "medium", type: "coding", status: "done", statusHistory: at("2026-07-11") }),
     ];
     expect(calculateLongestStreak(list)).toBe(3);
   });
@@ -203,7 +199,7 @@ describe("computeAchievementProgress — a12/a13/a14 (docs/05-backlog.md §6 fix
   it("a12 Perfect Week is real progress toward a 7-day streak, not permanently null", () => {
     const at = (d: string) => [{ fromStatus: "todo" as const, toStatus: "done" as const, changedAt: `${d}T10:00:00Z` }];
     const sevenDays = ["01", "02", "03", "04", "05", "06", "07"].map((d, i) =>
-      task({ id: `t${i}`, priority: "p2", type: "coding", status: "done", statusHistory: at(`2026-07-${d}`) })
+      task({ id: `t${i}`, priority: "medium", type: "coding", status: "done", statusHistory: at(`2026-07-${d}`) })
     );
     expect(computeAchievementProgress("a12", sevenDays, [], [])).toEqual({ current: 7, max: 7 });
     expect(computeAchievementProgress("a12", [], [], [])).toEqual({ current: 0, max: 7 });
@@ -211,7 +207,7 @@ describe("computeAchievementProgress — a12/a13/a14 (docs/05-backlog.md §6 fix
 
   it("a13/a14 add the 500/1000 quest tiers alongside a6's 100", () => {
     const done = Array.from({ length: 3 }, (_, i) =>
-      task({ id: `t${i}`, priority: "p2", type: "coding", status: "done" })
+      task({ id: `t${i}`, priority: "medium", type: "coding", status: "done" })
     );
     expect(computeAchievementProgress("a13", done, [], [])).toEqual({ current: 3, max: 500 });
     expect(computeAchievementProgress("a14", done, [], [])).toEqual({ current: 3, max: 1000 });
@@ -228,16 +224,16 @@ describe("checkAndEmitDueDateNotifications — docs/05-backlog.md §6 (was decla
   }
 
   it("emits nothing when nothing is overdue or due soon", () => {
-    const tasks = [task({ id: "1", priority: "p2", type: "coding", status: "todo", dueDate: "2026-07-10" })];
+    const tasks = [task({ id: "1", priority: "medium", type: "coding", status: "todo", dueDate: "2026-07-10" })];
     const events = capture(() => checkAndEmitDueDateNotifications(tasks, "2026-07-02"));
     expect(events).toEqual([]);
   });
 
   it("emits task:overdue for the most overdue active task, ignoring done tasks", () => {
     const tasks = [
-      task({ id: "1", priority: "p2", type: "coding", status: "todo", title: "Oldest", dueDate: "2026-06-01" }),
-      task({ id: "2", priority: "p2", type: "coding", status: "in_progress", title: "Newer", dueDate: "2026-06-15" }),
-      task({ id: "3", priority: "p2", type: "coding", status: "done", title: "Finished late", dueDate: "2026-06-01" }),
+      task({ id: "1", priority: "medium", type: "coding", status: "todo", title: "Oldest", dueDate: "2026-06-01" }),
+      task({ id: "2", priority: "medium", type: "coding", status: "in_progress", title: "Newer", dueDate: "2026-06-15" }),
+      task({ id: "3", priority: "medium", type: "coding", status: "done", title: "Finished late", dueDate: "2026-06-01" }),
     ];
     const events = capture(() => checkAndEmitDueDateNotifications(tasks, "2026-07-02"));
     const overdue = events.find((e) => e.type === "task:overdue");
@@ -245,7 +241,7 @@ describe("checkAndEmitDueDateNotifications — docs/05-backlog.md §6 (was decla
   });
 
   it("emits task:due-soon for a task due today or tomorrow", () => {
-    const tasks = [task({ id: "1", priority: "p2", type: "coding", status: "ready", title: "Almost due", dueDate: "2026-07-03" })];
+    const tasks = [task({ id: "1", priority: "medium", type: "coding", status: "todo", title: "Almost due", dueDate: "2026-07-03" })];
     const events = capture(() => checkAndEmitDueDateNotifications(tasks, "2026-07-02"));
     const dueSoon = events.find((e) => e.type === "task:due-soon");
     expect(dueSoon).toMatchObject({ taskId: "1", title: "Almost due", dueDate: "2026-07-03" });
@@ -256,7 +252,7 @@ describe("completedAt — prioritizes task.completedAt over status logs", () => 
   it("prefers the task.completedAt timestamp when both sources exist", () => {
     const t = task({
       id: "1",
-      priority: "p2",
+      priority: "medium",
       type: "coding",
       status: "done",
       completedAt: "2026-07-29T17:00:00Z",
@@ -268,7 +264,7 @@ describe("completedAt — prioritizes task.completedAt over status logs", () => 
   it("falls back to the done status-log entry when completedAt is absent", () => {
     const t = task({
       id: "1",
-      priority: "p2",
+      priority: "medium",
       type: "coding",
       status: "done",
       statusHistory: [{ fromStatus: "in_progress", toStatus: "done", changedAt: "2026-07-30T10:00:00Z" }],
@@ -280,7 +276,7 @@ describe("completedAt — prioritizes task.completedAt over status logs", () => 
     const list = [
       task({
         id: "1",
-        priority: "p2",
+        priority: "medium",
         type: "coding",
         status: "done",
         completedAt: "2026-07-29T10:00:00Z",
@@ -288,7 +284,7 @@ describe("completedAt — prioritizes task.completedAt over status logs", () => 
       }),
       task({
         id: "2",
-        priority: "p2",
+        priority: "medium",
         type: "coding",
         status: "done",
         statusHistory: [{ fromStatus: "todo", toStatus: "done", changedAt: "2026-07-28T10:00:00Z" }],

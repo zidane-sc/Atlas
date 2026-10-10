@@ -7,8 +7,6 @@ datasource db {
   provider = "postgresql"
 }
 
-// docs/02-architecture.md §4.1 — needed because the app is deployed publicly,
-// even though there's exactly one real account.
 model User {
   id        String   @id @default(uuid()) @db.Uuid
   email     String   @unique
@@ -31,10 +29,8 @@ model User {
 
   tasks        Task[]
   projects     Project[]
-  sprints      Sprint[]
   comments     Comment[]
   activityLogs ActivityLog[]
-  notes        Note[]
   xpLogs       XpLog[]
   settings     Setting[]
 
@@ -55,13 +51,9 @@ model Setting {
 }
 
 enum TaskStatus {
-  inbox
+  backlog
   todo
-  ready
   in_progress
-  blocked
-  waiting_external
-  testing
   done
   archived
 
@@ -70,141 +62,54 @@ enum TaskStatus {
 
 enum TaskType {
   coding
-  investigation
-  study
-  analysis
-  documentation
-  bug
-  deployment
-  testing
-  meeting
   research
   design
-  maintenance
-  refactor
-  incident
-  communication
+  documentation
+  bug
+  meeting
+  admin
 
   @@map("task_type")
 }
 
 enum TaskPriority {
-  p0
-  p1
-  p2
-  p3
-  p4
+  high
+  medium
+  low
 
   @@map("task_priority")
 }
 
-enum TaskEffort {
+enum TaskSize {
   xs
   s
   m
   l
   xl
-  xxl
 
-  @@map("task_effort")
+  @@map("task_size")
 }
 
 enum TaskReporter {
   self
-  qa
-  manager
-  pm
-  client
-  lecturer
-  friend
   other
 
   @@map("task_reporter")
 }
 
-// docs/02-architecture.md §4.4 — the core table.
-model Task {
-  id          String  @id @default(uuid()) @db.Uuid
-  code        String? @map("code")
-  title       String
-  description String?
-
-  projectId String?  @map("project_id") @db.Uuid
-  project   Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
-  sprintId  String?  @map("sprint_id") @db.Uuid
-  sprint    Sprint?  @relation(fields: [sprintId], references: [id], onDelete: SetNull)
-  parentId  String?  @map("parent_id") @db.Uuid
-  parent    Task?    @relation("TaskSubtasks", fields: [parentId], references: [id], onDelete: SetNull)
-  subtasks  Task[]   @relation("TaskSubtasks")
-
-  status   TaskStatus
-  type     TaskType
-  priority TaskPriority
-  effort   TaskEffort?
-
-  storyPoint Int? @map("story_point")
-
-  // Defaults to `self` — docs/01-product.md §8.8.
-  reporter TaskReporter @default(self)
-
-  ownerId String? @map("owner_id") @db.Uuid
-  owner   User?   @relation(fields: [ownerId], references: [id])
-
-  startDate DateTime? @map("start_date") @db.Date
-  dueDate   DateTime? @map("due_date") @db.Date
-
-  tags         TaskTag[]
-  relations    TaskRelation[] @relation("TaskRelations")
-  relatedTasks TaskRelation[] @relation("RelatedTaskRelations")
-  attachments  Attachment[]
-  deliverables Deliverable[]
-  noteLinks    NoteTaskLink[]
-
-  timeSpentSeconds Int     @default(0) @map("time_spent_seconds")
-  pinned           Boolean @default(false)
-
-  completedAt DateTime? @map("completed_at")
-  archivedAt  DateTime? @map("archived_at")
-  deletedAt   DateTime? @map("deleted_at")
-
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-
-  statusHistory TaskStatusLog[]
-  comments      Comment[]
-  activityLogs  ActivityLog[]
-  workSessions  WorkSession[]
-  xpLogs        XpLog[]
-
-  @@unique([ownerId, code])
-  @@index([status])
-  @@index([projectId])
-  @@index([sprintId])
-  @@index([parentId])
-  @@index([dueDate])
-  @@index([ownerId])
-  @@index([ownerId, status])
-  @@index([ownerId, deletedAt])
-  @@index([ownerId, deletedAt, status])
-  @@index([ownerId, deletedAt, createdAt])
-  @@map("tasks")
-}
-
 enum ProjectCategory {
-  FullTime    @map("Full-time")
-  University
-  SideProject @map("Side Project")
-  Freelance
-  Personal
-  Other
+  work
+  personal
+  learning
+  other
 
   @@map("project_category")
 }
 
 enum ProjectStatus {
   active
-  on_hold
   completed
+  archived
 
   @@map("project_status")
 }
@@ -228,42 +133,11 @@ model Project {
   updatedAt  DateTime  @updatedAt @map("updated_at")
 
   tasks        Task[]
-  sprints      Sprint[]    @relation("ProjectToSprint")
   activityLogs ActivityLog[]
 
   @@index([ownerId])
-  @@index([ownerId, archivedAt])
+  @@index([ownerId, status])
   @@map("projects")
-}
-
-enum SprintStatus {
-  planning
-  active
-  completed
-
-  @@map("sprint_status")
-}
-
-model Sprint {
-  id        String       @id @default(uuid()) @db.Uuid
-  name      String
-  projects  Project[]    @relation("ProjectToSprint")
-  startDate DateTime     @map("start_date") @db.Date
-  endDate   DateTime     @map("end_date") @db.Date
-  status    SprintStatus @default(planning)
-  goal      String?
-
-  ownerId String @map("owner_id") @db.Uuid
-  owner   User   @relation(fields: [ownerId], references: [id], onDelete: Cascade)
-
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-
-  tasks        Task[]
-  activityLogs ActivityLog[]
-
-  @@index([ownerId])
-  @@map("sprints")
 }
 
 model TaskStatusLog {
@@ -314,15 +188,8 @@ model Attachment {
 enum AttachmentType {
   github_pr
   github_issue
-  confluence
-  figma
-  slack
-  discord
-  google_docs
-  google_drive
-  meeting_recording
-  website
-  file_upload
+  link
+  file
   other
 
   @@map("attachment_type")
@@ -342,13 +209,9 @@ model Deliverable {
 
 enum DeliverableType {
   pr
-  confluence
-  presentation
-  meeting_notes
+  doc
   design
-  video
-  pdf
-  research
+  other
 
   @@map("deliverable_type")
 }
@@ -369,10 +232,8 @@ model TaskRelation {
 
 enum TaskRelationType {
   blocks
-  related
-  duplicate
-  caused_by
-  generated_from
+  relates_to
+  duplicates
 
   @@map("task_relation_type")
 }
@@ -427,57 +288,12 @@ model Comment {
   @@map("comments")
 }
 
-model Note {
-  id        String   @id @default(uuid()) @db.Uuid
-  userId    String   @map("user_id") @db.Uuid
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  title     String
-  content   String
-  tags      String[] @default([])
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-
-  attachments  NoteAttachment[]
-  taskLinks    NoteTaskLink[]
-
-  @@index([userId])
-  @@index([createdAt])
-  @@map("notes")
-}
-
-model NoteAttachment {
-  id        String   @id @default(uuid()) @db.Uuid
-  noteId    String   @map("note_id") @db.Uuid
-  note      Note     @relation(fields: [noteId], references: [id], onDelete: Cascade)
-  url       String
-  fileName  String   @map("file_name")
-  fileType  String?  @map("file_type")
-  createdAt DateTime @default(now()) @map("created_at")
-
-  @@index([noteId])
-  @@map("note_attachments")
-}
-
-model NoteTaskLink {
-  noteId    String   @map("note_id") @db.Uuid
-  note      Note     @relation(fields: [noteId], references: [id], onDelete: Cascade)
-  taskId    String   @map("task_id") @db.Uuid
-  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
-  createdAt DateTime @default(now()) @map("created_at")
-
-  @@id([noteId, taskId])
-  @@index([taskId])
-  @@map("note_task_links")
-}
-
 model ActivityLog {
   id        String   @id @default(uuid()) @db.Uuid
   taskId    String?  @map("task_id") @db.Uuid
   task      Task?    @relation(fields: [taskId], references: [id], onDelete: SetNull)
   projectId String?  @map("project_id") @db.Uuid
   project   Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
-  sprintId  String?  @map("sprint_id") @db.Uuid
-  sprint    Sprint?  @relation(fields: [sprintId], references: [id], onDelete: SetNull)
   actorId   String   @map("actor_id") @db.Uuid
   actor     User     @relation(fields: [actorId], references: [id], onDelete: Cascade)
   action    String
@@ -487,7 +303,6 @@ model ActivityLog {
   @@index([actorId])
   @@index([taskId])
   @@index([projectId])
-  @@index([sprintId])
   @@map("activity_logs")
 }
 
@@ -501,4 +316,60 @@ model WorkSession {
 
   @@index([taskId])
   @@map("work_sessions")
+}
+
+model Task {
+  id          String  @id @default(uuid()) @db.Uuid
+  code        String? @map("code")
+  title       String
+  description String?
+
+  projectId String?  @map("project_id") @db.Uuid
+  project   Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+
+  status   TaskStatus
+  type     TaskType
+  priority TaskPriority
+  size     TaskSize?
+
+  reporter TaskReporter @default(self)
+
+  ownerId String? @map("owner_id") @db.Uuid
+  owner   User?   @relation(fields: [ownerId], references: [id])
+
+  startDate DateTime? @map("start_date") @db.Date
+  dueDate   DateTime? @map("due_date") @db.Date
+
+  tags         TaskTag[]
+  relations    TaskRelation[] @relation("TaskRelations")
+  relatedTasks TaskRelation[] @relation("RelatedTaskRelations")
+  attachments  Attachment[]
+  deliverables Deliverable[]
+
+  timeSpentSeconds Int     @default(0) @map("time_spent_seconds")
+  pinned           Boolean @default(false)
+
+  completedAt DateTime? @map("completed_at")
+  archivedAt  DateTime? @map("archived_at")
+  deletedAt   DateTime? @map("deleted_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  statusHistory TaskStatusLog[]
+  comments      Comment[]
+  activityLogs  ActivityLog[]
+  workSessions  WorkSession[]
+  xpLogs        XpLog[]
+
+  @@unique([ownerId, code])
+  @@index([status])
+  @@index([projectId])
+  @@index([dueDate])
+  @@index([ownerId])
+  @@index([ownerId, status])
+  @@index([ownerId, deletedAt])
+  @@index([ownerId, deletedAt, status])
+  @@index([ownerId, deletedAt, createdAt])
+  @@map("tasks")
 }

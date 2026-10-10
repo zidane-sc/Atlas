@@ -8,7 +8,6 @@ import { createComment as apiCreateComment } from "@/lib/actions/comments";
 import { updateUserStats as apiUpdateUserStats, claimDailyQuestAction as apiClaimDailyQuest } from "@/lib/actions/user";
 import { useNotifications } from "@/hooks/useNotifications";
 import { useProjects } from "@/components/providers/ProjectsProvider";
-import { useSprints } from "@/components/providers/SprintsProvider";
 import { useSettings } from "@/components/providers/SettingsProvider";
 import {
   createTask as apiCreateTask,
@@ -205,7 +204,6 @@ export function TasksProvider({
   const lastSyncTimeRef = useRef<Record<string, number>>({});
   const { notify, emit } = useNotifications();
   const { projects } = useProjects();
-  const { sprints } = useSprints();
   const { soundEnabled, focusMinutes } = useSettings();
 
   useEffect(() => {
@@ -227,6 +225,45 @@ export function TasksProvider({
     checkAndEmitDueDateNotifications(tasks, today);
   }, [tasks]);
 
+  // Real-time multi-device sync via SSE
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    let es: EventSource | null = null;
+    try {
+      es = new EventSource("/api/sync/events");
+      es.onmessage = (e) => {
+        try {
+          const payload = JSON.parse(e.data);
+          if (payload.type === "timer:started" && payload.data?.taskId) {
+            setActiveTimer({
+              taskId: payload.data.taskId,
+              startedAt: payload.data.startedAt || Date.now(),
+              phase: payload.data.phase || "focus",
+            });
+          } else if (payload.type === "timer:stopped") {
+            setActiveTimer(null);
+          } else if (payload.type === "task:created" && payload.data?.task) {
+            const mapped = mapDbTaskToClient(payload.data.task, projects as any, []);
+            dispatch({ type: "insert", task: mapped });
+          } else if (payload.type === "task:updated" && payload.data?.task) {
+            const mapped = mapDbTaskToClient(payload.data.task, projects as any, []);
+            dispatch({ type: "sync", task: mapped });
+          } else if (payload.type === "task:deleted" && payload.data?.id) {
+            dispatch({ type: "delete", id: payload.data.id });
+          }
+        } catch {
+          // Heartbeat or unparseable event
+        }
+      };
+    } catch (err) {
+      console.warn("SSE connection error:", err);
+    }
+
+    return () => {
+      es?.close();
+    };
+  }, [projects]);
+
   const value = useMemo<TasksContextValue>(
     () => ({
       tasks,
@@ -238,12 +275,10 @@ export function TasksProvider({
           title: values.title,
           description: values.description || undefined,
           projectId: projects.find((p) => p.name === values.project)?.id,
-          sprintId: values.sprint ? sprints.find((s) => s.name === values.sprint)?.id : undefined,
           status: values.status,
           type: values.type,
           priority: values.priority,
-          effort: values.effort,
-          storyPoint: values.storyPoint,
+          size: values.size,
           reporter: values.reporter || "self",
           startDate: values.startDate || undefined,
           dueDate: values.dueDate || undefined,
@@ -258,8 +293,7 @@ export function TasksProvider({
           notify(result.error.message, "error");
         } else {
           const dbProjects = projects as any[];
-          const dbSprints = sprints as any[];
-          const clientTask = mapDbTaskToClient(result.data.task, dbProjects, dbSprints);
+          const clientTask = mapDbTaskToClient(result.data.task, dbProjects, []);
           dispatch({ type: "insert", task: clientTask });
           if (result.data.characterSheet) {
             checkAndEmitLevelUp(characterSheet.globalXP, result.data.characterSheet.globalXP);
@@ -284,26 +318,15 @@ export function TasksProvider({
           setActiveTimer(null);
           dispatch({ type: "addTime", id, seconds });
 
-          apiStopFocusTimer().then((res) => {
-            if (res.success) {
-              const { taskId, seconds: finalSeconds, startedAt, endedAt } = res.data;
-              apiLogWorkSession(taskId, finalSeconds, startedAt, endedAt).catch((err) => {
-                notify(err?.error?.message ?? "Failed to log work session", "error");
-              });
-            } else {
-              notify(res.error.message, "error");
-              dispatch({ type: "addTime", id, seconds: -seconds });
-            }
-          }).catch((err) => {
-            notify(err?.error?.message ?? "Failed to stop timer", "error");
-            dispatch({ type: "addTime", id, seconds: -seconds });
+          apiStopFocusTimer().catch((err) => {
+            console.error("Failed to stop timer on task status change:", err);
           });
         }
 
         if (prev.status !== "done" && values.status === "done") {
           setJustCompletedAt(Date.now());
           const onTime = !prev.dueDate || new Date() <= new Date(`${prev.dueDate}T23:59:59`);
-          const xp = calcTaskXP(values.priority, values.storyPoint, onTime);
+          const xp = calcTaskXP(values.priority, values.size, onTime);
           const cid = crypto.randomUUID();
 
           const oldStreak = calculateStreak(allTimeTasks);
@@ -334,12 +357,10 @@ export function TasksProvider({
           title: values.title,
           description: values.description || undefined,
           projectId: projects.find((p) => p.name === values.project)?.id,
-          sprintId: values.sprint ? sprints.find((s) => s.name === values.sprint)?.id : undefined,
           status: values.status,
           type: values.type,
           priority: values.priority,
-          effort: values.effort,
-          storyPoint: values.storyPoint,
+          size: values.size,
           reporter: values.reporter || "self",
           startDate: values.startDate || undefined,
           dueDate: values.dueDate || undefined,
@@ -360,11 +381,9 @@ export function TasksProvider({
             status: oldTask.status,
             type: oldTask.type,
             priority: oldTask.priority,
-            effort: oldTask.effort,
-            storyPoint: oldTask.storyPoint ?? undefined,
+            size: oldTask.size,
             startDate: oldTask.startDate ?? undefined,
             dueDate: oldTask.dueDate ?? undefined,
-            sprint: oldTask.sprint,
             waitingOn: oldTask.waitingOn,
             reporter: oldTask.reporter,
             tags: oldTask.tags,
@@ -378,8 +397,7 @@ export function TasksProvider({
         // Sync response to client state — only if this is the latest request for this task
         if (lastSyncTimeRef.current[id] === requestTime) {
           const dbProjects = projects as any[];
-          const dbSprints = sprints as any[];
-          const syncedTask = mapDbTaskToClient(result.data.task, dbProjects, dbSprints);
+          const syncedTask = mapDbTaskToClient(result.data.task, dbProjects, []);
           dispatch({ type: "sync", task: syncedTask });
         }
         // Level-up/achievement-unlock detection: "old" is whatever the client currently holds
@@ -421,11 +439,9 @@ export function TasksProvider({
           status: source.status,
           type: source.type,
           priority: source.priority,
-          effort: source.effort,
-          storyPoint: source.storyPoint,
+          size: source.size,
           startDate: source.startDate,
           dueDate: source.dueDate,
-          sprint: source.sprint,
           waitingOn: source.waitingOn,
           reporter: source.reporter,
           tags: [...source.tags],
@@ -444,12 +460,10 @@ export function TasksProvider({
           title: values.title,
           description: values.description || undefined,
           projectId: projects.find((p) => p.name === values.project)?.id,
-          sprintId: values.sprint ? (sprints.find((s) => s.name === values.sprint)?.id || undefined) : undefined,
           status: values.status,
           type: values.type,
           priority: values.priority,
-          effort: values.effort || undefined,
-          storyPoint: values.storyPoint || undefined,
+          size: values.size,
           reporter: values.reporter || "self",
           startDate: values.startDate || undefined,
           dueDate: values.dueDate || undefined,
@@ -466,8 +480,7 @@ export function TasksProvider({
           setSheet((s) => (s.task?.id === tempId ? { ...s, open: false } : s));
         } else {
           const dbProjects = projects as any[];
-          const dbSprints = sprints as any[];
-          const clientTask = mapDbTaskToClient(result.data.task, dbProjects, dbSprints);
+          const clientTask = mapDbTaskToClient(result.data.task, dbProjects, []);
           dispatch({ type: "replaceId", tempId, realId: clientTask.id });
           dispatch({ type: "sync", task: clientTask });
           setSheet((s) =>
@@ -556,6 +569,13 @@ export function TasksProvider({
         if (!res.success) {
           notify(res.error.message, "error");
           setActiveTimer(null);
+        } else if (res.data?.taskMovedToInProgress) {
+          dispatch({
+            type: "update",
+            id: taskId,
+            changedAt: new Date().toISOString(),
+            values: { status: "in_progress" } as any,
+          });
         }
       },
       stopTimer: async () => {
@@ -567,15 +587,10 @@ export function TasksProvider({
 
         const res = await apiStopFocusTimer();
         if (res.success) {
-          const { taskId, seconds: finalSeconds, startedAt, endedAt, phase } = res.data;
-
+          const { phase } = res.data;
           if (phase === "focus") {
             dispatch({ type: "addTime", id: current.taskId, seconds });
-            const logRes = await apiLogWorkSession(taskId, finalSeconds, startedAt, endedAt);
-            if (!logRes.success) {
-              notify(logRes.error.message, "error");
-              dispatch({ type: "addTime", id: current.taskId, seconds: -seconds });
-            }
+            notify(`⏱ Focus session recorded (+${Math.round(seconds / 60)}m)`, "success");
           }
         } else {
           notify(res.error.message, "error");
@@ -592,18 +607,12 @@ export function TasksProvider({
           return;
         }
 
-        const { seconds: finalSeconds, startedAt, endedAt, phase } = res.data;
+        const { seconds: finalSeconds, phase } = res.data;
 
         if (phase === "focus") {
           const limitSeconds = focusMinutes * 60;
           const loggedSeconds = Math.min(finalSeconds, limitSeconds);
-
           dispatch({ type: "addTime", id: taskId, seconds: loggedSeconds });
-
-          apiLogWorkSession(taskId, loggedSeconds, startedAt, endedAt).catch((err) => {
-            notify(err?.error?.message ?? "Failed to log work session", "error");
-            dispatch({ type: "addTime", id: taskId, seconds: -loggedSeconds });
-          });
         }
 
         const nextPhase = current.phase === "focus" ? "break" : "focus";
@@ -632,7 +641,7 @@ export function TasksProvider({
         setJustCompletedAt(null);
         setBonusXp(0);
         setBonusCoins(0);
-        setUnlockedAchievements(computeUnlockedAchievements([], projects as any[], sprints as any[]));
+        setUnlockedAchievements(computeUnlockedAchievements([], projects as any[], []));
         setPurchasedDecorations([]);
         setPlacedDecorations({});
         setSavedFilters([]);
@@ -760,7 +769,6 @@ export function TasksProvider({
       activeTimer,
       notify,
       projects,
-      sprints,
       soundEnabled,
     ]
   );

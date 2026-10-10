@@ -6,16 +6,17 @@ import { useTasks } from "@/components/providers/TasksProvider";
 
 export default function Page() {
   const { tasks: allTasks } = useTasks();
-  const tasks = allTasks.filter((t) => t.status === "waiting_external");
+  // waiting_external status removed in simplified model
+  const tasks: typeof allTasks = [];
 
   return (
     <FilteredView
       title="WAITING EXTERNAL"
-      colorVar="--color-status-waiting-external"
+      colorVar="--color-text-muted"
       icon={Clock}
-      desc="Quests waiting on another person or system"
+      desc="This view is no longer available — waiting_external status was removed in simplified model"
       tasks={tasks}
-      empty="[ NOTHING WAITING ]"
+      empty="[ STATUS REMOVED ]"
       showNewQuest={false}
     />
   );

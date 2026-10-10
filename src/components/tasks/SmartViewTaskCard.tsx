@@ -63,38 +63,16 @@ export function SmartViewTaskCard({ task, onSelect }: { task: Task; onSelect: (t
 
       {/* Stats: Effort + Story Points + Project */}
       <div className="grid grid-cols-3 gap-2 mb-2 text-center">
-        {task.effort ? (
+        {task.size ? (
           <div className="border border-border p-1 bg-secondary/30">
-            <div className="text-xs text-muted-foreground">EFFORT</div>
-            <div className="text-sm font-bold">{task.effort.toUpperCase()}</div>
+            <div className="text-xs text-muted-foreground">SIZE</div>
+            <div className="text-sm font-bold">{task.size.toUpperCase()}</div>
           </div>
         ) : (
-          <div className="border border-border/30 p-1 bg-secondary/10">
-            <div className="text-xs text-muted-foreground">—</div>
-          </div>
-        )}
-
-        {task.storyPoint ? (
-          <div className="border border-primary/50 p-1 bg-primary/10">
-            <div className="text-xs text-muted-foreground">POINTS</div>
-            <div className="text-sm font-bold" style={{ color: "var(--color-xp-gold)" }}>{task.storyPoint}</div>
-          </div>
-        ) : (
-          <div className="border border-border/30 p-1 bg-secondary/10">
-            <div className="text-xs text-muted-foreground">—</div>
-          </div>
-        )}
-
-        {task.project ? (
-          <div className="border border-border p-1 bg-secondary/30">
-            <div className="text-xs text-muted-foreground">PROJECT</div>
-            <div className="text-xs font-bold truncate">{task.project}</div>
-          </div>
-        ) : (
-          <div className="border border-border/30 p-1 bg-secondary/10">
-            <div className="text-xs text-muted-foreground">—</div>
-          </div>
-        )}
+                  <div className="border border-border/30 p-1 bg-secondary/10">
+                    <div className="text-xs text-muted-foreground">—</div>
+                  </div>
+                )}
       </div>
 
       {/* Tags + Description */}

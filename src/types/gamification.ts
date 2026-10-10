@@ -20,7 +20,7 @@ export interface Project {
   emoji: string;
   category: string;
   description: string;
-  status: "active" | "on_hold" | "completed";
+  status: "active" | "completed" | "archived";
 }
 
 export interface Sprint {

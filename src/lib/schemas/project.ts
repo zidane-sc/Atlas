@@ -1,8 +1,8 @@
 import { z } from "zod";
+import type { ProjectCategory, ProjectStatus } from "@/generated/prisma/client";
 
-export const PROJECT_CATEGORIES = ["Full-time", "University", "Side Project", "Freelance", "Personal", "Other"] as const;
+export const PROJECT_CATEGORIES = ["Work", "Personal", "Learning", "Other"] as const;
 
-/** Swatch options for the New Project panel — colorVar points at an existing palette token. */
 export const PROJECT_COLOR_OPTIONS = [
   { label: "Red", colorVar: "--color-priority-p0" },
   { label: "Violet", colorVar: "--color-status-waiting-external" },
@@ -12,7 +12,7 @@ export const PROJECT_COLOR_OPTIONS = [
   { label: "Muted", colorVar: "--color-text-muted" },
 ] as const;
 
-export const PROJECT_STATUSES = ["active", "on_hold", "completed"] as const;
+export const PROJECT_STATUSES = ["active", "completed", "archived"] as const;
 
 export const projectFormSchema = z.object({
   name: z.string().trim().min(1, "Project name is required"),
@@ -51,21 +51,20 @@ export const updateProjectSchema = z.object({
   status: z.enum(PROJECT_STATUSES).optional(),
 });
 
-import { ProjectCategory } from "@/generated/prisma/client";
-
 export type UpdateProjectInput = z.input<typeof updateProjectSchema>;
 
 export function toDbProjectCategory(cat: string): ProjectCategory {
-  if (cat === "Full-time") return "FullTime";
-  if (cat === "Side Project") return "SideProject";
-  return cat as ProjectCategory;
+  const lower = cat.toLowerCase();
+  if (lower === "work") return "work" as ProjectCategory;
+  if (lower === "personal") return "personal" as ProjectCategory;
+  if (lower === "learning") return "learning" as ProjectCategory;
+  return "other" as ProjectCategory;
 }
 
-/** Reverse of {@link toDbProjectCategory} — Prisma returns the compact enum form (e.g. `FullTime`), not the UI label. */
 export function fromDbProjectCategory(cat: string): (typeof PROJECT_CATEGORIES)[number] {
-  if (cat === "FullTime") return "Full-time";
-  if (cat === "SideProject") return "Side Project";
-  return cat as (typeof PROJECT_CATEGORIES)[number];
+  const lower = cat.toLowerCase();
+  if (lower === "work") return "Work";
+  if (lower === "personal") return "Personal";
+  if (lower === "learning") return "Learning";
+  return "Other";
 }
-
-

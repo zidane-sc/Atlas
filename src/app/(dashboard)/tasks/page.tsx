@@ -33,7 +33,7 @@ const TABS: [Tab, string, string][] = [
   ["by-project", "◧", "PROJECTS"],
   ["archive", "📖", "ARCHIVE"],
 ];
-const PRIORITY_ORDER: Priority[] = ["p0", "p1", "p2", "p3", "p4"];
+const PRIORITY_ORDER: Priority[] = ["high", "medium", "low"];
 
 export default function Page() {
   const searchParams = useSearchParams();
@@ -59,7 +59,7 @@ export default function Page() {
     const filterParam = searchParams.get("filter");
     if (filterParam === "blocked") {
       setTab("list");
-      setFilters((prev) => ({ ...prev, statuses: ["blocked"] as TaskStatus[] }));
+      setFilters((prev) => ({ ...prev, statuses: ["in_progress"] as TaskStatus[] }));
     }
   }, [searchParams]);
 
@@ -231,7 +231,7 @@ function ListTab({
     </div>
   );
 }
-type SortCol = "priority" | "title" | "status" | "due" | "sp";
+type SortCol = "priority" | "title" | "status" | "due";
 
 function SortableCol({ col, ch, sc, sd, onSort }: { col: SortCol; ch: string; sc: SortCol; sd: "asc" | "desc"; onSort: (col: SortCol) => void }) {
   return (
@@ -269,7 +269,6 @@ function TableTab({
       else if (sc === "title") { av = a.title.toLowerCase(); bv = b.title.toLowerCase(); }
       else if (sc === "status") { av = a.status; bv = b.status; }
       else if (sc === "due") { av = a.dueDate || "z"; bv = b.dueDate || "z"; }
-      else if (sc === "sp") { av = a.storyPoint ?? 0; bv = b.storyPoint ?? 0; }
       return sd === "asc" ? (av < bv ? -1 : av > bv ? 1 : 0) : (av > bv ? -1 : av < bv ? 1 : 0);
     });
   }, [tasks, sc, sd]);
@@ -287,8 +286,6 @@ function TableTab({
             <th className="px-3 py-2 text-left text-sm text-muted-foreground">TYPE</th>
             <SortableCol col="title" ch="TITLE" {...sortHeaderProps} />
             <SortableCol col="due" ch="DUE" {...sortHeaderProps} />
-            <SortableCol col="sp" ch="SP" {...sortHeaderProps} />
-            <th className="px-3 py-2 text-left text-sm text-muted-foreground">EFFORT</th>
           </tr>
         </thead>
         <tbody>
@@ -306,8 +303,6 @@ function TableTab({
                 <td className="px-3 py-2 text-sm">{TYPE_ICON[t.type]}</td>
                 <td className="max-w-xs truncate px-3 py-2 text-sm text-foreground">{t.title}</td>
                 <td className="px-3 py-2 text-sm" style={{ color: ov ? "var(--color-status-blocked)" : "var(--color-text-muted)" }}>{formatDueDate(t.dueDate)}</td>
-                <td className="px-3 py-2 text-sm text-muted-foreground">{t.storyPoint ?? "—"}</td>
-                <td className="px-3 py-2 text-sm text-muted-foreground uppercase">{t.effort ?? "—"}</td>
               </tr>
             );
           })}
@@ -412,11 +407,9 @@ function CalendarTab({ tasks, onSelect }: { tasks: Task[]; onSelect: (t: Task) =
             status: task.status,
             type: task.type,
             priority: task.priority,
-            effort: task.effort,
-            storyPoint: task.storyPoint,
+            size: task.size,
             ...{ [calendarView === "due-date" ? "dueDate" : "startDate"]: previousDate || '' },
             waitingOn: task.waitingOn,
-            sprint: task.sprint,
             reporter: task.reporter,
             tags: task.tags,
             relations: task.relations,
@@ -434,11 +427,9 @@ function CalendarTab({ tasks, onSelect }: { tasks: Task[]; onSelect: (t: Task) =
       status: task.status,
       type: task.type,
       priority: task.priority,
-      effort: task.effort,
-      storyPoint: task.storyPoint,
+      size: task.size,
       ...updateData,
       waitingOn: task.waitingOn,
-      sprint: task.sprint,
       reporter: task.reporter,
       tags: task.tags,
       relations: task.relations,
@@ -597,11 +588,9 @@ function CalendarTab({ tasks, onSelect }: { tasks: Task[]; onSelect: (t: Task) =
 
 /** Per-priority bar-fill luminance, so the title text stays readable on both light and dark bars. */
 const PRIORITY_BAR_TEXT_VAR: Record<Priority, string> = {
-  p0: "--color-text-primary",
-  p1: "--color-bg-deep",
-  p2: "--color-bg-deep",
-  p3: "--color-text-primary",
-  p4: "--color-text-primary",
+  high: "--color-text-primary",
+  medium: "--color-bg-deep",
+  low: "--color-text-primary",
 };
 
 function TimelineTab({ tasks, projects, onSelect }: { tasks: Task[]; projects: Project[]; onSelect: (t: Task) => void }) {
@@ -739,7 +728,7 @@ function ArchiveTab({
           <p className="py-20 text-center text-base text-muted-foreground">[ HALL IS EMPTY ]</p>
         ) : (
           archived.map(({ task, completedAt: doneAt }) => {
-            const xp = calcTaskXP(task.priority, task.storyPoint, isTaskOnTime(task));
+            const xp = calcTaskXP(task.priority, task.size, isTaskOnTime(task));
             return (
               <button
                 key={task.id}

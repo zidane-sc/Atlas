@@ -6,7 +6,7 @@ import { useTasks } from "@/components/providers/TasksProvider";
 
 export default function Page() {
   const { tasks: allTasks } = useTasks();
-  const tasks = allTasks.filter((t) => t.status === "inbox");
+  const tasks = allTasks.filter((t) => t.status === "backlog");
 
   return (
     <FilteredView

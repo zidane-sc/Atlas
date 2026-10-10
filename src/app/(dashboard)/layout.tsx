@@ -1,23 +1,21 @@
 import { redirect } from "next/navigation";
 import { SessionProvider } from "next-auth/react";
-import { unstable_cache } from "next/cache";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { MobileTopBar } from "@/components/layout/MobileTopBar";
 import { DefaultViewRedirect } from "@/components/layout/DefaultViewRedirect";
 import { CommandPalette } from "@/components/layout/CommandPalette";
 import { TaskFormSheet } from "@/components/tasks/TaskFormSheet";
 import { ProjectFormSheet } from "@/components/projects/ProjectFormSheet";
-import { SprintFormSheet } from "@/components/sprints/SprintFormSheet";
+import { GlobalActiveTimer } from "@/components/gamification/GlobalActiveTimer";
 import { TasksProvider } from "@/components/providers/TasksProvider";
 import { ProjectsProvider } from "@/components/providers/ProjectsProvider";
-import { SprintsProvider } from "@/components/providers/SprintsProvider";
 import { CommandPaletteProvider } from "@/components/providers/CommandPaletteProvider";
 import { SidebarProvider } from "@/components/providers/SidebarProvider";
 import { SettingsProvider } from "@/components/providers/SettingsProvider";
 import { NotificationProvider } from "@/components/providers/NotificationProvider";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { mapDbTaskToClient, mapDbProjectToClient, mapDbSprintToClient } from "@/lib/tasks-reducer";
+import { mapDbTaskToClient, mapDbProjectToClient } from "@/lib/tasks-reducer";
 import { getCharacterSheetData } from "@/lib/character-sheet-data";
 import { seedInitialData } from "@/lib/seeders/initial-data";
 import type { SavedFilterClient } from "@/lib/actions/filters";
@@ -46,7 +44,7 @@ export default async function DashboardLayout({
   // the user was created now (createdAt ~ now) or by checking projects/sprints count.
   const isNewUser = owner.createdAt.getTime() > now - 5000; // created within last 5s
 
-  const [dbTasks, rawDbAllDoneTasks, rawDbProjects, rawDbSprints, rawDbActivityLogs, rawDbSettings] = await Promise.all([
+  const [dbTasks, rawDbAllDoneTasks, rawDbProjects, rawDbActivityLogs, rawDbSettings] = await Promise.all([
     // No nested `statusHistory`/`comments` here — both are now on-demand only, fetched by
     // `getTaskDetails` when TaskFormSheet opens a specific task. `createdAt`/`completedAt` are
     // direct scalar columns (see Task.createdAt, types/task.ts), so nothing in the bulk views
@@ -68,9 +66,7 @@ export default async function DashboardLayout({
         status: true,
         type: true,
         priority: true,
-        storyPoint: true,
         projectId: true,
-        sprintId: true,
         completedAt: true,
         dueDate: true,
         createdAt: true,
@@ -79,11 +75,6 @@ export default async function DashboardLayout({
     db.project.findMany({
       where: { ownerId: owner.id, archivedAt: null },
       orderBy: { createdAt: "asc" },
-    }),
-    db.sprint.findMany({
-      where: { ownerId: owner.id },
-      orderBy: { startDate: "asc" },
-      include: { projects: { select: { id: true } } },
     }),
     db.activityLog.findMany({
       where: { actorId: owner.id },
@@ -95,7 +86,6 @@ export default async function DashboardLayout({
         createdAt: true,
         task: { select: { title: true } },
         project: { select: { emoji: true, name: true } },
-        sprint: { select: { name: true } },
       },
     }),
     db.setting.findMany({
@@ -104,7 +94,6 @@ export default async function DashboardLayout({
   ]);
 
   let dbProjects = rawDbProjects;
-  let dbSprints = rawDbSprints;
 
   // Seed initial data only for brand new users (first login)
   if (isNewUser) {
@@ -113,21 +102,14 @@ export default async function DashboardLayout({
       where: { ownerId: owner.id, archivedAt: null },
       orderBy: { createdAt: "asc" },
     });
-    dbSprints = await db.sprint.findMany({
-      where: { ownerId: owner.id },
-      orderBy: { startDate: "asc" },
-      include: { projects: { select: { id: true } } },
-    });
   }
 
-  const tasks = dbTasks.map((t) => mapDbTaskToClient(t, dbProjects, dbSprints));
-  const allDoneTasks = rawDbAllDoneTasks.map((t) => mapDbTaskToClient(t, dbProjects, dbSprints));
+  const tasks = dbTasks.map((t) => mapDbTaskToClient(t, dbProjects, []));
+  const allDoneTasks = rawDbAllDoneTasks.map((t) => mapDbTaskToClient(t, dbProjects, []));
   const projects = dbProjects.map(mapDbProjectToClient);
-  const sprints = dbSprints.map(mapDbSprintToClient);
   const characterSheetData = await getCharacterSheetData(owner.id, {
     tasks: allDoneTasks,
     projects,
-    sprints,
     bonusXp: owner.bonusXp,
     bonusCoins: owner.bonusCoins,
   });
@@ -140,7 +122,6 @@ export default async function DashboardLayout({
     taskTitle: l.task?.title || undefined,
     projectEmoji: l.project?.emoji || undefined,
     projectName: l.project?.name || undefined,
-    sprintName: l.sprint?.name || undefined,
   }));
 
   const initialActiveTimer = owner.activeTimerTaskId && owner.activeTimerStartedAt
@@ -157,38 +138,36 @@ export default async function DashboardLayout({
         <NotificationProvider>
         <DefaultViewRedirect />
         <ProjectsProvider initialProjects={projects}>
-          <SprintsProvider initialSprints={sprints}>
-            <TasksProvider
-              initialTasks={tasks}
-              initialAllDoneTasks={allDoneTasks}
-              initialActivityLogs={activityLogs}
-              initialBonusXp={owner.bonusXp}
-              initialBonusCoins={owner.bonusCoins}
-              initialCharacterSheet={characterSheetData.characterSheet}
-              initialUnlockedAchievements={characterSheetData.unlockedAchievements}
-              initialPurchasedDecorations={owner.purchasedDecorations}
-              initialPlacedDecorations={owner.placedDecorations as Record<string, any>}
-              initialSavedFilters={settingsFromDb.find(s => s.key === "savedFilters")?.value as unknown as SavedFilterClient[] ?? []}
-              initialLastQuestClaimedAt={owner.lastQuestClaimedAt ? owner.lastQuestClaimedAt.toISOString() : null}
-              initialActiveTimer={initialActiveTimer}
-            >
-              <CommandPaletteProvider>
-                <SidebarProvider>
-                  <div className="flex h-full flex-1 overflow-hidden">
-                    <Sidebar />
-                    <div className="flex flex-1 flex-col overflow-hidden">
-                      <MobileTopBar />
-                      <div className="flex-1 overflow-y-auto">{children}</div>
-                    </div>
+          <TasksProvider
+            initialTasks={tasks}
+            initialAllDoneTasks={allDoneTasks}
+            initialActivityLogs={activityLogs}
+            initialBonusXp={owner.bonusXp}
+            initialBonusCoins={owner.bonusCoins}
+            initialCharacterSheet={characterSheetData.characterSheet}
+            initialUnlockedAchievements={characterSheetData.unlockedAchievements}
+            initialPurchasedDecorations={owner.purchasedDecorations}
+            initialPlacedDecorations={owner.placedDecorations as Record<string, any>}
+            initialSavedFilters={settingsFromDb.find(s => s.key === "savedFilters")?.value as unknown as SavedFilterClient[] ?? []}
+            initialLastQuestClaimedAt={owner.lastQuestClaimedAt ? owner.lastQuestClaimedAt.toISOString() : null}
+            initialActiveTimer={initialActiveTimer}
+          >
+            <CommandPaletteProvider>
+              <SidebarProvider>
+                <div className="flex h-full flex-1 overflow-hidden">
+                  <Sidebar />
+                  <div className="flex flex-1 flex-col overflow-hidden">
+                    <MobileTopBar />
+                    <div className="flex-1 overflow-y-auto">{children}</div>
                   </div>
-                </SidebarProvider>
-                <TaskFormSheet />
-                <ProjectFormSheet />
-                <SprintFormSheet />
-                <CommandPalette />
-              </CommandPaletteProvider>
-            </TasksProvider>
-          </SprintsProvider>
+                </div>
+              </SidebarProvider>
+              <TaskFormSheet />
+              <ProjectFormSheet />
+              <CommandPalette />
+              <GlobalActiveTimer />
+            </CommandPaletteProvider>
+          </TasksProvider>
         </ProjectsProvider>
         </NotificationProvider>
       </SettingsProvider>

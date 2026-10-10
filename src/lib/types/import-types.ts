@@ -11,7 +11,7 @@ export interface WorkSessionExport {
 export interface ActivityLogExport {
   taskId: string | null;
   projectId: string | null;
-  sprintId: string | null;
+  sprintId?: string | null;
   action: string;
   details: unknown;
   createdAt: string;
@@ -20,7 +20,7 @@ export interface ActivityLogExport {
 export interface ImportPayload {
   tasks: Task[];
   projects: Project[];
-  sprints: Sprint[];
+  sprints?: Sprint[];
   bonus: { xp: number; coins: number };
   workSessions?: WorkSessionExport[];
   activityLogs?: ActivityLogExport[];

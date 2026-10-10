@@ -1,6 +1,6 @@
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { mapDbTaskToClient, mapDbProjectToClient, mapDbSprintToClient } from "@/lib/tasks-reducer";
+import { mapDbTaskToClient, mapDbProjectToClient } from "@/lib/tasks-reducer";
 import { computeAchievementProgress, computeUnlockedAchievements } from "@/lib/gamification";
 import { mockAchievements } from "@/lib/mock-data";
 import type { Achievement } from "@/types/gamification";
@@ -16,7 +16,7 @@ export async function getAchievementsPageData(): Promise<AchievementDisplay[] | 
   const owner = await db.user.findUnique({ where: { email: session.user.email }, select: { id: true } });
   if (!owner) return null;
 
-  const [dbTasks, dbProjects, dbSprints] = await Promise.all([
+  const [dbTasks, dbProjects] = await Promise.all([
     db.task.findMany({
       where: { ownerId: owner.id, deletedAt: null },
       select: {
@@ -26,9 +26,8 @@ export async function getAchievementsPageData(): Promise<AchievementDisplay[] | 
         status: true,
         type: true,
         priority: true,
-        storyPoint: true,
+        size: true,
         projectId: true,
-        sprintId: true,
         completedAt: true,
         dueDate: true,
         startDate: true,
@@ -36,14 +35,12 @@ export async function getAchievementsPageData(): Promise<AchievementDisplay[] | 
       },
     }),
     db.project.findMany({ where: { ownerId: owner.id, archivedAt: null } }),
-    db.sprint.findMany({ where: { ownerId: owner.id }, include: { projects: { select: { id: true } } } }),
   ]);
 
-  const tasks = dbTasks.map((t) => mapDbTaskToClient(t, dbProjects, dbSprints));
+  const tasks = dbTasks.map((t) => mapDbTaskToClient(t, dbProjects, []));
   const projects = dbProjects.map(mapDbProjectToClient);
-  const sprints = dbSprints.map(mapDbSprintToClient);
 
-  const unlockStatus = computeUnlockedAchievements(tasks, projects, sprints);
+  const unlockStatus = computeUnlockedAchievements(tasks, projects, []);
 
   return mockAchievements.map((a) => {
     const status = unlockStatus[a.id];
@@ -51,7 +48,7 @@ export async function getAchievementsPageData(): Promise<AchievementDisplay[] | 
       ...a,
       unlocked: status.unlocked,
       unlockedAt: status.unlockedAt,
-      progress: status.unlocked ? null : computeAchievementProgress(a.id, tasks, projects, sprints),
+      progress: status.unlocked ? null : computeAchievementProgress(a.id, tasks, projects, []),
     };
   });
 }

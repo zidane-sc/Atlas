@@ -29,17 +29,14 @@ import { StatusBadge } from "./StatusBadge";
 import {
   ATTACHMENT_TYPES,
   DELIVERABLE_TYPES,
-  EFFORT_OPTIONS,
   RELATION_TYPES,
   REPORTER_OPTIONS,
-  SP_OPTIONS,
+  SIZE_OPTIONS,
   taskFormSchema,
   type TaskFormValues,
 } from "@/lib/schemas/task";
 import { useProjects } from "@/components/providers/ProjectsProvider";
-import { useSprints } from "@/components/providers/SprintsProvider";
 import { sortProjectsForPicker } from "@/lib/picker-sort";
-import { sortSprintsForPicker } from "@/lib/picker-sort";
 import { sortTasksForPicker } from "@/lib/picker-sort";
 import { handleDropdownKeydown, type DropdownNavState } from "@/lib/dropdown-nav";
 import { updateDrawerLastSelectedAction } from "@/lib/actions/user";
@@ -47,7 +44,6 @@ import { STATUS_LABEL, TYPE_ICON } from "@/lib/mock-data";
 import type {
   AttachmentType,
   DeliverableType,
-  Effort,
   Priority,
   RelationType,
   Task,
@@ -56,6 +52,8 @@ import type {
   TaskRelation,
   TaskStatus,
   TaskType,
+  TaskSize,
+  Reporter,
 } from "@/types/task";
 
 function Section({ title, shape, defaultOpen = false, children }: { title: string; shape: string; defaultOpen?: boolean; children: React.ReactNode }) {
@@ -75,15 +73,16 @@ function Section({ title, shape, defaultOpen = false, children }: { title: strin
 
 const EMPTY_FORM: Omit<TaskFormValues, "project"> = {
   title: "",
-  status: "inbox",
+  status: "backlog",
   type: "coding",
-  priority: "p2",
+  priority: "medium",
   reporter: "self",
   tags: [],
   relations: [],
   attachments: [],
   deliverables: [],
   startDate: undefined,
+  size: undefined,
 };
 
 const LC = "mb-1 block text-sm tracking-widest text-muted-foreground uppercase";
@@ -115,7 +114,6 @@ export function TaskFormSheet() {
 function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | null }) {
   const { tasks, allTimeTasks, closeForm, createTask, updateTask, deleteTask, duplicateTask, togglePin, activeTimer, startTimer, stopTimer, switchPhase } = useTasks();
   const { projects } = useProjects();
-  const { sprints } = useSprints();
   const { notify } = useNotifications();
   const [form, setForm] = useState<TaskFormValues>(() =>
     mode === "edit" && task
@@ -126,12 +124,10 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
           status: task.status,
           type: task.type,
           priority: task.priority,
-          effort: task.effort,
-          storyPoint: task.storyPoint,
+          size: task.size,
           startDate: task.startDate,
           dueDate: task.dueDate,
           waitingOn: task.waitingOn,
-          sprint: task.sprint,
           reporter: task.reporter ?? "self",
           tags: task.tags,
           relations: task.relations,
@@ -143,7 +139,7 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
   const [errors, setErrors] = useState<Partial<Record<keyof TaskFormValues, string>>>({});
   const [submitting, setSubmitting] = useState(false);
 
-  const [relationType, setRelationType] = useState<RelationType>("related");
+  const [relationType, setRelationType] = useState<RelationType>("relates_to");
   const [relationTargetId, setRelationTargetId] = useState("");
   const [attachmentType, setAttachmentType] = useState<AttachmentType>("github_pr");
   const [attachmentLabel, setAttachmentLabel] = useState("");
@@ -155,17 +151,14 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
   const [relationSearch, setRelationSearch] = useState("");
   const [relationFocused, setRelationFocused] = useState(false);
   const relationInputRef = useRef<HTMLInputElement>(null);
+  const [relationSelectedIndex, setRelationSelectedIndex] = useState(-1);
   const [projectSearch, setProjectSearch] = useState("");
   const [projectFocused, setProjectFocused] = useState(false);
   const [projectSelectedIndex, setProjectSelectedIndex] = useState(-1);
   const projectInputRef = useRef<HTMLInputElement>(null);
-  const [sprintSearch, setSprintSearch] = useState("");
-  const [sprintFocused, setSprintFocused] = useState(false);
-  const [sprintSelectedIndex, setSprintSelectedIndex] = useState(-1);
-  const sprintInputRef = useRef<HTMLInputElement>(null);
-  const [relationSelectedIndex, setRelationSelectedIndex] = useState(-1);
   const [editingAttachmentIndex, setEditingAttachmentIndex] = useState<number | null>(null);
   const [editingDeliverableIndex, setEditingDeliverableIndex] = useState<number | null>(null);
+  const [isUploadingFile, setIsUploadingFile] = useState(false);
 
   const currentTask = useMemo(
     () => (task ? tasks.find((t) => t.id === task.id) || task : null),
@@ -224,12 +217,6 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
       : sortProjectsForPicker(projects).slice(0, 5);
   }, [projectSearch, projects]);
 
-  const sprintOptions = useMemo(() => {
-    return sprintSearch
-      ? sprints.filter(s => s.name.toLowerCase().includes(sprintSearch.toLowerCase()))
-      : sortSprintsForPicker(sprints).slice(0, 5);
-  }, [sprintSearch, sprints]);
-
   const relationOptions = useMemo(() => {
     return relationSearch
       ? otherTasks.filter(t => t.title.toLowerCase().includes(relationSearch.toLowerCase()))
@@ -281,7 +268,6 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
       startDate: form.startDate || undefined,
       dueDate: form.dueDate || undefined,
       waitingOn: form.waitingOn?.trim() || undefined,
-      sprint: form.sprint?.trim() || undefined,
     });
     if (!result.success) {
       const fieldErrors: Partial<Record<keyof TaskFormValues, string>> = {};
@@ -307,8 +293,8 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
     }
   };
 
-  const previewXP = calcTaskXP(form.priority, form.storyPoint, true);
-  const previewCoins = calcTaskCoins(form.priority, form.storyPoint);
+  const previewXP = calcTaskXP(form.priority, form.size, true);
+  const previewCoins = calcTaskCoins(form.priority, form.size);
 
   const { focusMinutes, breakMinutes } = useSettings();
   const isTiming = mode === "edit" && task != null && activeTimer?.taskId === task.id;
@@ -420,11 +406,11 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
                 </select>
               </div>
               <div>
-                <label className={`${LC} flex items-center gap-1`} title="P0=Urgent, P1=High, P2=Medium, P3=Low, P4=Minimal">
+                <label className={`${LC} flex items-center gap-1`} title="High / Medium / Low">
                   Priority <Info size={12} className="opacity-50" style={{ cursor: "help" }} />
                 </label>
                 <select aria-label="Priority" className={FIELD} value={form.priority} onChange={(e) => set("priority", e.target.value as Priority)}>
-                  {(["p0", "p1", "p2", "p3", "p4"] as Priority[]).map((p) => (
+                  {(["high", "medium", "low"] as Priority[]).map((p) => (
                     <option key={p} value={p}>{p.toUpperCase()}</option>
                   ))}
                 </select>
@@ -439,43 +425,23 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
                     <option key={t} value={t}>{TYPE_ICON[t]} {t.charAt(0).toUpperCase() + t.slice(1)}</option>
                   ))}
                 </select>
-              </div>
               <div>
-                <label className={`${LC} flex items-center gap-1`} title="XS=<1hr, S=1-2hrs, M=2-4hrs, L=4-8hrs, XL=8-16hrs, XXL=>16hrs">
-                  Effort <Info size={12} className="opacity-50" style={{ cursor: "help" }} />
-                </label>
-                <select
-                  aria-label="Effort"
-                  className={FIELD}
-                  value={form.effort ?? ""}
-                  onChange={(e) => set("effort", e.target.value === "" ? undefined : (e.target.value as Effort))}
-                >
-                  <option value="">—</option>
-                  {EFFORT_OPTIONS.map((ef) => (
-                    <option key={ef} value={ef}>{ef.toUpperCase()}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className={LC}>Start Date</label>
-                <DatePicker
-                  value={form.startDate}
-                  onChange={(date) => set("startDate", date)}
-                />
-              </div>
-              <div>
-                <label className={LC}>Due Date</label>
-                <DatePicker
-                  value={form.dueDate}
-                  onChange={(date) => set("dueDate", date)}
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
+                            <label className={`${LC} flex items-center gap-1`} title="Relative complexity/size. XS=<1hr, S=1-2hrs, M=2-4hrs, L=4-8hrs, XL=8-16hrs, XXL=>16hrs">
+                              Size <Info size={12} className="opacity-50" style={{ cursor: "help" }} />
+                            </label>
+                            <select
+                              aria-label="Size"
+                              className={FIELD}
+                              value={form.size ?? ""}
+                              onChange={(e) => set("size", e.target.value === "" ? undefined : (e.target.value as TaskSize))}
+                            >
+                              <option value="">—</option>
+                              {SIZE_OPTIONS.map((sz) => (
+                                <option key={sz} value={sz}>{sz.toUpperCase()}</option>
+                              ))}
+                            </select>
+                          </div>
+                        </div>
               <div>
                 <label className={LC}>Reporter</label>
                 <select
@@ -486,22 +452,6 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
                 >
                   {REPORTER_OPTIONS.map((r) => (
                     <option key={r} value={r}>{humanize(r)}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className={`${LC} flex items-center gap-1`} title="Relative complexity/size. 0=Trivial, 21=Epic. Used to calculate rewards & estimate effort.">
-                  Story Points <Info size={12} className="opacity-50" style={{ cursor: "help" }} />
-                </label>
-                <select
-                  aria-label="Story Points"
-                  className={FIELD}
-                  value={form.storyPoint ?? ""}
-                  onChange={(e) => set("storyPoint", e.target.value === "" ? undefined : Number(e.target.value))}
-                >
-                  <option value="">—</option>
-                  {SP_OPTIONS.map((sp) => (
-                    <option key={sp} value={sp}>{sp} SP</option>
                   ))}
                 </select>
               </div>
@@ -570,70 +520,11 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
 
             </div>
 
-            <div>
-              <label className={LC}>Sprint</label>
-              <div className="relative">
-                <input
-                  ref={sprintInputRef}
-                  aria-label="Sprint"
-                  className={FIELD}
-                  placeholder="Search sprint..."
-                  value={sprintSearch || form.sprint || ""}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    setSprintSearch(val);
-                    setSprintSelectedIndex(-1);
-                    if (!sprints.some(s => s.name === val)) {
-                      set("sprint", undefined);
-                    }
-                  }}
-                  onKeyDown={(e) => {
-                    const newState = handleDropdownKeydown(
-                      e,
-                      { selected: sprintSelectedIndex, total: sprintOptions.length },
-                      (idx) => {
-                        const s = sprintOptions[idx];
-                        if (s) {
-                          void updateDrawerLastSelectedAction("sprint", s.id);
-                          set("sprint", s.name);
-                          setSprintSearch("");
-                        }
-                      },
-                      () => { sprintInputRef.current?.blur(); setSprintFocused(false); }
-                    );
-                    setSprintSelectedIndex(newState.selected);
-                  }}
-                  onFocus={(e) => {
-                    setSprintSearch("");
-                    setSprintSelectedIndex(-1);
-                    e.target.select();
-                    setSprintFocused(true);
-                  }}
-                  onBlur={() => { setSprintFocused(false); setSprintSelectedIndex(-1); }}
-                />
-                {sprintFocused && sprintOptions.length > 0 && (
-                  <ul className="border border-border max-h-20 overflow-y-auto bg-secondary text-xs absolute top-full left-0 right-0 z-10">
-                    {sprintOptions.map((s, idx) => (
-                      <li
-                        key={s.id}
-                        className={`px-2 py-1 cursor-pointer border-b border-border last:border-b-0 ${sprintSelectedIndex === idx ? "bg-primary/20 font-semibold" : "hover:bg-primary/10"}`}
-                        onMouseDown={(e) => e.preventDefault()}
-                        onMouseEnter={() => setSprintSelectedIndex(idx)}
-                        onClick={() => { void updateDrawerLastSelectedAction("sprint", s.id); set("sprint", s.name); setSprintSearch(""); setSprintFocused(false); sprintInputRef.current?.blur(); }}
-                      >
-                        {s.name}
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-            </div>
-
-            {(form.status === "waiting_external" || form.status === "blocked") && (
+            {(form.status === "in_progress" && form.waitingOn) && (
               <div>
-                <label className={LC}>{form.status === "blocked" ? "Blocked By" : "Waiting On"}</label>
+                <label className={LC}>Waiting On</label>
                 <input
-                  aria-label={form.status === "blocked" ? "Blocked By" : "Waiting On"}
+                  aria-label="Waiting On"
                   className={FIELD}
                   value={form.waitingOn ?? ""}
                   onChange={(e) => set("waitingOn", e.target.value)}
@@ -845,7 +736,38 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
                 </div>
                 <div className="flex gap-2">
                   <input aria-label="Attachment URL" className={FIELD} placeholder="URL (optional)" value={attachmentUrl} onChange={(e) => setAttachmentUrl(e.target.value)} />
-                  <Button type="button" size="sm" aria-label="Add attachment" onClick={addAttachment} disabled={!attachmentLabel.trim()}>Add</Button>
+                  {attachmentType === "file" && (
+                    <label className="cursor-pointer border-2 border-border bg-secondary px-2.5 py-1 text-xs font-bold text-foreground hover:bg-secondary/80 flex items-center shrink-0">
+                      {isUploadingFile ? "..." : "Upload"}
+                      <input
+                        type="file"
+                        className="hidden"
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          setIsUploadingFile(true);
+                          try {
+                            const fd = new FormData();
+                            fd.append("file", file);
+                            const res = await fetch("/api/upload", { method: "POST", body: fd });
+                            const json = await res.json();
+                            if (json.success) {
+                              setAttachmentUrl(json.url);
+                              if (!attachmentLabel.trim()) setAttachmentLabel(file.name);
+                              notify("File uploaded!", "success");
+                            } else {
+                              notify(json.error || "Upload failed", "error");
+                            }
+                          } catch {
+                            notify("Upload failed", "error");
+                          } finally {
+                            setIsUploadingFile(false);
+                          }
+                        }}
+                      />
+                    </label>
+                  )}
+                  <Button type="button" size="sm" aria-label="Add attachment" onClick={addAttachment} disabled={!attachmentLabel.trim() || isUploadingFile}>Add</Button>
                 </div>
               </div>
             )}

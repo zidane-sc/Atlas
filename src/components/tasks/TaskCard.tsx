@@ -93,15 +93,12 @@ function TaskCardComponent({
           </span>
         )}
       </div>
-      {task.storyPoint != null && task.storyPoint > 0 && (
+      {task.size != null && (
         <div className="text-sm text-muted-foreground">
-          {task.storyPoint} SP{task.effort ? ` · ${task.effort.toUpperCase()}` : ""}
+          {task.size.toUpperCase()} SP{task.size ? ` · ${task.size.toUpperCase()}` : ""}
         </div>
       )}
-      {task.status === "waiting_external" && task.waitingOn && (
-        <div className="text-sm" style={{ color: "var(--color-status-waiting-external)" }}>⏸ {task.waitingOn}</div>
-      )}
-      {task.status === "blocked" && task.waitingOn && (
+      {task.status === "in_progress" && task.waitingOn && (
         <div className="text-sm" style={{ color: "var(--color-status-blocked)" }}>✕ {task.waitingOn}</div>
       )}
     </div>

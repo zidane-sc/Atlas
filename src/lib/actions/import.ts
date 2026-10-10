@@ -2,12 +2,19 @@
 
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
-import type { Task } from "@/types/task";
-import type { Project, Sprint } from "@/types/gamification";
+import type { Task, Priority, TaskStatus, TaskType, TaskSize } from "@/types/task";
 import type { ActionResult } from "@/lib/actions/types";
 import { toDbProjectCategory } from "@/lib/schemas/project";
 import { Prisma } from "@/generated/prisma/client";
-import type { ProjectCategory, ProjectStatus, SprintStatus, TaskStatus, TaskType, TaskPriority, TaskEffort, TaskReporter } from "@/generated/prisma/client";
+import type {
+  ProjectCategory,
+  ProjectStatus,
+  TaskStatus as DbTaskStatus,
+  TaskType as DbTaskType,
+  TaskPriority as DbTaskPriority,
+  TaskSize as DbTaskSize,
+  TaskReporter as DbTaskReporter,
+} from "@/generated/prisma/client";
 import { mapDbTaskToClient } from "@/lib/tasks-reducer";
 import { validateImportPayload } from "@/lib/validation/import-validation";
 import type { ImportPayload, WorkSessionExport, ActivityLogExport } from "@/lib/types/import-types";
@@ -24,61 +31,52 @@ function parseDate(dateStr: string | null | undefined): Date | null {
   return date;
 }
 
-const validTaskStatuses = new Set(["inbox", "todo", "ready", "in_progress", "blocked", "waiting_external", "testing", "done"]);
-const validTaskTypes = new Set(["coding", "investigation", "study", "analysis", "documentation", "bug", "deployment", "testing", "meeting", "research", "design", "maintenance", "refactor", "incident", "communication"]);
-const validTaskPriorities = new Set(["p0", "p1", "p2", "p3", "p4"]);
-const validTaskEfforts = new Set(["xs", "s", "m", "l", "xl", "xxl"]);
-const validProjectStatuses = new Set(["active", "archived", "paused"]);
-const validSprintStatuses = new Set(["planning", "active", "completed", "cancelled"]);
-
-function validateTaskStatus(status: unknown): TaskStatus {
-  if (typeof status !== "string" || !validTaskStatuses.has(status)) {
-    throw new Error(`Invalid task status: "${status}". Must be one of: ${Array.from(validTaskStatuses).join(", ")}`);
+function normalizeTaskStatus(status: unknown): DbTaskStatus {
+  const s = String(status || "").toLowerCase();
+  if (s === "inbox") return "backlog";
+  if (s === "ready" || s === "blocked" || s === "waiting_external") return "todo";
+  if (s === "testing") return "in_progress";
+  if (["backlog", "todo", "in_progress", "done", "archived"].includes(s)) {
+    return s as DbTaskStatus;
   }
-  return status as TaskStatus;
+  return "todo";
 }
 
-function validateTaskType(type: unknown): TaskType {
-  if (typeof type !== "string" || !validTaskTypes.has(type)) {
-    throw new Error(`Invalid task type: "${type}". Must be one of: ${Array.from(validTaskTypes).join(", ")}`);
+function normalizeTaskType(type: unknown): DbTaskType {
+  const t = String(type || "").toLowerCase();
+  if (["investigation", "study", "analysis"].includes(t)) return "research";
+  if (["deployment", "maintenance", "refactor"].includes(t)) return "admin";
+  if (t === "incident") return "bug";
+  if (t === "communication") return "meeting";
+  if (["coding", "research", "design", "documentation", "bug", "meeting", "admin"].includes(t)) {
+    return t as DbTaskType;
   }
-  return type as TaskType;
+  return "coding";
 }
 
-function validateTaskPriority(priority: unknown): TaskPriority {
-  if (typeof priority !== "string" || !validTaskPriorities.has(priority)) {
-    throw new Error(`Invalid task priority: "${priority}". Must be one of: ${Array.from(validTaskPriorities).join(", ")}`);
-  }
-  return priority as TaskPriority;
+function normalizeTaskPriority(priority: unknown): DbTaskPriority {
+  const p = String(priority || "").toLowerCase();
+  if (p === "p0" || p === "p1") return "high";
+  if (p === "p2") return "medium";
+  if (p === "p3" || p === "p4") return "low";
+  if (["high", "medium", "low"].includes(p)) return p as DbTaskPriority;
+  return "medium";
 }
 
-function validateTaskEffort(effort: unknown): TaskEffort | null {
-  if (effort === null || effort === undefined) return null;
-  if (typeof effort !== "string" || !validTaskEfforts.has(effort)) {
-    throw new Error(`Invalid task effort: "${effort}". Must be one of: ${Array.from(validTaskEfforts).join(", ")}`);
-  }
-  return effort as TaskEffort;
+function normalizeTaskSize(size: unknown): DbTaskSize | null {
+  if (!size) return null;
+  const s = String(size).toLowerCase();
+  if (["xs", "s", "m", "l", "xl"].includes(s)) return s as DbTaskSize;
+  return null;
 }
 
-function validateProjectStatus(status: unknown): ProjectStatus {
-  if (typeof status !== "string" || !validProjectStatuses.has(status)) {
-    throw new Error(`Invalid project status: "${status}". Must be one of: ${Array.from(validProjectStatuses).join(", ")}`);
-  }
-  return status as ProjectStatus;
+function normalizeProjectStatus(status: unknown): ProjectStatus {
+  const s = String(status || "").toLowerCase();
+  if (s === "completed") return "completed";
+  if (s === "archived") return "archived";
+  return "active";
 }
 
-function validateSprintStatus(status: unknown): SprintStatus {
-  if (typeof status !== "string" || !validSprintStatuses.has(status)) {
-    throw new Error(`Invalid sprint status: "${status}". Must be one of: ${Array.from(validSprintStatuses).join(", ")}`);
-  }
-  return status as SprintStatus;
-}
-
-/**
- * Raw WorkSession/ActivityLog rows for a full export — the client-held `tasks`/`activityLogs`
- * state is either aggregated (timeSpentSeconds) or display-shaped and take(10)-capped, so a
- * faithful round-trip needs a fresh, complete query straight from the DB (docs/05-backlog.md §6).
- */
 export async function getWorkspaceHistoryForExport(): Promise<
   ActionResult<{ workSessions: WorkSessionExport[]; activityLogs: ActivityLogExport[] }>
 > {
@@ -99,7 +97,7 @@ export async function getWorkspaceHistoryForExport(): Promise<
     }),
     db.activityLog.findMany({
       where: { actorId: user.id },
-      select: { taskId: true, projectId: true, sprintId: true, action: true, details: true, createdAt: true },
+      select: { taskId: true, projectId: true, action: true, details: true, createdAt: true },
     }),
   ]);
 
@@ -115,7 +113,6 @@ export async function getWorkspaceHistoryForExport(): Promise<
       activityLogs: rawActivityLogs.map((a) => ({
         taskId: a.taskId,
         projectId: a.projectId,
-        sprintId: a.sprintId,
         action: a.action,
         details: a.details,
         createdAt: a.createdAt.toISOString(),
@@ -124,27 +121,23 @@ export async function getWorkspaceHistoryForExport(): Promise<
   };
 }
 
-/**
- * Fresh, complete task fetch straight from the DB for export — the client-held `tasks` state
- * is capped at 200 tasks and, since the bulk fetch dropped its nested `statusHistory`/`comments`
- * includes for performance (docs/05-backlog.md §8 finding #16), no longer carries full history
- * for any task except whichever one currently has its edit sheet open. A backup must not depend
- * on either limitation — this queries every non-deleted task with its complete history/comments,
- * with no `take` limit, same one-time-cost tradeoff already accepted by
- * `getWorkspaceHistoryForExport` above.
- */
-export async function getTasksForExport(): Promise<ActionResult<{ tasks: Task[]; decorations: { purchased: string[]; placed: Record<string, string | null> }; savedFilters: any[] }>> {
+export async function getTasksForExport(): Promise<
+  ActionResult<{ tasks: Task[]; decorations: { purchased: string[]; placed: Record<string, string | null> }; savedFilters: any[] }>
+> {
   const session = await auth();
   if (!session?.user?.email) {
     return { success: false, error: { code: "UNAUTHORIZED", message: "Sign in required." } };
   }
 
-  const user = await db.user.findUnique({ where: { email: session.user.email }, select: { id: true, purchasedDecorations: true, placedDecorations: true, savedFilters: true } });
+  const user = await db.user.findUnique({
+    where: { email: session.user.email },
+    select: { id: true, purchasedDecorations: true, placedDecorations: true, savedFilters: true },
+  });
   if (!user) {
     return { success: false, error: { code: "NOT_FOUND", message: "User not found." } };
   }
 
-  const [dbTasks, dbProjects, dbSprints] = await Promise.all([
+  const [dbTasks, dbProjects] = await Promise.all([
     db.task.findMany({
       where: { ownerId: user.id, deletedAt: null },
       orderBy: { createdAt: "asc" },
@@ -154,13 +147,12 @@ export async function getTasksForExport(): Promise<ActionResult<{ tasks: Task[];
       },
     }),
     db.project.findMany({ where: { ownerId: user.id, archivedAt: null } }),
-    db.sprint.findMany({ where: { ownerId: user.id } }),
   ]);
 
   return {
     success: true,
     data: {
-      tasks: dbTasks.map((t) => mapDbTaskToClient(t, dbProjects, dbSprints)),
+      tasks: dbTasks.map((t) => mapDbTaskToClient(t, dbProjects, [])),
       decorations: {
         purchased: (user.purchasedDecorations as string[]) || [],
         placed: (user.placedDecorations as Record<string, string | null>) || {},
@@ -188,19 +180,21 @@ export async function importWorkspaceData(
       return { success: false, error: { code: "NOT_FOUND", message: "User not found." } };
     }
 
-    const { tasks, projects, sprints, bonus, workSessions = [], activityLogs = [], decorations, savedFilters = [] } = payload;
+    const { tasks, projects, bonus, workSessions = [], activityLogs = [], decorations, savedFilters = [] } = payload;
     const taskIds = new Set(tasks.map((t) => t.id));
 
     await db.$transaction(async (tx) => {
-      // 1. Wipe existing data — scoped to the importing user only; this must never touch
-      // other users' rows (docs/05-backlog.md — cross-account data isolation).
+      // 1. Wipe existing user data
       await tx.taskStatusLog.deleteMany({ where: { task: { ownerId: user.id } } });
       await tx.comment.deleteMany({ where: { task: { ownerId: user.id } } });
       await tx.activityLog.deleteMany({ where: { actorId: user.id } });
       await tx.workSession.deleteMany({ where: { task: { ownerId: user.id } } });
+      await tx.taskRelation.deleteMany({ where: { task: { ownerId: user.id } } });
+      await tx.attachment.deleteMany({ where: { task: { ownerId: user.id } } });
+      await tx.deliverable.deleteMany({ where: { task: { ownerId: user.id } } });
+      await tx.taskTag.deleteMany({ where: { task: { ownerId: user.id } } });
       await tx.task.deleteMany({ where: { ownerId: user.id } });
       await tx.project.deleteMany({ where: { ownerId: user.id } });
-      await tx.sprint.deleteMany({ where: { ownerId: user.id } });
 
       // 2. Insert Projects
       if (projects.length > 0) {
@@ -212,10 +206,10 @@ export async function importWorkspaceData(
                 ownerId: user.id,
                 name: p.name,
                 category: toDbProjectCategory(p.category) as ProjectCategory,
-                colorVar: p.colorVar,
-                emoji: p.emoji,
+                colorVar: p.colorVar || "--color-primary-gold",
+                emoji: p.emoji || "📁",
                 description: p.description || null,
-                status: validateProjectStatus(p.status),
+                status: normalizeProjectStatus(p.status),
               };
             } catch (e) {
               throw new Error(`Project ${idx} (${p.name}): ${e instanceof Error ? e.message : String(e)}`);
@@ -224,35 +218,8 @@ export async function importWorkspaceData(
         });
       }
 
-      // 3. Insert Sprints
-      const projectIdSet = new Set(projects.map((p) => p.id));
-      await Promise.all(
-        sprints.map((s, sprintIdx) => {
-          try {
-            const validProjectIds = (s.projectIds || []).filter((id) => projectIdSet.has(id));
-            return tx.sprint.create({
-              data: {
-                id: s.id,
-                ownerId: user.id,
-                name: s.name,
-                projects: { connect: validProjectIds.map((id) => ({ id })) },
-                startDate: parseDate(s.startDate)!,
-                endDate: parseDate(s.endDate)!,
-                status: validateSprintStatus(s.status),
-                goal: s.goal || null,
-              },
-              select: { id: true },
-            });
-          } catch (e) {
-            throw new Error(`Sprint ${sprintIdx} (${s.name}): ${e instanceof Error ? e.message : String(e)}`);
-          }
-        })
-      );
-
-      // 4. Insert Tasks & nested items (batch insertion)
+      // 3. Insert Tasks
       const projectNameMap = new Map(projects.map((p) => [p.name, p.id]));
-      const sprintNameMap = new Map(sprints.map((s) => [s.name, s.id]));
-
       const taskCreateData: Prisma.TaskCreateManyInput[] = [];
       const allComments: Prisma.CommentCreateManyInput[] = [];
       const allStatusLogs: Prisma.TaskStatusLogCreateManyInput[] = [];
@@ -261,27 +228,17 @@ export async function importWorkspaceData(
         const t = tasks[taskIdx];
         try {
           const projectId = t.project ? (projectNameMap.get(t.project) ?? null) : null;
-          if (t.project && !projectId) {
-            console.warn(`Task ${taskIdx} (${t.title}): Project "${t.project}" not found in import, will be unlinked`);
-          }
-
-          const sprintId = t.sprint ? (sprintNameMap.get(t.sprint) ?? null) : null;
-          if (t.sprint && !sprintId) {
-            console.warn(`Task ${taskIdx} (${t.title}): Sprint "${t.sprint}" not found in import, will be unlinked`);
-          }
 
           taskCreateData.push({
             id: t.id,
             title: t.title,
             description: t.description || null,
             projectId,
-            sprintId,
-            status: validateTaskStatus(t.status),
-            type: validateTaskType(t.type),
-            priority: validateTaskPriority(t.priority),
-            effort: validateTaskEffort(t.effort),
-            storyPoint: t.storyPoint || null,
-            reporter: (t.reporter as TaskReporter) || "self",
+            status: normalizeTaskStatus(t.status),
+            type: normalizeTaskType(t.type),
+            priority: normalizeTaskPriority(t.priority),
+            size: normalizeTaskSize(t.size),
+            reporter: (t.reporter as DbTaskReporter) || "self",
             ownerId: user.id,
             timeSpentSeconds: t.timeSpentSeconds || 0,
             dueDate: t.dueDate ? parseDate(t.dueDate) : null,
@@ -305,8 +262,8 @@ export async function importWorkspaceData(
               allStatusLogs.push({
                 id: crypto.randomUUID(),
                 taskId: t.id,
-                fromStatus: h.fromStatus as TaskStatus | null,
-                toStatus: h.toStatus as TaskStatus,
+                fromStatus: h.fromStatus ? normalizeTaskStatus(h.fromStatus) : null,
+                toStatus: normalizeTaskStatus(h.toStatus),
                 changedAt: parseDate(h.changedAt) || new Date(),
               });
             }
@@ -326,8 +283,7 @@ export async function importWorkspaceData(
         await tx.taskStatusLog.createMany({ data: allStatusLogs });
       }
 
-      // 5. Restore Focus Timer history and the activity feed — previously dropped on
-      // re-import even though the wipe step above deletes both (docs/05-backlog.md §6).
+      // 4. Restore Focus Timer work sessions
       const validWorkSessions = workSessions.filter((w) => taskIds.has(w.taskId));
       if (validWorkSessions.length > 0) {
         await tx.workSession.createMany({
@@ -340,8 +296,9 @@ export async function importWorkspaceData(
         });
       }
 
+      // 5. Restore Activity logs
       const validActivityLogs = activityLogs.filter(
-        (a) => (a.taskId == null || taskIds.has(a.taskId)) && (a.projectId == null || projects.some((p) => p.id === a.projectId)) && (a.sprintId == null || sprints.some((s) => s.id === a.sprintId))
+        (a) => (a.taskId == null || taskIds.has(a.taskId)) && (a.projectId == null || projects.some((p) => p.id === a.projectId))
       );
       if (validActivityLogs.length > 0) {
         await tx.activityLog.createMany({
@@ -349,7 +306,6 @@ export async function importWorkspaceData(
             actorId: user.id,
             taskId: a.taskId,
             projectId: a.projectId,
-            sprintId: a.sprintId,
             action: a.action,
             details: (a.details ?? undefined) as Prisma.InputJsonValue | undefined,
             createdAt: parseDate(a.createdAt) || new Date(),
@@ -357,12 +313,9 @@ export async function importWorkspaceData(
         });
       }
 
-      // 7. Update user stats with decorations and saved filters
+      // 6. Update user stats
       const bonusXp = typeof bonus.xp === "number" ? Math.max(0, Math.floor(bonus.xp)) : 0;
       const bonusCoins = typeof bonus.coins === "number" ? Math.max(0, Math.floor(bonus.coins)) : 0;
-      if (typeof bonus.xp !== "number" || typeof bonus.coins !== "number") {
-        console.warn(`Import: bonus XP/coins had invalid types, reset to 0. Expected numbers, got xp=${typeof bonus.xp}, coins=${typeof bonus.coins}`);
-      }
 
       await tx.user.update({
         where: { id: user.id },

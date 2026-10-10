@@ -1,7 +1,7 @@
 import type { Project, Sprint } from "@/types/gamification";
 import type { Task } from "@/types/task";
 
-const PROJECT_STATUS_RANK: Record<string, number> = { active: 0, on_hold: 1, completed: 2 };
+const PROJECT_STATUS_RANK: Record<string, number> = { active: 0, completed: 1, archived: 2 };
 const SPRINT_STATUS_RANK: Record<string, number> = { active: 0, planning: 1, completed: 2 };
 
 export function sortProjectsForPicker(projects: Project[]): Project[] {

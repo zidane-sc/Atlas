@@ -30,7 +30,7 @@ const task = (title: string, status: Task["status"]): Task => ({
   project: "P",
   status,
   type: "coding",
-  priority: "p2",
+  priority: "medium",
   pinned: false,
   tags: [],
   relations: [],
@@ -43,15 +43,15 @@ const task = (title: string, status: Task["status"]): Task => ({
 describe("sortProjectsForPicker", () => {
   it("sorts by status rank then name", () => {
     const input = [
-      project("Beta", "on_hold"),
+      project("Beta", "archived"),
       project("Gamma", "completed"),
       project("Alpha", "active"),
     ];
-    expect(sortProjectsForPicker(input).map((p) => p.name)).toEqual(["Alpha", "Beta", "Gamma"]);
+    expect(sortProjectsForPicker(input).map((p) => p.name)).toEqual(["Alpha", "Gamma", "Beta"]);
   });
 
   it("does not mutate the input array", () => {
-    const input = [project("Beta", "on_hold"), project("Alpha", "active")];
+    const input = [project("Beta", "archived"), project("Alpha", "active")];
     sortProjectsForPicker(input);
     expect(input.map((p) => p.name)).toEqual(["Beta", "Alpha"]);
   });
@@ -73,7 +73,7 @@ describe("sortTasksForPicker", () => {
   it("sorts incomplete first then title", () => {
     const input = [
       task("Zeta", "done"),
-      task("Alpha", "inbox"),
+      task("Alpha", "backlog"),
       task("Milo", "done"),
       task("Beta", "in_progress"),
     ];

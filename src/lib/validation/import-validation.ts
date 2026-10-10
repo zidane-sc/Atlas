@@ -1,12 +1,10 @@
 import type { ImportPayload, ValidationError, ImportValidationResult } from "@/lib/types/import-types";
 
-// Re-export for convenience
-const validTaskStatuses = new Set(["inbox", "todo", "ready", "in_progress", "blocked", "waiting_external", "testing", "done"]);
-const validTaskTypes = new Set(["coding", "investigation", "study", "analysis", "documentation", "bug", "deployment", "testing", "meeting", "research", "design", "maintenance", "refactor", "incident", "communication"]);
-const validTaskPriorities = new Set(["p0", "p1", "p2", "p3", "p4"]);
-const validTaskEfforts = new Set(["xs", "s", "m", "l", "xl", "xxl"]);
-const validProjectStatuses = new Set(["active", "archived", "paused"]);
-const validSprintStatuses = new Set(["planning", "active", "completed", "cancelled"]);
+const validTaskStatuses = new Set(["backlog", "todo", "in_progress", "done", "archived", "inbox", "ready", "blocked", "waiting_external", "testing"]);
+const validTaskTypes = new Set(["coding", "research", "design", "documentation", "bug", "meeting", "admin", "investigation", "study", "analysis", "deployment", "maintenance", "refactor", "incident", "communication"]);
+const validTaskPriorities = new Set(["high", "medium", "low", "p0", "p1", "p2", "p3", "p4"]);
+const validTaskSizes = new Set(["xs", "s", "m", "l", "xl"]);
+const validProjectStatuses = new Set(["active", "completed", "archived", "paused", "on_hold"]);
 
 function parseDate(dateStr: string | null | undefined): Date | null {
   if (!dateStr) return null;
@@ -27,7 +25,7 @@ export function validateImportPayload(payload: ImportPayload): ImportValidationR
         category: "Task",
         index: idx,
         itemName: task.title || null,
-        message: `Invalid task status: "${task.status}". Must be one of: ${Array.from(validTaskStatuses).join(", ")}`,
+        message: `Invalid task status: "${task.status}".`,
       });
     }
     if (typeof task.type !== "string" || !validTaskTypes.has(task.type)) {
@@ -35,7 +33,7 @@ export function validateImportPayload(payload: ImportPayload): ImportValidationR
         category: "Task",
         index: idx,
         itemName: task.title || null,
-        message: `Invalid task type: "${task.type}". Must be one of: ${Array.from(validTaskTypes).join(", ")}`,
+        message: `Invalid task type: "${task.type}".`,
       });
     }
     if (typeof task.priority !== "string" || !validTaskPriorities.has(task.priority)) {
@@ -43,16 +41,16 @@ export function validateImportPayload(payload: ImportPayload): ImportValidationR
         category: "Task",
         index: idx,
         itemName: task.title || null,
-        message: `Invalid task priority: "${task.priority}". Must be one of: ${Array.from(validTaskPriorities).join(", ")}`,
+        message: `Invalid task priority: "${task.priority}".`,
       });
     }
-    if (task.effort !== null && task.effort !== undefined) {
-      if (typeof task.effort !== "string" || !validTaskEfforts.has(task.effort)) {
+    if (task.size !== null && task.size !== undefined) {
+      if (typeof task.size !== "string" || !validTaskSizes.has(task.size.toLowerCase())) {
         errors.push({
           category: "Task",
           index: idx,
           itemName: task.title || null,
-          message: `Invalid task effort: "${task.effort}". Must be one of: ${Array.from(validTaskEfforts).join(", ")}`,
+          message: `Invalid task size: "${task.size}".`,
         });
       }
     }
@@ -77,21 +75,13 @@ export function validateImportPayload(payload: ImportPayload): ImportValidationR
         category: "Project",
         index: idx,
         itemName: proj.name || null,
-        message: `Invalid project status: "${proj.status}". Must be one of: ${Array.from(validProjectStatuses).join(", ")}`,
+        message: `Invalid project status: "${proj.status}".`,
       });
     }
   });
 
-  // Validate sprints
+  // Validate sprints (optional/legacy)
   (payload.sprints || []).forEach((sprint, idx) => {
-    if (typeof sprint.status !== "string" || !validSprintStatuses.has(sprint.status)) {
-      errors.push({
-        category: "Sprint",
-        index: idx,
-        itemName: sprint.name || null,
-        message: `Invalid sprint status: "${sprint.status}". Must be one of: ${Array.from(validSprintStatuses).join(", ")}`,
-      });
-    }
     try {
       parseDate(sprint.startDate);
     } catch (e) {

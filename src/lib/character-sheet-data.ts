@@ -1,8 +1,8 @@
 import { db } from "@/lib/db";
-import { mapDbTaskToClient, mapDbProjectToClient, mapDbSprintToClient } from "@/lib/tasks-reducer";
+import { mapDbTaskToClient, mapDbProjectToClient } from "@/lib/tasks-reducer";
 import { computeCharacterSheet, computeUnlockedAchievements, type CharacterSheet } from "@/lib/gamification";
 import type { Task } from "@/types/task";
-import type { Project, Sprint } from "@/types/gamification";
+import type { Project } from "@/types/gamification";
 
 export interface CharacterSheetData {
   characterSheet: CharacterSheet;
@@ -12,7 +12,6 @@ export interface CharacterSheetData {
 export interface PreloadedGamificationData {
   tasks: Task[];
   projects: Project[];
-  sprints: Sprint[];
   bonusXp?: number;
   bonusCoins?: number;
 }
@@ -33,11 +32,11 @@ export async function getCharacterSheetData(
   if (preloaded) {
     return {
       characterSheet: computeCharacterSheet(preloaded.tasks, preloaded.bonusXp ?? 0, preloaded.bonusCoins ?? 0),
-      unlockedAchievements: computeUnlockedAchievements(preloaded.tasks, preloaded.projects, preloaded.sprints),
+      unlockedAchievements: computeUnlockedAchievements(preloaded.tasks, preloaded.projects, []),
     };
   }
 
-  const [dbDoneTasks, dbProjects, dbSprints, owner] = await Promise.all([
+  const [dbDoneTasks, dbProjects, owner] = await Promise.all([
     db.task.findMany({
       where: { ownerId, deletedAt: null, status: "done" },
       select: {
@@ -47,16 +46,14 @@ export async function getCharacterSheetData(
         status: true,
         type: true,
         priority: true,
-        storyPoint: true,
+        size: true,
         projectId: true,
-        sprintId: true,
         completedAt: true,
         dueDate: true,
         createdAt: true,
       },
     }),
     db.project.findMany({ where: { ownerId, archivedAt: null } }),
-    db.sprint.findMany({ where: { ownerId }, include: { projects: { select: { id: true } } } }),
     db.user.findUnique({ where: { id: ownerId }, select: { bonusXp: true, bonusCoins: true } }),
   ]);
 
@@ -64,12 +61,11 @@ export async function getCharacterSheetData(
     throw new Error(`getCharacterSheetData: user ${ownerId} not found`);
   }
 
-  const tasks = dbDoneTasks.map((t) => mapDbTaskToClient(t, dbProjects, dbSprints));
+  const tasks = dbDoneTasks.map((t) => mapDbTaskToClient(t, dbProjects, []));
   const projects = dbProjects.map(mapDbProjectToClient);
-  const sprints = dbSprints.map(mapDbSprintToClient);
 
   return {
     characterSheet: computeCharacterSheet(tasks, owner.bonusXp, owner.bonusCoins),
-    unlockedAchievements: computeUnlockedAchievements(tasks, projects, sprints),
+    unlockedAchievements: computeUnlockedAchievements(tasks, projects, []),
   };
 }

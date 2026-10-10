@@ -7,9 +7,9 @@ function values(overrides: Partial<TaskFormValues> = {}): TaskFormValues {
   return {
     title: "New quest",
     project: "Atlas",
-    status: "inbox",
+    status: "backlog",
     type: "coding",
-    priority: "p2",
+    priority: "medium",
     tags: [],
     relations: [],
     attachments: [],
@@ -24,7 +24,7 @@ describe("tasksReducer create — docs/04-development.md §3", () => {
     expect(result).toHaveLength(1);
     expect(result[0]).toMatchObject({ id: "t1", title: "New quest", project: "Atlas" });
     expect(result[0].statusHistory).toEqual([
-      { fromStatus: null, toStatus: "inbox", changedAt: "2026-01-01T00:00:00Z" },
+      { fromStatus: null, toStatus: "backlog", changedAt: "2026-01-01T00:00:00Z" },
     ]);
   });
 
@@ -37,7 +37,7 @@ describe("tasksReducer create — docs/04-development.md §3", () => {
         project: "Atlas",
         status: "todo",
         type: "coding",
-        priority: "p2",
+        priority: "medium",
         tags: [],
         relations: [],
         attachments: [],
@@ -60,7 +60,7 @@ describe("tasksReducer update — status transitions always produce a log row", 
     project: "Atlas",
     status: "todo",
     type: "coding",
-    priority: "p2",
+    priority: "medium",
     tags: [],
     relations: [],
     attachments: [],
@@ -131,7 +131,7 @@ describe("tasksReducer delete", () => {
       project: "Atlas",
       status: "todo",
       type: "coding",
-      priority: "p2",
+      priority: "medium",
       tags: [],
       relations: [],
       attachments: [],
@@ -154,7 +154,7 @@ describe("tasksReducer replaceId and restore", () => {
     project: "Atlas",
     status: "todo",
     type: "coding",
-    priority: "p2",
+    priority: "medium",
     tags: [],
     relations: [],
     attachments: [],
@@ -180,4 +180,3 @@ describe("tasksReducer replaceId and restore", () => {
     expect(result).toHaveLength(1);
   });
 });
-

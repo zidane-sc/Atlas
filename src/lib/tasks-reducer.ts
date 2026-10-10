@@ -1,7 +1,7 @@
-import type { Task, TaskStatus, TaskType, Priority, Effort, Reporter, TaskAttachment, TaskDeliverable, TaskRelation, TaskComment } from "@/types/task";
+import type { Task, TaskStatus, TaskType, Priority, TaskSize, Reporter, TaskAttachment, TaskDeliverable, TaskRelation, TaskComment } from "@/types/task";
 import type { TaskFormValues } from "@/lib/schemas/task";
-import type { Task as DbTask, Project as DbProject, Sprint as DbSprint, TaskStatusLog, Comment as DbComment, User as DbUser, TaskTag, TaskRelation as DbTaskRelation, Attachment as DbAttachment, Deliverable as DbDeliverable } from "@/generated/prisma/client";
-import type { Project, Sprint } from "@/types/gamification";
+import type { Task as DbTask, Project as DbProject, TaskStatusLog, Comment as DbComment, User as DbUser, TaskTag, TaskRelation as DbTaskRelation, Attachment as DbAttachment, Deliverable as DbDeliverable } from "@/generated/prisma/client";
+import type { Project } from "@/types/gamification";
 import { fromDbProjectCategory } from "@/lib/schemas/project";
 
 export type DbTaskWithLogs = Partial<DbTask> & {
@@ -22,10 +22,9 @@ export type DbTaskWithLogs = Partial<DbTask> & {
 export function mapDbTaskToClient(
   dbTask: DbTaskWithLogs,
   dbProjects?: (Partial<DbProject> & { id: string; name: string })[],
-  dbSprints?: (Partial<DbSprint> & { id: string; name: string })[]
+  _unused?: any[]
 ): Task {
   const project = dbProjects?.find((p) => p.id === dbTask.projectId);
-  const sprint = dbSprints?.find((s) => s.id === dbTask.sprintId);
   return {
     id: dbTask.id,
     code: dbTask.code || `TEMP-${dbTask.id.slice(0, 8)}`,
@@ -35,15 +34,13 @@ export function mapDbTaskToClient(
     status: dbTask.status as TaskStatus,
     type: dbTask.type as TaskType,
     priority: dbTask.priority as Priority,
-    effort: (dbTask.effort ?? undefined) as Effort | undefined,
-    storyPoint: dbTask.storyPoint ?? undefined,
+    size: (dbTask.size ?? undefined) as TaskSize | undefined,
     timeSpentSeconds: dbTask.timeSpentSeconds ?? 0,
     pinned: dbTask.pinned ?? false,
     startDate: dbTask.startDate ? dbTask.startDate.toISOString().split("T")[0] : undefined,
     dueDate: dbTask.dueDate ? dbTask.dueDate.toISOString().split("T")[0] : undefined,
     completedAt: dbTask.completedAt ? dbTask.completedAt.toISOString() : undefined,
     createdAt: dbTask.createdAt.toISOString(),
-    sprint: sprint ? sprint.name : undefined,
     reporter: (dbTask.reporter as Reporter) || "self",
     tags: dbTask.tags?.map((t) => t.tag.name) ?? [],
     relations: dbTask.relations?.map((r) => ({
@@ -78,7 +75,6 @@ export function mapDbTaskToClient(
           changedAt: (dbTask.completedAt || dbTask.createdAt).toISOString(),
         });
       } else if (history.length === 0) {
-        // Fallback for non-completed tasks with empty logs
         history.push({
           fromStatus: null,
           toStatus: dbTask.status as TaskStatus,
@@ -124,12 +120,10 @@ export function buildTaskFromValues(id: string, changedAt: string, values: TaskF
     status: values.status,
     type: values.type,
     priority: values.priority,
-    effort: values.effort,
-    storyPoint: values.storyPoint,
+    size: values.size,
     startDate: values.startDate,
     dueDate: values.dueDate,
     waitingOn: values.waitingOn,
-    sprint: values.sprint,
     reporter: values.reporter,
     pinned: false,
     tags: values.tags,
@@ -165,12 +159,10 @@ export function tasksReducer(tasks: Task[], action: TasksAction): Task[] {
           status: action.values.status,
           type: action.values.type,
           priority: action.values.priority,
-          effort: action.values.effort,
-          storyPoint: action.values.storyPoint,
+          size: action.values.size,
           startDate: action.values.startDate,
           dueDate: action.values.dueDate,
           waitingOn: action.values.waitingOn,
-          sprint: action.values.sprint,
           reporter: action.values.reporter,
           tags: action.values.tags,
           relations: action.values.relations,
@@ -241,17 +233,5 @@ export function mapDbProjectToClient(
     category: dbProject.category ? fromDbProjectCategory(dbProject.category) : "Other",
     description: dbProject.description ?? "",
     status: (dbProject.status as Project["status"]) ?? "active",
-  };
-}
-
-export function mapDbSprintToClient(dbSprint: DbSprint & { projects?: { id: string }[] }): Sprint {
-  return {
-    id: dbSprint.id,
-    name: dbSprint.name,
-    projectIds: dbSprint.projects?.map((p) => p.id) ?? [],
-    startDate: dbSprint.startDate.toISOString().split("T")[0],
-    endDate: dbSprint.endDate.toISOString().split("T")[0],
-    status: dbSprint.status as Sprint["status"],
-    goal: dbSprint.goal ?? "",
   };
 }

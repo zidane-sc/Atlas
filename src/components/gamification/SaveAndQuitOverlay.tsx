@@ -77,7 +77,7 @@ export function SaveAndQuitOverlay({ onClose }: { onClose: () => void }) {
         if (t.status !== "done") return sum;
         const at = completedAt(t);
         if (!at || formatLocalDate(at) !== today) return sum;
-        return sum + calcTaskXP(t.priority, t.storyPoint, isTaskOnTime(t));
+        return sum + calcTaskXP(t.priority, t.size, isTaskOnTime(t));
       }, 0),
     [tasks, today]
   );

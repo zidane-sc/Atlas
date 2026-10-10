@@ -10,7 +10,7 @@ function task(overrides: Partial<Task>): Task {
     project: "Atlas",
     status: "todo",
     type: "coding",
-    priority: "p2",
+    priority: "medium",
     tags: [],
     relations: [],
     attachments: [],
@@ -24,9 +24,9 @@ function task(overrides: Partial<Task>): Task {
 
 describe("applyTaskFilters", () => {
   const tasks: Task[] = [
-    task({ id: "a", title: "Fix login bug", project: "ATS", status: "blocked", priority: "p0", type: "bug", tags: ["urgent"] }),
-    task({ id: "b", title: "Write docs", project: "Atlas", status: "todo", priority: "p2", type: "documentation", tags: [] }),
-    task({ id: "c", title: "Deploy release", project: "ATS", status: "waiting_external", priority: "p1", type: "deployment", tags: ["release"] }),
+    task({ id: "a", title: "Fix login bug", project: "ATS", status: "in_progress", priority: "high", type: "bug", tags: ["urgent"] }),
+    task({ id: "b", title: "Write docs", project: "Atlas", status: "todo", priority: "low", type: "documentation", tags: [] }),
+    task({ id: "c", title: "Deploy release", project: "ATS", status: "backlog", priority: "medium", type: "coding", tags: ["release"] }),
   ];
 
   it("returns everything when no filters are set", () => {
@@ -34,12 +34,12 @@ describe("applyTaskFilters", () => {
   });
 
   it("ORs within a single facet", () => {
-    const result = applyTaskFilters(tasks, { ...EMPTY_TASK_FILTERS, statuses: ["blocked", "waiting_external"] });
+    const result = applyTaskFilters(tasks, { ...EMPTY_TASK_FILTERS, statuses: ["in_progress", "backlog"] });
     expect(result.map((t) => t.id).sort()).toEqual(["a", "c"]);
   });
 
   it("ANDs across facets by default", () => {
-    const result = applyTaskFilters(tasks, { ...EMPTY_TASK_FILTERS, projects: ["ATS"], priorities: ["p0"] });
+    const result = applyTaskFilters(tasks, { ...EMPTY_TASK_FILTERS, projects: ["ATS"], priorities: ["high"] });
     expect(result.map((t) => t.id)).toEqual(["a"]);
   });
 
@@ -55,10 +55,10 @@ describe("applyTaskFilters", () => {
   it("combines every facet together (AND)", () => {
     const result = applyTaskFilters(tasks, {
       ...EMPTY_TASK_FILTERS,
-      statuses: ["waiting_external"],
-      priorities: ["p1"],
+      statuses: ["backlog"],
+      priorities: ["medium"],
       projects: ["ATS"],
-      types: ["deployment"],
+      types: ["coding"],
       query: "release",
     });
     expect(result.map((t) => t.id)).toEqual(["c"]);
@@ -68,8 +68,8 @@ describe("applyTaskFilters", () => {
     const result = applyTaskFilters(tasks, {
       ...EMPTY_TASK_FILTERS,
       combineMode: "OR",
-      statuses: ["blocked"],
-      types: ["deployment"],
+      statuses: ["in_progress"],
+      types: ["coding"],
     });
     expect(result.map((t) => t.id).sort()).toEqual(["a", "c"]);
   });
@@ -85,12 +85,12 @@ describe("applyTaskFilters", () => {
   });
 
   it("priorityOp gte matches everything at least as urgent as the selected priority", () => {
-    const result = applyTaskFilters(tasks, { ...EMPTY_TASK_FILTERS, priorities: ["p1"], priorityOp: "gte" });
+    const result = applyTaskFilters(tasks, { ...EMPTY_TASK_FILTERS, priorities: ["medium"], priorityOp: "gte" });
     expect(result.map((t) => t.id).sort()).toEqual(["a", "c"]);
   });
 
   it("priorityOp lte matches everything at most as urgent as the selected priority", () => {
-    const result = applyTaskFilters(tasks, { ...EMPTY_TASK_FILTERS, priorities: ["p1"], priorityOp: "lte" });
+    const result = applyTaskFilters(tasks, { ...EMPTY_TASK_FILTERS, priorities: ["medium"], priorityOp: "lte" });
     expect(result.map((t) => t.id).sort()).toEqual(["b", "c"]);
   });
 
@@ -107,7 +107,7 @@ describe("countActiveFilters", () => {
 
   it("counts each selected value and a non-empty query as one facet each", () => {
     expect(
-      countActiveFilters({ ...EMPTY_TASK_FILTERS, statuses: ["blocked", "done"], priorities: ["p0"], query: "x" })
+      countActiveFilters({ ...EMPTY_TASK_FILTERS, statuses: ["in_progress", "done"], priorities: ["high"], query: "x" })
     ).toBe(4);
   });
 
@@ -118,7 +118,11 @@ describe("countActiveFilters", () => {
 
 describe("normalizeFilters", () => {
   it("fills in missing fields with the old defaults", () => {
-    const legacy = { statuses: ["done"], priorities: [], projects: [], types: [], query: "" } as unknown as TaskFilters;
-    expect(normalizeFilters(legacy)).toEqual({ ...EMPTY_TASK_FILTERS, statuses: ["done"] });
+    const partial = { statuses: ["todo" as const], query: "test" } as unknown as TaskFilters;
+    expect(normalizeFilters(partial)).toEqual({
+      ...EMPTY_TASK_FILTERS,
+      statuses: ["todo"],
+      query: "test",
+    });
   });
 });

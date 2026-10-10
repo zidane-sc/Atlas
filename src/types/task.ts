@@ -1,69 +1,42 @@
 export type TaskStatus =
-  | "inbox"
+  | "backlog"
   | "todo"
-  | "ready"
   | "in_progress"
-  | "blocked"
-  | "waiting_external"
-  | "testing"
-  | "done";
+  | "done"
+  | "archived";
 
 export type TaskType =
   | "coding"
-  | "investigation"
-  | "study"
-  | "analysis"
-  | "documentation"
-  | "bug"
-  | "deployment"
-  | "testing"
-  | "meeting"
   | "research"
   | "design"
-  | "maintenance"
-  | "refactor"
-  | "incident"
-  | "communication";
+  | "documentation"
+  | "bug"
+  | "meeting"
+  | "admin";
 
-export type Priority = "p0" | "p1" | "p2" | "p3" | "p4";
+export type Priority = "high" | "medium" | "low";
 
-export type Effort = "xs" | "s" | "m" | "l" | "xl" | "xxl";
+export type TaskSize = "xs" | "s" | "m" | "l" | "xl";
 
-export type Reporter = "self" | "qa" | "manager" | "pm" | "client" | "lecturer" | "friend" | "other";
+export type Reporter = "self" | "other";
 
 export type RelationType =
-  | "parent"
-  | "child"
   | "blocks"
-  | "blocked_by"
-  | "related"
-  | "duplicate"
-  | "caused_by"
-  | "generated_from";
+  | "relates_to"
+  | "duplicates";
 
 export type AttachmentType =
   | "github_pr"
   | "github_issue"
-  | "confluence"
-  | "figma"
-  | "slack"
-  | "discord"
-  | "google_docs"
-  | "google_drive"
-  | "meeting_recording"
-  | "website"
-  | "file_upload"
+  | "link"
+  | "file"
   | "other";
 
 export type DeliverableType =
   | "pr"
-  | "confluence"
-  | "presentation"
-  | "meeting_notes"
+  | "doc"
   | "design"
-  | "video"
-  | "pdf"
-  | "research";
+  | "other";
 
 export interface TaskRelation {
   relationType: RelationType;
@@ -98,8 +71,7 @@ export interface Task {
   status: TaskStatus;
   type: TaskType;
   priority: Priority;
-  effort?: Effort;
-  storyPoint?: number;
+  size?: TaskSize;
   startDate?: string;
   dueDate?: string;
   waitingOn?: string;

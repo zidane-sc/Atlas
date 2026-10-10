@@ -111,7 +111,7 @@ function buildRecap(allTasks: Task[], projects: Project[], periodDays: number, p
     const ct = new Date(c).getTime();
     return ct >= prevFrom && ct < from;
   }).length;
-  const xpEarned = doneThis.reduce((sum, t) => sum + calcTaskXP(t.priority, t.storyPoint, isTaskOnTime(t)), 0);
+  const xpEarned = doneThis.reduce((sum, t) => sum + calcTaskXP(t.priority, t.size, isTaskOnTime(t)), 0);
   const completedByProject = projects.map((p) => ({
     project: p,
     completed: allTasks.filter((t) => t.project === p.name && t.status === "done").length,
@@ -150,7 +150,7 @@ export async function getStatisticsPageData(): Promise<StatisticsData | null> {
         status: true,
         type: true,
         priority: true,
-        storyPoint: true,
+        size: true,
         timeSpentSeconds: true,
         projectId: true,
         completedAt: true,
@@ -178,17 +178,15 @@ export async function getStatisticsPageData(): Promise<StatisticsData | null> {
     { label: "TOTAL", value: tasks.length, colorVar: "--color-text-primary" },
     { label: "DONE", value: tasks.filter((t) => t.status === "done").length, colorVar: "--color-status-done" },
     { label: "ACTIVE", value: tasks.filter((t) => t.status === "in_progress").length, colorVar: "--color-status-in-progress" },
-    { label: "WAITING", value: tasks.filter((t) => t.status === "waiting_external").length, colorVar: "--color-status-waiting-external" },
+    { label: "BACKLOG", value: tasks.filter((t) => t.status === "backlog").length, colorVar: "--color-text-muted" },
   ];
 
   const PRIORITY_FILL: Record<Priority, string> = {
-    p0: CHART_COLORS.red,
-    p1: CHART_COLORS.yellow,
-    p2: CHART_COLORS.ready,
-    p3: CHART_COLORS.textMuted,
-    p4: CHART_COLORS.dim,
+    high: CHART_COLORS.red,
+    medium: CHART_COLORS.yellow,
+    low: CHART_COLORS.ready,
   };
-  const byPriority = (["p0", "p1", "p2", "p3", "p4"] as Priority[]).map((p) => ({
+  const byPriority = (["high", "medium", "low"] as Priority[]).map((p) => ({
     key: p,
     label: p.toUpperCase(),
     value: tasks.filter((t) => t.priority === p).length,

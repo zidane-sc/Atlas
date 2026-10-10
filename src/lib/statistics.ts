@@ -123,13 +123,21 @@ export interface StoryPointComparison {
  * Estimated (story points, 1 SP ≈ 1 hour per docs/01-product.md §8.5) vs. actual Focus
  * Timer hours logged, across done tasks that have a story point set.
  */
+const SIZE_HOURS: Record<string, number> = {
+  xs: 0.5,
+  s: 1.5,
+  m: 3,
+  l: 6,
+  xl: 12,
+};
+
 export function calcEstimatedVsActualStoryPoints(tasks: Task[]): StoryPointComparison {
   let estimated = 0;
   let actualHours = 0;
   for (const t of tasks) {
-    if (t.status !== "done" || t.storyPoint == null) continue;
-    estimated += t.storyPoint;
+    if (t.status !== "done" || !t.size) continue;
+    estimated += SIZE_HOURS[t.size.toLowerCase()] ?? 1;
     actualHours += (t.timeSpentSeconds ?? 0) / 3600;
   }
-  return { estimated, actualHours: Math.round(actualHours * 10) / 10 };
+  return { estimated: Math.round(estimated * 10) / 10, actualHours: Math.round(actualHours * 10) / 10 };
 }

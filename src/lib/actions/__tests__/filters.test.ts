@@ -55,7 +55,7 @@ describe("updateFilterAction", () => {
     mockFindUnique.mockResolvedValue({ id: "user-1", savedFilters: existingFilters() });
     mockUpdate.mockResolvedValue({});
 
-    const newFilters = { ...EMPTY_TASK_FILTERS, priorities: ["p0" as const] };
+    const newFilters = { ...EMPTY_TASK_FILTERS, priorities: ["high" as const] };
     const result = await updateFilterAction("view-1", "My Bugs", newFilters);
 
     expect(result.success).toBe(true);

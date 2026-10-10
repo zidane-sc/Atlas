@@ -6,7 +6,8 @@ import type { Task } from "@/types/task";
 
 /** 1 SP ≈ 1 hour (docs/03-design.md §11) — the enemy's max HP, floor of 1 SP so a 0/unset-SP task still has a real fight. */
 function estimatedSeconds(task: Task): number {
-  return Math.max(1, task.storyPoint || 1) * 3600;
+  const sizeMultiplier: Record<string, number> = { xs: 0.5, s: 1, m: 2, l: 4, xl: 8 };
+  return Math.max(1, (sizeMultiplier[task.size ?? "m"] || 1)) * 3600;
 }
 
 function formatClock(totalSeconds: number): string {
@@ -79,16 +80,15 @@ export function BattleTimer({
           type="button"
           variant="ghost"
           size="icon-sm"
-          title={isTiming ? "Stop session" : task.status === "in_progress" ? "Start session" : "Set status to In Progress to start"}
+          title={isTiming ? "Stop session" : "Start session"}
           onClick={isTiming ? onStop : onStart}
-          disabled={!isTiming && task.status !== "in_progress"}
         >
           {isTiming ? (
             <Pause size={14} style={{ color: "var(--color-status-blocked)" }} />
           ) : (
             <Play
               size={14}
-              style={{ color: task.status === "in_progress" ? "var(--color-status-ready)" : "var(--color-dim)" }}
+              style={{ color: "var(--color-status-ready)" }}
             />
           )}
         </Button>

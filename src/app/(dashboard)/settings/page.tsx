@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { ConfirmButton } from "@/components/ui/ConfirmButton";
 import { useTasks } from "@/components/providers/TasksProvider";
 import { useProjects } from "@/components/providers/ProjectsProvider";
-import { useSprints } from "@/components/providers/SprintsProvider";
 import { useSettings } from "@/components/providers/SettingsProvider";
 import { useNotifications } from "@/hooks/useNotifications";
 import { updateUserProfileAction } from "@/lib/actions/user";
@@ -109,7 +108,6 @@ export default function Page() {
   const { data: session, update: updateSession } = useSession();
   const { characterSheet, bonusXp, bonusCoins, reset: resetTasks } = useTasks();
   const { projects, reset: resetProjects } = useProjects();
-  const { sprints, reset: resetSprints } = useSprints();
   const { settings, updateSetting, reduceMotion, setReduceMotion } = useSettings();
   const { notify } = useNotifications();
   const sheet = characterSheet;
@@ -164,7 +162,7 @@ export default function Page() {
       version: EXPORT_VERSION,
       tasks: tasksForExport.data.tasks,
       projects,
-      sprints,
+      sprints: [],
       settings: { reduceMotion },
       bonus: { xp: bonusXp, coins: bonusCoins },
       workSessions: history.success ? history.data.workSessions : [],
@@ -239,7 +237,6 @@ export default function Page() {
   const onResetAll = () => {
     resetTasks();
     resetProjects();
-    resetSprints();
     notify("Reset to starting data.");
   };
 
@@ -257,7 +254,7 @@ export default function Page() {
 
       <div className="max-w-2xl flex-1 overflow-y-auto p-6">
         <SectionDivider>Experience</SectionDivider>
-        <Toggle checked={!!getSetting("notifications")} onChange={() => handleToggle("notifications")} label="Notifications" description="Overdue and sprint deadline alerts" />
+        <Toggle checked={!!getSetting("notifications")} onChange={() => handleToggle("notifications")} label="Notifications" description="Overdue quest alerts" />
         <Toggle checked={!!getSetting("soundEnabled")} onChange={() => handleToggle("soundEnabled")} label="Sound Effects" description="Subtle chimes on task complete and level-up" />
         <Toggle checked={!!reduceMotion} onChange={setReduceMotion} label="Reduce Motion" description="Shortens all animation durations" />
         <Toggle checked={!!getSetting("compactView")} onChange={() => handleToggle("compactView")} label="Compact View" description="Tighter spacing in list and table views" />

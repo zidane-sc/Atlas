@@ -26,8 +26,7 @@ export default function Page() {
             const projectTasks = allTasks.filter((t) => t.project === p.name);
             const completedTasks = projectTasks.filter((t) => t.status === "done").length;
             const inProgress = projectTasks.filter((t) => t.status === "in_progress").length;
-            const waiting = projectTasks.filter((t) => t.status === "waiting_external").length;
-            const blocked = projectTasks.filter((t) => t.status === "blocked").length;
+            // Blocked/waiting_external removed in simplified status model
             const pct = projectTasks.length > 0 ? Math.round((completedTasks / projectTasks.length) * 100) : 0;
             return (
               <div
@@ -58,8 +57,7 @@ export default function Page() {
                 </div>
                 <div className="flex flex-wrap gap-4 text-sm">
                   {inProgress > 0 && <span style={{ color: "var(--color-status-in-progress)" }}>▶ {inProgress} in progress</span>}
-                  {waiting > 0 && <span style={{ color: "var(--color-status-waiting-external)" }}>⏸ {waiting} waiting</span>}
-                  {blocked > 0 && <span style={{ color: "var(--color-status-blocked)" }}>✕ {blocked} blocked</span>}
+                  {/* Blocked/Waiting removed in simplified status model */}
                 </div>
               </div>
             );

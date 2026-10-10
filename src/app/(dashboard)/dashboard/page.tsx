@@ -10,7 +10,6 @@ import { DailyQuestCard } from "@/components/gamification/DailyQuestCard";
 import { TaskListView } from "@/components/tasks/TaskListView";
 import { useTasks } from "@/components/providers/TasksProvider";
 import { useSettings } from "@/components/providers/SettingsProvider";
-import { useSprints } from "@/components/providers/SprintsProvider";
 import { calcTaskCoins, calcTaskXP, completedAt, isTaskOnTime, calculateStreak, formatLocalDate } from "@/lib/gamification";
 import { formatDueDate, isDueToday, isOverdue } from "@/lib/task-utils";
 import { MOCK_NOW, TYPE_ICON, todaysDailyQuest } from "@/lib/mock-data";
@@ -19,7 +18,7 @@ export default function Page() {
   const { settings } = useSettings();
   const compactView = settings.find((s) => s.key === "compactView")?.value ?? false;
   const { tasks, allTimeTasks, characterSheet, activityLogs, lastQuestClaimedAt, claimDailyQuest } = useTasks();
-  const { sprints } = useSprints();
+  // const { sprints } = useSprints(); // Sprints removed
   const sheet = characterSheet;
   const streakDays = useMemo(() => calculateStreak(allTimeTasks), [allTimeTasks]);
   const { classTitle } = sheet;
@@ -28,8 +27,7 @@ export default function Page() {
   const notDone = tasks.filter((t) => t.status !== "done");
   const dueToday = notDone.filter((t) => isDueToday(t.dueDate, MOCK_NOW)).length;
   const overdue = notDone.filter((t) => isOverdue(t.dueDate, MOCK_NOW)).length;
-  const blocked = notDone.filter((t) => t.status === "blocked").length;
-  const waitingExternal = notDone.filter((t) => t.status === "waiting_external").length;
+  // Blocked/waiting_external removed in simplified status model
   const todaysQuest = notDone.filter((t) => isDueToday(t.dueDate, MOCK_NOW) || t.status === "in_progress");
   const recentWins = tasks
     .filter((t) => t.status === "done")
@@ -37,9 +35,10 @@ export default function Page() {
     .sort((a, b) => (b.completedAt ?? "").localeCompare(a.completedAt ?? ""))
     .slice(0, 3);
 
-  const activeSprint = sprints.find((s) => s.status === "active");
-  const sprintTasks = activeSprint ? tasks.filter((t) => t.sprint === activeSprint.name) : [];
-  const sprintDone = sprintTasks.filter((t) => t.status === "done").length;
+  // Sprint removed
+  // const activeSprint = sprints.find((s) => s.status === "active");
+  // const sprintTasks = activeSprint ? tasks.filter((t) => t.sprint === activeSprint.name) : [];
+  // const sprintDone = sprintTasks.filter((t) => t.status === "done").length;
 
   return (
     <main className="flex h-full flex-col gap-5 overflow-y-auto p-6">
@@ -88,8 +87,7 @@ export default function Page() {
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         <StatPanel label="Due Today" value={dueToday} shape="◆" colorVar="--color-primary-gold" href="/tasks/today" />
         <StatPanel label="Overdue" value={overdue} shape="▲" colorVar="--color-status-blocked" href="/tasks/overdue" />
-        <StatPanel label="Blocked" value={blocked} shape="✕" colorVar="--color-status-blocked" href="/tasks?filter=blocked" />
-        <StatPanel label="Waiting Ext." value={waitingExternal} shape="⏸" colorVar="--color-status-waiting-external" href="/tasks/waiting" />
+        {/* Blocked/Waiting removed in simplified status model */}
       </div>
 
       <DailyQuestCard
@@ -110,34 +108,13 @@ export default function Page() {
 
         <section className="border-2 border-border bg-card p-4">
           <div className="mb-3 flex items-center justify-between">
-            <span className="text-sm tracking-widest" style={{ color: "var(--color-status-waiting-external)" }}>⏸ WAITING EXTERNAL</span>
+            <span className="text-sm tracking-widest" style={{ color: "var(--color-status-blocked)" }}>✕ BLOCKED</span>
           </div>
-          <TaskListView tasks={tasks.filter((t) => t.status === "waiting_external").slice(0, 5)} empty="[ NONE ]" variant="compact" showStatus={false} />
+          <TaskListView tasks={tasks.filter((t) => t.status === "in_progress").slice(0, 5)} empty="[ NONE ]" variant="compact" showStatus={false} />
         </section>
       </div>
 
-      {activeSprint && (
-        <div className="border-2 border-primary bg-card p-4">
-          <div className="mb-2 flex items-center justify-between">
-            <div>
-              <div className="mb-1 text-sm tracking-widest text-muted-foreground">▸ ACTIVE SPRINT</div>
-              <div className="text-base" style={{ color: "var(--color-xp-gold)" }}>{activeSprint.name}</div>
-            </div>
-            <Link
-              href="/sprints"
-              className="flex items-center gap-1.5 border-2 border-border bg-secondary px-2 py-0.5 text-sm text-foreground"
-            >
-              Details <ChevronRight size={10} />
-            </Link>
-          </div>
-          {activeSprint.goal && <p className="mb-3 text-sm text-muted-foreground italic">&quot;{activeSprint.goal}&quot;</p>}
-          <PixBar value={sprintDone} max={Math.max(sprintTasks.length, 1)} colorVar="--color-status-ready" blocks={20} showLabel={false} />
-          <div className="mt-2 flex gap-5 text-sm text-muted-foreground">
-            <span>{formatDueDate(activeSprint.startDate)} → {formatDueDate(activeSprint.endDate)}</span>
-            <span style={{ color: "var(--color-status-ready)" }}>{sprintTasks.length - sprintDone} remaining</span>
-          </div>
-        </div>
-      )}
+      {/* Sprint removed */}
 
       {activityLogs && activityLogs.length > 0 && (
         <div className="border-2 border-border bg-card p-4">
@@ -198,8 +175,8 @@ export default function Page() {
         <div className="border-2 border-border bg-card p-4">
           <div className="mb-3 text-sm tracking-widest" style={{ color: "var(--color-status-ready)" }}>✓ RECENT WINS</div>
           {recentWins.map(({ task }) => {
-            const xp = calcTaskXP(task.priority, task.storyPoint, isTaskOnTime(task));
-            const coins = calcTaskCoins(task.priority, task.storyPoint);
+            const xp = calcTaskXP(task.priority, task.size, isTaskOnTime(task));
+            const coins = calcTaskCoins(task.priority, task.size);
             return (
               <div key={task.id} className="flex items-center gap-3 border-b border-border py-1.5">
                 <span style={{ color: "var(--color-status-done)" }}>✓</span>

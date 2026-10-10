@@ -28,14 +28,10 @@ export async function loadMoreTasks({
       return { success: false, error: { code: "NOT_FOUND", message: "User not found." } };
     }
 
-    // Parallel fetch projects, sprints, and tasks instead of sequential waterfall
-    const [projects, sprints, tasks] = await Promise.all([
+    // Parallel fetch projects and tasks instead of sequential waterfall
+    const [projects, tasks] = await Promise.all([
       db.project.findMany({
         where: { ownerId: user.id, archivedAt: null },
-        select: { id: true, name: true },
-      }),
-      db.sprint.findMany({
-        where: { ownerId: user.id },
         select: { id: true, name: true },
       }),
       db.task.findMany({
@@ -49,7 +45,7 @@ export async function loadMoreTasks({
 
     return {
       success: true,
-      data: tasks.map((t) => mapDbTaskToClient(t, projects as any, sprints as any)),
+      data: tasks.map((t) => mapDbTaskToClient(t, projects as any, [])),
     };
   } catch (error) {
     console.error("Failed to load more tasks:", error);

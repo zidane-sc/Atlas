@@ -10,6 +10,7 @@ import { generateTaskCode, getNextTaskCodeNumber } from "@/lib/task-code";
 import type { TaskComment, TaskStatus, TaskStatusLogEntry } from "@/types/task";
 import { getCharacterSheetData, type CharacterSheetData } from "@/lib/character-sheet-data";
 import { seedInitialData } from "@/lib/seeders/initial-data";
+import { broadcastSyncEvent } from "@/lib/sync-events";
 
 function toDate(value: string | null | undefined) {
   if (value === undefined) return undefined;
@@ -138,6 +139,7 @@ export async function createTask(
           console.error("Failed to compute character sheet after task create:", sheetErr);
         }
       }
+      broadcastSyncEvent(owner.id, "task:created", { task });
       return { success: true, data: { task, ...sheetData } };
     } catch (err) {
       if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2003") {
@@ -199,8 +201,7 @@ export async function updateTask(
         select: {
           status: true,
           priority: true,
-          effort: true,
-          storyPoint: true,
+          size: true,
           title: true,
           type: true,
         },
@@ -279,11 +280,8 @@ export async function updateTask(
       if (parsed.data.priority && parsed.data.priority !== existing.priority) {
         changes.priority = { from: existing.priority, to: parsed.data.priority };
       }
-      if (parsed.data.effort && parsed.data.effort !== existing.effort) {
-        changes.effort = { from: existing.effort, to: parsed.data.effort };
-      }
-      if (parsed.data.storyPoint && parsed.data.storyPoint !== existing.storyPoint) {
-        changes.storyPoint = { from: existing.storyPoint, to: parsed.data.storyPoint };
+      if (parsed.data.size && parsed.data.size !== existing.size) {
+        changes.size = { from: existing.size, to: parsed.data.size };
       }
       if (parsed.data.title && parsed.data.title !== existing.title) {
         changes.title = { from: existing.title, to: parsed.data.title };
@@ -299,7 +297,6 @@ export async function updateTask(
       const affectsGamification =
         (status !== undefined && status !== existing.status && (status === "done" || existing.status === "done")) ||
         (existing.status === "done" && (
-          (parsed.data.storyPoint !== undefined && parsed.data.storyPoint !== existing.storyPoint) ||
           (parsed.data.priority !== undefined && parsed.data.priority !== existing.priority) ||
           (parsed.data.type !== undefined && parsed.data.type !== existing.type)
         ));
@@ -315,6 +312,7 @@ export async function updateTask(
         console.error("Failed to compute character sheet after task update:", sheetErr);
       }
     }
+    broadcastSyncEvent(owner.id, "task:updated", { task });
     return { success: true, data: { task, ...sheetData } };
   } catch (err) {
     if (err instanceof Error && err.message === "NOT_FOUND") {
@@ -360,6 +358,7 @@ export async function deleteTask(id: string): Promise<ActionResult<{ id: string 
       });
     });
 
+    broadcastSyncEvent(owner.id, "task:deleted", { id });
     return { success: true, data: { id } };
   } catch (err) {
     if (err instanceof Error && err.message === "NOT_FOUND") {
@@ -499,23 +498,62 @@ export async function logWorkSession(
   }
 }
 
-export async function startFocusTimerAction(taskId: string, phase: "focus" | "break" = "focus"): Promise<ActionResult<{ success: boolean }>> {
+export async function startFocusTimerAction(taskId: string, phase: "focus" | "break" = "focus"): Promise<ActionResult<{ success: boolean; taskMovedToInProgress?: boolean }>> {
   const session = await auth();
   if (!session?.user?.email) {
     return { success: false, error: { code: "UNAUTHORIZED", message: "Sign in required." } };
   }
 
   try {
-    await db.user.update({
+    const user = await db.user.findUnique({
       where: { email: session.user.email },
-      data: {
-        activeTimerTaskId: taskId,
-        activeTimerStartedAt: new Date(),
-        activeTimerPhase: phase,
-      },
       select: { id: true },
     });
-    return { success: true, data: { success: true } };
+    if (!user) {
+      return { success: false, error: { code: "NOT_FOUND", message: "User not found." } };
+    }
+
+    let taskMovedToInProgress = false;
+    await db.$transaction(async (tx) => {
+      const task = await tx.task.findFirst({
+        where: { id: taskId, ownerId: user.id, deletedAt: null },
+        select: { id: true, status: true },
+      });
+      if (!task) throw new Error("TASK_NOT_FOUND");
+
+      // Auto-move to in_progress if currently backlog or todo
+      if (phase === "focus" && task.status !== "in_progress") {
+        await tx.task.update({
+          where: { id: taskId },
+          data: { status: "in_progress" },
+        });
+        await tx.taskStatusLog.create({
+          data: {
+            taskId,
+            fromStatus: task.status,
+            toStatus: "in_progress",
+            changedAt: new Date(),
+          },
+        });
+        taskMovedToInProgress = true;
+      }
+
+      await tx.user.update({
+        where: { id: user.id },
+        data: {
+          activeTimerTaskId: taskId,
+          activeTimerStartedAt: new Date(),
+          activeTimerPhase: phase,
+        },
+      });
+    });
+
+    broadcastSyncEvent(user.id, "timer:started", { taskId, phase, startedAt: Date.now() });
+    if (taskMovedToInProgress) {
+      broadcastSyncEvent(user.id, "task:updated", { id: taskId, status: "in_progress" });
+    }
+
+    return { success: true, data: { success: true, taskMovedToInProgress } };
   } catch (error) {
     console.error("Failed to start focus timer:", error);
     return { success: false, error: { code: "INTERNAL", message: "Failed to start focus timer." } };
@@ -533,7 +571,7 @@ export async function stopFocusTimerAction(): Promise<
   try {
     const user = await db.user.findUnique({
       where: { email: session.user.email },
-      select: { activeTimerTaskId: true, activeTimerStartedAt: true, activeTimerPhase: true },
+      select: { id: true, activeTimerTaskId: true, activeTimerStartedAt: true, activeTimerPhase: true },
     });
 
     if (!user || !user.activeTimerTaskId || !user.activeTimerStartedAt) {
@@ -546,16 +584,44 @@ export async function stopFocusTimerAction(): Promise<
     const endedAt = new Date();
     const seconds = Math.max(1, Math.round((endedAt.getTime() - startedAt.getTime()) / 1000));
 
-    // Clear active timer fields on user
-    await db.user.update({
-      where: { email: session.user.email },
-      data: {
-        activeTimerTaskId: null,
-        activeTimerStartedAt: null,
-        activeTimerPhase: "focus",
-      },
-      select: { id: true },
+    await db.$transaction(async (tx) => {
+      // Clear active timer fields on user
+      await tx.user.update({
+        where: { id: user.id },
+        data: {
+          activeTimerTaskId: null,
+          activeTimerStartedAt: null,
+          activeTimerPhase: "focus",
+        },
+      });
+
+      // If it was a focus session, atomically record the WorkSession & increment task timeSpentSeconds
+      if (phase === "focus") {
+        await tx.workSession.create({
+          data: {
+            taskId,
+            startedAt,
+            endedAt,
+            durationSeconds: seconds,
+          },
+        });
+
+        await tx.task.update({
+          where: { id: taskId },
+          data: {
+            timeSpentSeconds: { increment: seconds },
+          },
+        });
+
+        await logActivity(tx, user.id, {
+          taskId,
+          action: "focused",
+          details: { durationSeconds: seconds },
+        });
+      }
     });
+
+    broadcastSyncEvent(user.id, "timer:stopped", { taskId, seconds, phase });
 
     return {
       success: true,
@@ -651,7 +717,6 @@ export async function resetAllTasksAction(): Promise<ActionResult<Partial<Charac
       await tx.workSession.deleteMany({ where: { task: { ownerId: user.id } } });
       await tx.task.deleteMany({ where: { ownerId: user.id } });
       await tx.project.deleteMany({ where: { ownerId: user.id } });
-      await tx.sprint.deleteMany({ where: { ownerId: user.id } });
       // New relational models
       await tx.taskRelation.deleteMany({ where: { task: { ownerId: user.id } } });
       await tx.attachment.deleteMany({ where: { task: { ownerId: user.id } } });
@@ -660,9 +725,6 @@ export async function resetAllTasksAction(): Promise<ActionResult<Partial<Charac
       await tx.xpLog.deleteMany({ where: { userId: user.id } });
       await tx.achievement.deleteMany({ where: { unlockedAt: { not: null } } }); // only reset unlocked
       await tx.setting.deleteMany({ where: { userId: user.id } });
-      await tx.noteTaskLink.deleteMany({ where: { note: { userId: user.id } } });
-      await tx.noteAttachment.deleteMany({ where: { note: { userId: user.id } } });
-      await tx.note.deleteMany({ where: { userId: user.id } });
     });
 
     // Seed initial data
