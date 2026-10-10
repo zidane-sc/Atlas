@@ -32,7 +32,12 @@ import {
   type CharacterSheet,
 } from "@/lib/gamification";
 import { getTodayDate } from "@/lib/mock-data";
-import { purchaseDecoration as apiPurchaseDecoration, placeDecoration as apiPlaceDecoration, moveDecoration as apiMoveDecoration } from "@/lib/actions/decorations";
+import {
+  purchaseDecoration as apiPurchaseDecoration,
+  placeDecoration as apiPlaceDecoration,
+  moveDecoration as apiMoveDecoration,
+  resetDecorationPositions as apiResetDecorationPositions,
+} from "@/lib/actions/decorations";
 import type { TaskFilters } from "@/lib/task-filters";
 import type { SavedFilterClient } from "@/lib/actions/filters";
 import { saveFilterAction as apiSaveFilter, deleteFilterAction as apiDeleteFilter, updateFilterAction as apiUpdateFilter } from "@/lib/actions/filters";
@@ -134,6 +139,7 @@ interface TasksContextValue {
   purchaseDecoration: (itemId: string) => Promise<boolean>;
   placeDecoration: (category: "desk" | "chair" | "decor" | "wallpaper" | "floor", itemId: string | null) => Promise<boolean>;
   moveDecoration: (category: "desk" | "chair" | "decor" | "wallpaper" | "floor", x: number, y: number) => Promise<boolean>;
+  resetDecorationPositions: () => Promise<boolean>;
   savedFilters: SavedFilterClient[];
   saveFilter: (name: string, filters: TaskFilters) => Promise<boolean>;
   deleteFilter: (id: string) => Promise<boolean>;
@@ -711,6 +717,17 @@ export function TasksProvider({
         const res = await apiMoveDecoration(category, x, y);
         if (res.success) {
           setPlacedDecorations(res.data.placedDecorations as Record<string, any>);
+          return true;
+        } else {
+          notify(res.error.message, "error");
+          return false;
+        }
+      },
+      resetDecorationPositions: async () => {
+        const res = await apiResetDecorationPositions();
+        if (res.success) {
+          setPlacedDecorations(res.data.placedDecorations as Record<string, any>);
+          notify("Furniture positions reset!", "success");
           return true;
         } else {
           notify(res.error.message, "error");

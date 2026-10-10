@@ -2,10 +2,11 @@
 
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { DECORATIONS_CATALOG } from "@/lib/decorations-catalog";
+import { DECORATIONS_CATALOG, DEFAULT_DECORATION_POSITIONS } from "@/lib/decorations-catalog";
 import { PRIORITY_COIN_BONUS } from "@/lib/gamification";
 import type { Priority } from "@/types/task";
 import type { ActionResult } from "@/lib/actions/types";
+import { broadcastSyncEvent } from "@/lib/sync-events";
 
 export async function purchaseDecoration(itemId: string): Promise<ActionResult<{ bonusCoins: number; purchasedDecorations: string[] }>> {
   const session = await auth();
@@ -63,6 +64,8 @@ export async function purchaseDecoration(itemId: string): Promise<ActionResult<{
       },
       select: { id: true },
     });
+
+    broadcastSyncEvent(user.id, "sync:reload", { purchasedDecorations: newPurchased, bonusCoins: newBonusCoins });
 
     return {
       success: true,
@@ -123,6 +126,8 @@ export async function moveDecoration(
       select: { id: true },
     });
 
+    broadcastSyncEvent(user.id, "sync:reload", { placedDecorations: newPlaced });
+
     return {
       success: true,
       data: {
@@ -174,9 +179,14 @@ export async function placeDecoration(
     }
 
     const currentPlaced = (user.placedDecorations as Record<string, any>) || {};
+    const prevItem = currentPlaced[category];
+    const prevPos = prevItem && typeof prevItem === "object"
+      ? { x: prevItem.x ?? DEFAULT_DECORATION_POSITIONS[category]?.x ?? 50, y: prevItem.y ?? DEFAULT_DECORATION_POSITIONS[category]?.y ?? 12 }
+      : (DEFAULT_DECORATION_POSITIONS[category] ?? { x: 50, y: 12 });
+
     const newPlaced = {
       ...currentPlaced,
-      [category]: itemId ? { id: itemId, x: 0, y: 0 } : null,
+      [category]: itemId ? { id: itemId, ...prevPos } : null,
     };
 
     await db.user.update({
@@ -187,6 +197,8 @@ export async function placeDecoration(
       select: { id: true },
     });
 
+    broadcastSyncEvent(user.id, "sync:reload", { placedDecorations: newPlaced });
+
     return {
       success: true,
       data: {
@@ -196,5 +208,46 @@ export async function placeDecoration(
   } catch (error) {
     console.error("Failed to place decoration:", error);
     return { success: false, error: { code: "INTERNAL", message: "Failed to place decoration." } };
+  }
+}
+
+export async function resetDecorationPositions(): Promise<ActionResult<{ placedDecorations: Record<string, any> }>> {
+  const session = await auth();
+  if (!session?.user?.email) {
+    return { success: false, error: { code: "UNAUTHORIZED", message: "Sign in required." } };
+  }
+
+  try {
+    const user = await db.user.findUnique({
+      where: { email: session.user.email },
+      select: { id: true, placedDecorations: true },
+    });
+
+    if (!user) {
+      return { success: false, error: { code: "NOT_FOUND", message: "User not found." } };
+    }
+
+    const currentPlaced = (user.placedDecorations as Record<string, any>) || {};
+    const newPlaced: Record<string, any> = { ...currentPlaced };
+
+    for (const [cat, defPos] of Object.entries(DEFAULT_DECORATION_POSITIONS)) {
+      if (newPlaced[cat]) {
+        const id = typeof newPlaced[cat] === "string" ? newPlaced[cat] : newPlaced[cat].id;
+        newPlaced[cat] = { id, ...defPos };
+      }
+    }
+
+    await db.user.update({
+      where: { id: user.id },
+      data: { placedDecorations: newPlaced },
+      select: { id: true },
+    });
+
+    broadcastSyncEvent(user.id, "sync:reload", { placedDecorations: newPlaced });
+
+    return { success: true, data: { placedDecorations: newPlaced } };
+  } catch (error) {
+    console.error("Failed to reset decoration positions:", error);
+    return { success: false, error: { code: "INTERNAL", message: "Failed to reset positions." } };
   }
 }
