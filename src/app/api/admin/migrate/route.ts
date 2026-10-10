@@ -124,6 +124,20 @@ export async function GET(req: Request) {
     `);
     logs.push("Ensured align_schema tables exist ✅");
 
+    // 2.5 Ensure sync_events table exists for real-time SSE multi-device sync
+    await db.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS "sync_events" (
+          "id" UUID NOT NULL DEFAULT gen_random_uuid(),
+          "user_id" UUID NOT NULL,
+          "type" TEXT NOT NULL,
+          "data" JSONB,
+          "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          CONSTRAINT "sync_events_pkey" PRIMARY KEY ("id")
+      );
+      CREATE INDEX IF NOT EXISTS "sync_events_user_id_created_at_idx" ON "sync_events"("user_id", "created_at");
+    `);
+    logs.push("Ensured sync_events table exists ✅");
+
     // 3. Migration 2: 20261011000000_simplify_schema
     if (!appliedNames.has("20261011000000_simplify_schema")) {
       logs.push("Applying 20261011000000_simplify_schema...");
