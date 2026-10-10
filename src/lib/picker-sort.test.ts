@@ -25,6 +25,7 @@ const sprint = (name: string, startDate: string, status: Sprint["status"]): Spri
 
 const task = (title: string, status: Task["status"]): Task => ({
   id: title,
+  code: `TASK-${title}`,
   title,
   project: "P",
   status,
@@ -36,6 +37,7 @@ const task = (title: string, status: Task["status"]): Task => ({
   attachments: [],
   deliverables: [],
   statusHistory: [],
+  createdAt: "2026-01-01T00:00:00Z",
 });
 
 describe("sortProjectsForPicker", () => {

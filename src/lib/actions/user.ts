@@ -78,30 +78,29 @@ export async function updateUserSettingAction(
   try {
     const user = await db.user.findUnique({
       where: { email: session.user.email },
-      select: { settings: true },
+      select: { id: true },
     });
 
     if (!user) {
       return { success: false, error: { code: "NOT_FOUND", message: "User not found." } };
     }
 
-    const currentSettings = (user.settings || []) as unknown as UserSetting[];
-    const exists = currentSettings.some((s) => s.key === key);
-    const updatedSettings = exists
-      ? currentSettings.map((s) => (s.key === key ? { ...s, value } : s))
-      : [...currentSettings, { key, label: key, description: "", type: typeof value === "number" ? "number" : typeof value === "boolean" ? "boolean" : "string", value } as UserSetting];
+    // Upsert setting
+    await db.setting.upsert({
+      where: { userId_key: { userId: user.id, key } },
+      create: { userId: user.id, key, value: value as Prisma.InputJsonValue },
+      update: { value: value as Prisma.InputJsonValue },
+    });
 
-    const updated = await db.user.update({
-      where: { email: session.user.email },
-      data: {
-        settings: updatedSettings as unknown as Prisma.InputJsonValue,
-      },
-      select: { settings: true },
+    // Return all settings
+    const settings = await db.setting.findMany({
+      where: { userId: user.id },
+      select: { key: true, value: true },
     });
 
     return {
       success: true,
-      data: updated.settings as unknown as UserSetting[],
+      data: settings.map((s) => ({ key: s.key, value: s.value })) as UserSetting[],
     };
   } catch (error) {
     console.error("Failed to update user setting:", error);
@@ -210,42 +209,30 @@ export async function updateDrawerLastSelectedAction(
   try {
     const user = await db.user.findUnique({
       where: { email: session.user.email },
-      select: { settings: true },
+      select: { id: true },
     });
 
     if (!user) {
       return { success: false, error: { code: "NOT_FOUND", message: "User not found." } };
     }
 
-    const currentSettings = (user.settings || []) as unknown as UserSetting[];
-    const drawerSetting = currentSettings.find((s) => s.key === "drawerLastSelected");
+    // Get current drawerLastSelected setting
+    const drawerSetting = await db.setting.findUnique({
+      where: { userId_key: { userId: user.id, key: "drawerLastSelected" } },
+    });
+
     let drawerLastSelected = (drawerSetting?.value as Record<string, string | null>) || { task: null, sprint: null, project: null };
     drawerLastSelected[pickerType] = itemId;
 
-    const updatedSettings = currentSettings
-      .filter((s) => s.key !== "drawerLastSelected")
-      .concat([
-        {
-          key: "drawerLastSelected",
-          label: "Drawer Last Selected",
-          type: "json",
-          value: drawerLastSelected,
-        } as unknown as UserSetting,
-      ]);
-
-    const updated = await db.user.update({
-      where: { email: session.user.email },
-      data: {
-        settings: updatedSettings as unknown as Prisma.InputJsonValue,
-      },
-      select: { settings: true },
+    await db.setting.upsert({
+      where: { userId_key: { userId: user.id, key: "drawerLastSelected" } },
+      create: { userId: user.id, key: "drawerLastSelected", value: drawerLastSelected as Prisma.InputJsonValue },
+      update: { value: drawerLastSelected as Prisma.InputJsonValue },
     });
 
     return {
       success: true,
-      data: {
-        drawerLastSelected: drawerLastSelected,
-      },
+      data: { drawerLastSelected },
     };
   } catch (error) {
     console.error("Failed to update drawer last selected:", error);

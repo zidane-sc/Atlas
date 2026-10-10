@@ -81,6 +81,35 @@ export async function createTask(
             ownerId: owner.id,
             startDate: startDate ? new Date(startDate) : undefined,
             dueDate: dueDate ? new Date(dueDate) : undefined,
+            tags: rest.tags?.map((name: string) => ({
+              create: {
+                tag: {
+                  connectOrCreate: {
+                    where: { name },
+                    create: { name },
+                  },
+                },
+              },
+            })) as any,
+            relations: (rest.relations ?? []).map((r) => ({
+              create: {
+                relationType: r.relationType as any,
+                relatedTask: { connect: { id: r.taskId } },
+              },
+            })) as any,
+            attachments: (rest.attachments ?? []).map((a) => ({
+              create: {
+                type: a.type as any,
+                url: a.url,
+                label: a.label,
+              },
+            })) as any,
+            deliverables: (rest.deliverables ?? []).map((d) => ({
+              create: {
+                type: d.type as any,
+                urlOrContent: d.urlOrContent ?? "",
+              },
+            })) as any,
           },
         });
 
@@ -160,7 +189,7 @@ export async function updateTask(
     return { success: false, error: { code: "NOT_FOUND", message: "User not found." } };
   }
 
-  const { startDate, dueDate, status, ...rest } = parsed.data;
+  const { startDate, dueDate, status, tags, relations, attachments, deliverables, ...rest } = parsed.data;
 
   try {
     const { task, affectsGamification } = await db.$transaction(async (tx) => {
@@ -197,6 +226,39 @@ export async function updateTask(
           completedAt,
           startDate: toDate(startDate),
           dueDate: toDate(dueDate),
+          tags: tags ? {
+            deleteMany: {},
+            create: tags.map((name: string) => ({
+              tag: {
+                connectOrCreate: {
+                  where: { name },
+                  create: { name },
+                },
+              },
+            })),
+          } : undefined,
+          relations: relations ? {
+            deleteMany: {},
+            create: relations.map((r) => ({
+              relationType: r.relationType as any,
+              relatedTask: { connect: { id: r.taskId } },
+            })),
+          } : undefined,
+          attachments: attachments ? {
+            deleteMany: {},
+            create: attachments.map((a) => ({
+              type: a.type as any,
+              url: a.url,
+              label: a.label,
+            })),
+          } : undefined,
+          deliverables: deliverables ? {
+            deleteMany: {},
+            create: deliverables.map((d) => ({
+              type: d.type as any,
+              urlOrContent: d.urlOrContent ?? "",
+            })),
+          } : undefined,
         },
       });
 

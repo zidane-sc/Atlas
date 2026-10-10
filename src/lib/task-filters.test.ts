@@ -5,6 +5,7 @@ import type { Task } from "@/types/task";
 function task(overrides: Partial<Task>): Task {
   return {
     id: overrides.id ?? "t1",
+    code: `TASK-${overrides.id ?? "t1"}`,
     title: "Task",
     project: "Atlas",
     status: "todo",
@@ -15,6 +16,8 @@ function task(overrides: Partial<Task>): Task {
     attachments: [],
     deliverables: [],
     statusHistory: [],
+    createdAt: "2026-01-01T00:00:00Z",
+    pinned: false,
     ...overrides,
   };
 }

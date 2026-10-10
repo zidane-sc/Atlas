@@ -266,7 +266,7 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
 
   const addDeliverable = () => {
     if (!deliverableLabel.trim()) return;
-    const deliverable: TaskDeliverable = { type: deliverableType, label: deliverableLabel.trim(), url: deliverableUrl.trim() || undefined };
+    const deliverable: TaskDeliverable = { type: deliverableType, label: deliverableLabel.trim(), urlOrContent: deliverableUrl.trim() || undefined };
     set("deliverables", [...form.deliverables, deliverable]);
     setDeliverableLabel("");
     setDeliverableUrl("");
@@ -873,7 +873,7 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
                       <div className="flex gap-1 justify-end">
                         <Button type="button" size="sm" onClick={() => {
                           const newDeliverables = [...form.deliverables];
-                          newDeliverables[i] = { type: deliverableType, label: deliverableLabel, url: deliverableUrl || undefined };
+                          newDeliverables[i] = { type: deliverableType, label: deliverableLabel, urlOrContent: deliverableUrl || undefined };
                           set("deliverables", newDeliverables);
                           setEditingDeliverableIndex(null);
                           setDeliverableType("pr");
@@ -887,7 +887,7 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
                     <li key={i} className="flex flex-col gap-1 border border-border p-2 bg-muted/20 cursor-pointer hover:bg-muted/30" onClick={() => {
                       setDeliverableType(d.type);
                       setDeliverableLabel(d.label);
-                      setDeliverableUrl(d.url || "");
+                      setDeliverableUrl(d.urlOrContent || "");
                       setEditingDeliverableIndex(i);
                     }}>
                       <div className="flex items-center justify-between gap-2">
@@ -897,7 +897,7 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
                           ✕
                         </button>
                       </div>
-                      {d.url && <a href={d.url} target="_blank" rel="noopener noreferrer" className="text-xs text-primary truncate hover:underline">{d.url}</a>}
+                      {d.urlOrContent && <a href={d.urlOrContent} target="_blank" rel="noopener noreferrer" className="text-xs text-primary truncate hover:underline">{d.urlOrContent}</a>}
                     </li>
                   )
                 ))}

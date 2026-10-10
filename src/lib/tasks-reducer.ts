@@ -1,6 +1,6 @@
 import type { Task, TaskStatus, TaskType, Priority, Effort, Reporter, TaskAttachment, TaskDeliverable, TaskRelation, TaskComment } from "@/types/task";
 import type { TaskFormValues } from "@/lib/schemas/task";
-import type { Task as DbTask, Project as DbProject, Sprint as DbSprint, TaskStatusLog, Comment as DbComment, User as DbUser } from "@/generated/prisma/client";
+import type { Task as DbTask, Project as DbProject, Sprint as DbSprint, TaskStatusLog, Comment as DbComment, User as DbUser, TaskTag, TaskRelation as DbTaskRelation, Attachment as DbAttachment, Deliverable as DbDeliverable } from "@/generated/prisma/client";
 import type { Project, Sprint } from "@/types/gamification";
 import { fromDbProjectCategory } from "@/lib/schemas/project";
 
@@ -11,6 +11,10 @@ export type DbTaskWithLogs = Partial<DbTask> & {
   priority: DbTask["priority"];
   createdAt: Date;
   title?: string;
+  tags?: (TaskTag & { tag: { id: string; name: string } })[];
+  relations?: (DbTaskRelation & { relatedTask: { id: string; title: string } })[];
+  attachments?: DbAttachment[];
+  deliverables?: DbDeliverable[];
   statusHistory?: TaskStatusLog[];
   comments?: (DbComment & { author: DbUser })[];
 };
@@ -41,10 +45,22 @@ export function mapDbTaskToClient(
     createdAt: dbTask.createdAt.toISOString(),
     sprint: sprint ? sprint.name : undefined,
     reporter: (dbTask.reporter as Reporter) || "self",
-    tags: dbTask.tags ?? [],
-    relations: (dbTask.relations as unknown as TaskRelation[]) || [],
-    attachments: (dbTask.attachments as unknown as TaskAttachment[]) || [],
-    deliverables: (dbTask.deliverables as unknown as TaskDeliverable[]) || [],
+    tags: dbTask.tags?.map((t) => t.tag.name) ?? [],
+    relations: dbTask.relations?.map((r) => ({
+      relationType: r.relationType as any,
+      taskId: r.relatedTask.id,
+      title: r.relatedTask.title,
+    })) ?? [],
+    attachments: dbTask.attachments?.map((a) => ({
+      type: a.type as any,
+      label: a.label ?? "",
+      url: a.url,
+    })) ?? [],
+    deliverables: dbTask.deliverables?.map((d) => ({
+      type: d.type as any,
+      label: "",
+      urlOrContent: d.urlOrContent,
+    })) ?? [],
     statusHistory: (() => {
       const history = dbTask.statusHistory && dbTask.statusHistory.length > 0
         ? dbTask.statusHistory.map((h) => ({

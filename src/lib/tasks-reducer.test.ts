@@ -32,6 +32,7 @@ describe("tasksReducer create — docs/04-development.md §3", () => {
     const existing: Task[] = [
       {
         id: "t0",
+        code: "TASK-t0",
         title: "Existing",
         project: "Atlas",
         status: "todo",
@@ -42,6 +43,8 @@ describe("tasksReducer create — docs/04-development.md §3", () => {
         attachments: [],
         deliverables: [],
         statusHistory: [],
+        createdAt: "2026-01-01T00:00:00Z",
+        pinned: false,
       },
     ];
     const result = tasksReducer(existing, { type: "create", id: "t1", changedAt: "2026-01-01T00:00:00Z", values: values() });
@@ -52,6 +55,7 @@ describe("tasksReducer create — docs/04-development.md §3", () => {
 describe("tasksReducer update — status transitions always produce a log row", () => {
   const base: Task = {
     id: "t1",
+    code: "TASK-t1",
     title: "Original",
     project: "Atlas",
     status: "todo",
@@ -62,6 +66,8 @@ describe("tasksReducer update — status transitions always produce a log row", 
     attachments: [],
     deliverables: [],
     statusHistory: [{ fromStatus: null, toStatus: "todo", changedAt: "2026-01-01T00:00:00Z" }],
+    createdAt: "2026-01-01T00:00:00Z",
+    pinned: false,
   };
 
   it("appends a statusHistory row when status changes", () => {
@@ -89,7 +95,7 @@ describe("tasksReducer update — status transitions always produce a log row", 
   });
 
   it("leaves other tasks untouched", () => {
-    const other: Task = { ...base, id: "t2", title: "Untouched" };
+    const other: Task = { ...base, id: "t2", code: "TASK-t2", title: "Untouched" };
     const result = tasksReducer([base, other], {
       type: "update",
       id: "t1",
@@ -119,10 +125,22 @@ describe("tasksReducer update — status transitions always produce a log row", 
 describe("tasksReducer delete", () => {
   it("removes only the matching task", () => {
     const t1: Task = {
-      id: "t1", title: "A", project: "Atlas", status: "todo", type: "coding", priority: "p2",
-      tags: [], relations: [], attachments: [], deliverables: [], statusHistory: [],
+      id: "t1",
+      code: "TASK-t1",
+      title: "A",
+      project: "Atlas",
+      status: "todo",
+      type: "coding",
+      priority: "p2",
+      tags: [],
+      relations: [],
+      attachments: [],
+      deliverables: [],
+      statusHistory: [],
+      createdAt: "2026-01-01T00:00:00Z",
+      pinned: false,
     };
-    const t2: Task = { ...t1, id: "t2", title: "B" };
+    const t2: Task = { ...t1, id: "t2", code: "TASK-t2", title: "B" };
     const result = tasksReducer([t1, t2], { type: "delete", id: "t1" });
     expect(result.map((t) => t.id)).toEqual(["t2"]);
   });
@@ -130,8 +148,20 @@ describe("tasksReducer delete", () => {
 
 describe("tasksReducer replaceId and restore", () => {
   const baseTask: Task = {
-    id: "t1", title: "A", project: "Atlas", status: "todo", type: "coding", priority: "p2",
-    tags: [], relations: [], attachments: [], deliverables: [], statusHistory: [],
+    id: "t1",
+    code: "TASK-t1",
+    title: "A",
+    project: "Atlas",
+    status: "todo",
+    type: "coding",
+    priority: "p2",
+    tags: [],
+    relations: [],
+    attachments: [],
+    deliverables: [],
+    statusHistory: [],
+    createdAt: "2026-01-01T00:00:00Z",
+    pinned: false,
   };
 
   it("replaces a temporary task ID with the real ID", () => {

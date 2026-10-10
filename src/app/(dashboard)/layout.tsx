@@ -39,7 +39,7 @@ export default async function DashboardLayout({
     create: { email: session.user.email, name: session.user.name ?? session.user.email },
   });
 
-  const [dbTasks, rawDbAllDoneTasks, rawDbProjects, rawDbSprints, rawDbActivityLogs] = await Promise.all([
+  const [dbTasks, rawDbAllDoneTasks, rawDbProjects, rawDbSprints, rawDbActivityLogs, rawDbSettings] = await Promise.all([
     // No nested `statusHistory`/`comments` here — both are now on-demand only, fetched by
     // `getTaskDetails` when TaskFormSheet opens a specific task. `createdAt`/`completedAt` are
     // direct scalar columns (see Task.createdAt, types/task.ts), so nothing in the bulk views
@@ -91,6 +91,9 @@ export default async function DashboardLayout({
         sprint: { select: { name: true } },
       },
     }),
+    db.setting.findMany({
+      where: { userId: owner.id },
+    }),
   ]);
 
   let dbProjects = rawDbProjects;
@@ -121,6 +124,7 @@ export default async function DashboardLayout({
     bonusXp: owner.bonusXp,
     bonusCoins: owner.bonusCoins,
   });
+  const settingsFromDb = rawDbSettings.map((s) => ({ key: s.key, value: s.value })) as UserSetting[];
   const activityLogs = rawDbActivityLogs.map((l) => ({
     id: l.id,
     action: l.action,
@@ -142,7 +146,7 @@ export default async function DashboardLayout({
 
   return (
     <SessionProvider>
-      <SettingsProvider initialSettings={owner.settings as unknown as UserSetting[]}>
+      <SettingsProvider initialSettings={settingsFromDb}>
         <NotificationProvider>
         <DefaultViewRedirect />
         <ProjectsProvider initialProjects={projects}>

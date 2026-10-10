@@ -9,8 +9,11 @@ import {
 } from "./statistics";
 import type { Task } from "@/types/task";
 
-function task(overrides: Partial<Task> & Pick<Task, "id" | "priority" | "type" | "status">): Task {
+function task(overrides: Partial<Omit<Task, "id">> & Pick<Task, "priority" | "type" | "status"> & { id: string }): Task {
+  const { id, ...rest } = overrides;
   return {
+    id,
+    code: `TASK-${id}`,
     title: "Test task",
     project: "Test",
     tags: [],
@@ -19,7 +22,8 @@ function task(overrides: Partial<Task> & Pick<Task, "id" | "priority" | "type" |
     deliverables: [],
     pinned: false,
     statusHistory: [],
-    ...overrides,
+    createdAt: "2026-01-01T00:00:00Z",
+    ...rest,
   };
 }
 

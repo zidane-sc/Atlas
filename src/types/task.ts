@@ -80,7 +80,7 @@ export interface TaskAttachment {
 export interface TaskDeliverable {
   type: DeliverableType;
   label: string;
-  url?: string;
+  urlOrContent?: string;
 }
 
 export interface TaskStatusLogEntry {
@@ -91,7 +91,7 @@ export interface TaskStatusLogEntry {
 
 export interface Task {
   id: string;
-  code: string;
+  code?: string;
   title: string;
   description?: string;
   project: string;
