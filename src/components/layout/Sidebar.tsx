@@ -40,13 +40,22 @@ const SMART_VIEW_COUNT: Record<string, (tasks: Task[]) => number> = {
 
 function NavLink({ href, label, icon: Icon, count, badgeColorVar, collapsed }: NavItem & { collapsed?: boolean }) {
   const pathname = usePathname();
-  const active = pathname === href;
+  const [navigatingTo, setNavigatingTo] = useState<string | null>(null);
+
+  useEffect(() => {
+    setNavigatingTo(null);
+  }, [pathname]);
+
+  const active = (navigatingTo ?? pathname) === href;
+
   return (
     <Link
       href={href}
+      prefetch={true}
+      onClick={() => setNavigatingTo(href)}
       title={collapsed ? label : undefined}
       className={cn(
-        "flex w-full items-center gap-2 px-3 py-1 text-sm transition-all focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 rounded-sm",
+        "flex w-full items-center gap-2 px-3 py-1 text-sm transition-all focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 rounded-sm active:translate-x-0.5",
         collapsed && "lg:justify-center lg:px-0"
       )}
       style={{

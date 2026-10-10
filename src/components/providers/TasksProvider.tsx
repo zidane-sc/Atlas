@@ -277,6 +277,12 @@ export function TasksProvider({
       characterSheet,
       unlockedAchievements,
       createTask: async (values) => {
+        const tempId = crypto.randomUUID();
+        const changedAt = new Date().toISOString();
+        const optimisticTask = buildTaskFromValues(tempId, changedAt, values);
+        dispatch({ type: "insert", task: optimisticTask });
+        notify("Quest created!", "success");
+
         const input = {
           title: values.title,
           description: values.description || undefined,
@@ -297,10 +303,9 @@ export function TasksProvider({
         const result = await apiCreateTask(input);
         if (!result.success) {
           notify(result.error.message, "error");
+          dispatch({ type: "delete", id: tempId });
         } else {
-          const dbProjects = projects as any[];
-          const clientTask = mapDbTaskToClient(result.data.task, dbProjects, []);
-          dispatch({ type: "insert", task: clientTask });
+          dispatch({ type: "replaceId", tempId, realId: result.data.task.id });
           if (result.data.characterSheet) {
             checkAndEmitLevelUp(characterSheet.globalXP, result.data.characterSheet.globalXP);
             setCharacterSheet(result.data.characterSheet);
@@ -426,6 +431,7 @@ export function TasksProvider({
         // Optimistic delete
         dispatch({ type: "delete", id });
         setSheet((s) => (s.task?.id === id ? { ...s, open: false } : s));
+        notify("Quest deleted.", "success");
 
         const result = await apiDeleteTask(id);
         if (!result.success) {
@@ -703,12 +709,24 @@ export function TasksProvider({
         }
       },
       placeDecoration: async (category, itemId) => {
+        const oldPlaced = placedDecorations;
+        const currentItem = oldPlaced[category];
+        const prevPos = currentItem && typeof currentItem === "object"
+          ? { x: currentItem.x ?? 50, y: currentItem.y ?? 12 }
+          : { x: 50, y: 12 };
+
+        setPlacedDecorations({
+          ...oldPlaced,
+          [category]: itemId ? { id: itemId, ...prevPos } : null,
+        });
+        notify("Item placed in room!", "success");
+
         const res = await apiPlaceDecoration(category, itemId);
         if (res.success) {
           setPlacedDecorations(res.data.placedDecorations as Record<string, any>);
-          notify("Item placed in room!", "success");
           return true;
         } else {
+          setPlacedDecorations(oldPlaced);
           notify(res.error.message, "error");
           return false;
         }

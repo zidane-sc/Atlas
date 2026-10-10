@@ -59,7 +59,7 @@ export function NotificationQueue({
           return (
             <div
               key={notification.id}
-              className="flex items-center gap-3 bg-[var(--color-bg-panel)] border-2 border-[var(--color-primary-gold)] px-4 py-3 font-mono text-sm pointer-events-auto"
+              className="flex items-center gap-3 bg-[var(--color-bg-panel)] border-2 border-[var(--color-primary-gold)] px-4 py-3 font-mono text-sm pointer-events-auto animate-in slide-in-from-top-2 fade-in duration-150 shadow-[4px_4px_0_rgba(0,0,0,0.8)]"
               style={{
                 backdropFilter: 'blur(4px)',
               }}
