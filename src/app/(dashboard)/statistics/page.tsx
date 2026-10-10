@@ -2,6 +2,8 @@ import { redirect } from "next/navigation";
 import { StatisticsPage } from "@/components/statistics/StatisticsPage";
 import { getStatisticsPageData } from "@/lib/statistics-data";
 
+export const dynamic = "force-dynamic";
+
 export default async function Page() {
   const stats = await getStatisticsPageData();
   if (!stats) redirect("/auth");

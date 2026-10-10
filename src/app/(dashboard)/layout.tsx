@@ -21,6 +21,8 @@ import { seedInitialData } from "@/lib/seeders/initial-data";
 import type { SavedFilterClient } from "@/lib/actions/filters";
 import type { UserSetting } from "@/types/settings";
 
+export const dynamic = "force-dynamic";
+
 export default async function DashboardLayout({
   children,
 }: {
