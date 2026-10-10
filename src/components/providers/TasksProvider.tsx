@@ -251,11 +251,30 @@ export function TasksProvider({
           } else if (payload.type === "task:created" && payload.data?.task) {
             const mapped = mapDbTaskToClient(payload.data.task, projects as any, []);
             dispatch({ type: "insert", task: mapped });
-          } else if (payload.type === "task:updated" && payload.data?.task) {
-            const mapped = mapDbTaskToClient(payload.data.task, projects as any, []);
-            dispatch({ type: "sync", task: mapped });
+          } else if (payload.type === "task:updated") {
+            if (payload.data?.task) {
+              const mapped = mapDbTaskToClient(payload.data.task, projects as any, []);
+              dispatch({ type: "sync", task: mapped });
+            } else if (payload.data?.id && payload.data?.status) {
+              dispatch({
+                type: "update",
+                id: payload.data.id,
+                changedAt: new Date().toISOString(),
+                values: { status: payload.data.status } as any,
+              });
+            }
           } else if (payload.type === "task:deleted" && payload.data?.id) {
             dispatch({ type: "delete", id: payload.data.id });
+          } else if (payload.type === "sync:reload") {
+            if (payload.data?.placedDecorations) {
+              setPlacedDecorations(payload.data.placedDecorations);
+            }
+            if (payload.data?.purchasedDecorations) {
+              setPurchasedDecorations(payload.data.purchasedDecorations);
+            }
+            if (payload.data?.bonusCoins !== undefined) {
+              setBonusCoins(payload.data.bonusCoins);
+            }
           }
         } catch {
           // Heartbeat or unparseable event

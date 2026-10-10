@@ -320,6 +320,17 @@ export async function GET(req: Request) {
         DROP TABLE IF EXISTS "note_attachments" CASCADE;
         DROP TABLE IF EXISTS "notes" CASCADE;
 
+        -- sync_events table for multi-device SSE event bus
+        CREATE TABLE IF NOT EXISTS "sync_events" (
+            "id" UUID NOT NULL,
+            "user_id" UUID NOT NULL,
+            "type" TEXT NOT NULL,
+            "data" JSONB,
+            "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            CONSTRAINT "sync_events_pkey" PRIMARY KEY ("id")
+        );
+        CREATE INDEX IF NOT EXISTS "sync_events_user_id_created_at_idx" ON "sync_events"("user_id", "created_at");
+
         INSERT INTO _prisma_migrations (id, checksum, finished_at, migration_name, logs, rolled_back_at, started_at, applied_steps_count)
         VALUES (gen_random_uuid(), '7b14d01e13efd109549138ee4a056129e894335bc4ca319381f664cf4c827b9f', NOW(), '20261011000000_simplify_schema', NULL, NULL, NOW(), 1)
         ON CONFLICT (id) DO NOTHING;

@@ -50,6 +50,17 @@ model Setting {
   @@map("settings")
 }
 
+model SyncEvent {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  type      String
+  data      Json?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([userId, createdAt])
+  @@map("sync_events")
+}
+
 enum TaskStatus {
   backlog
   todo

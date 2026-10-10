@@ -139,7 +139,7 @@ export async function createTask(
           console.error("Failed to compute character sheet after task create:", sheetErr);
         }
       }
-      broadcastSyncEvent(owner.id, "task:created", { task });
+      await broadcastSyncEvent(owner.id, "task:created", { task });
       return { success: true, data: { task, ...sheetData } };
     } catch (err) {
       if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2003") {
@@ -312,7 +312,7 @@ export async function updateTask(
         console.error("Failed to compute character sheet after task update:", sheetErr);
       }
     }
-    broadcastSyncEvent(owner.id, "task:updated", { task });
+    await broadcastSyncEvent(owner.id, "task:updated", { task });
     return { success: true, data: { task, ...sheetData } };
   } catch (err) {
     if (err instanceof Error && err.message === "NOT_FOUND") {
@@ -358,7 +358,7 @@ export async function deleteTask(id: string): Promise<ActionResult<{ id: string 
       });
     });
 
-    broadcastSyncEvent(owner.id, "task:deleted", { id });
+    await broadcastSyncEvent(owner.id, "task:deleted", { id });
     return { success: true, data: { id } };
   } catch (err) {
     if (err instanceof Error && err.message === "NOT_FOUND") {
@@ -548,9 +548,9 @@ export async function startFocusTimerAction(taskId: string, phase: "focus" | "br
       });
     });
 
-    broadcastSyncEvent(user.id, "timer:started", { taskId, phase, startedAt: Date.now() });
+    await broadcastSyncEvent(user.id, "timer:started", { taskId, phase, startedAt: Date.now() });
     if (taskMovedToInProgress) {
-      broadcastSyncEvent(user.id, "task:updated", { id: taskId, status: "in_progress" });
+      await broadcastSyncEvent(user.id, "task:updated", { id: taskId, status: "in_progress" });
     }
 
     return { success: true, data: { success: true, taskMovedToInProgress } };
@@ -621,7 +621,7 @@ export async function stopFocusTimerAction(): Promise<
       }
     });
 
-    broadcastSyncEvent(user.id, "timer:stopped", { taskId, seconds, phase });
+    await broadcastSyncEvent(user.id, "timer:stopped", { taskId, seconds, phase });
 
     return {
       success: true,
