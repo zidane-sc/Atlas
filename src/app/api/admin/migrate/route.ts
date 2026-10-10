@@ -359,11 +359,16 @@ export async function GET(req: Request) {
       WHERE table_name = 'tasks' AND column_name IN ('size', 'effort', 'story_point', 'sprint_id');
     `);
 
+    const recentSyncEvents: any[] = await db.$queryRawUnsafe(`
+      SELECT id, user_id, type, created_at FROM sync_events ORDER BY created_at DESC LIMIT 5;
+    `);
+
     return NextResponse.json({
       success: true,
       message: "Database schema migration completed successfully",
       logs,
       taskColumns: taskCols,
+      recentSyncEvents,
     });
   } catch (err: any) {
     console.error("Migration endpoint error:", err);
