@@ -28,6 +28,8 @@ export default async function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
+  // eslint-disable-next-line react-hooks/purity -- server component, Date.now() is fine here
+  const now = Date.now();
   const session = await auth();
   if (!session?.user?.email) {
     redirect("/auth");
@@ -42,7 +44,7 @@ export default async function DashboardLayout({
   // Only seed on first login (new account) — upsert returns created record via update: {}
   // If we just created the user, seed initial data. We can detect this by checking if
   // the user was created now (createdAt ~ now) or by checking projects/sprints count.
-  const isNewUser = owner.createdAt.getTime() > Date.now() - 5000; // created within last 5s
+  const isNewUser = owner.createdAt.getTime() > now - 5000; // created within last 5s
 
   const [dbTasks, rawDbAllDoneTasks, rawDbProjects, rawDbSprints, rawDbActivityLogs, rawDbSettings] = await Promise.all([
     // No nested `statusHistory`/`comments` here — both are now on-demand only, fetched by
