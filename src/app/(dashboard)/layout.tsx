@@ -39,6 +39,11 @@ export default async function DashboardLayout({
     create: { email: session.user.email, name: session.user.name ?? session.user.email },
   });
 
+  // Only seed on first login (new account) — upsert returns created record via update: {}
+  // If we just created the user, seed initial data. We can detect this by checking if
+  // the user was created now (createdAt ~ now) or by checking projects/sprints count.
+  const isNewUser = owner.createdAt.getTime() > Date.now() - 5000; // created within last 5s
+
   const [dbTasks, rawDbAllDoneTasks, rawDbProjects, rawDbSprints, rawDbActivityLogs, rawDbSettings] = await Promise.all([
     // No nested `statusHistory`/`comments` here — both are now on-demand only, fetched by
     // `getTaskDetails` when TaskFormSheet opens a specific task. `createdAt`/`completedAt` are
@@ -99,8 +104,8 @@ export default async function DashboardLayout({
   let dbProjects = rawDbProjects;
   let dbSprints = rawDbSprints;
 
-  // Seed initial data on first login (no projects/sprints yet)
-  if (dbProjects.length === 0 || dbSprints.length === 0) {
+  // Seed initial data only for brand new users (first login)
+  if (isNewUser) {
     await seedInitialData(owner.id);
     dbProjects = await db.project.findMany({
       where: { ownerId: owner.id, archivedAt: null },
@@ -161,7 +166,7 @@ export default async function DashboardLayout({
               initialUnlockedAchievements={characterSheetData.unlockedAchievements}
               initialPurchasedDecorations={owner.purchasedDecorations}
               initialPlacedDecorations={owner.placedDecorations as Record<string, any>}
-              initialSavedFilters={owner.savedFilters as unknown as SavedFilterClient[]}
+              initialSavedFilters={settingsFromDb.find(s => s.key === "savedFilters")?.value as unknown as SavedFilterClient[] ?? []}
               initialLastQuestClaimedAt={owner.lastQuestClaimedAt ? owner.lastQuestClaimedAt.toISOString() : null}
               initialActiveTimer={initialActiveTimer}
             >

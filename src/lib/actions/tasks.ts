@@ -652,6 +652,17 @@ export async function resetAllTasksAction(): Promise<ActionResult<Partial<Charac
       await tx.task.deleteMany({ where: { ownerId: user.id } });
       await tx.project.deleteMany({ where: { ownerId: user.id } });
       await tx.sprint.deleteMany({ where: { ownerId: user.id } });
+      // New relational models
+      await tx.taskRelation.deleteMany({ where: { task: { ownerId: user.id } } });
+      await tx.attachment.deleteMany({ where: { task: { ownerId: user.id } } });
+      await tx.deliverable.deleteMany({ where: { task: { ownerId: user.id } } });
+      await tx.taskTag.deleteMany({ where: { task: { ownerId: user.id } } });
+      await tx.xpLog.deleteMany({ where: { userId: user.id } });
+      await tx.achievement.deleteMany({ where: { unlockedAt: { not: null } } }); // only reset unlocked
+      await tx.setting.deleteMany({ where: { userId: user.id } });
+      await tx.noteTaskLink.deleteMany({ where: { note: { userId: user.id } } });
+      await tx.noteAttachment.deleteMany({ where: { note: { userId: user.id } } });
+      await tx.note.deleteMany({ where: { userId: user.id } });
     });
 
     // Seed initial data
