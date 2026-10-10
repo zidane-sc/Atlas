@@ -2,7 +2,6 @@ import type { ComponentType } from "react";
 import {
   AlertCircle,
   BarChart2,
-  Clock,
   Crosshair,
   Folder,
   Grid3X3,
@@ -13,7 +12,6 @@ import {
   Sun,
   Swords,
   Trophy,
-  Zap,
 } from "lucide-react";
 
 export interface NavItemBase {
@@ -31,13 +29,11 @@ export const NAV_SMART_VIEWS: NavItemBase[] = [
   { href: "/tasks/today", label: "Today", icon: Sun },
   { href: "/tasks/inbox", label: "Inbox", icon: InboxIcon },
   { href: "/tasks/overdue", label: "Overdue", icon: AlertCircle },
-  { href: "/tasks/waiting", label: "Waiting Ext.", icon: Clock },
   { href: "/tasks/focus", label: "Focus", icon: Crosshair },
 ];
 
 export const NAV_MANAGE: NavItemBase[] = [
   { href: "/projects", label: "Projects", icon: Folder },
-  { href: "/sprints", label: "Sprints", icon: Zap },
   { href: "/character", label: "Character", icon: Swords },
   { href: "/room", label: "Room", icon: Home },
   { href: "/achievements", label: "Achievements", icon: Trophy },
