@@ -150,29 +150,30 @@ export function tasksReducer(tasks: Task[], action: TasksAction): Task[] {
     case "update": {
       return tasks.map((t) => {
         if (t.id !== action.id) return t;
-        const statusChanged = t.status !== action.values.status;
+        const newStatus = action.values.status ?? t.status;
+        const statusChanged = t.status !== newStatus;
         return {
           ...t,
-          title: action.values.title,
-          description: action.values.description,
-          project: action.values.project,
-          status: action.values.status,
-          type: action.values.type,
-          priority: action.values.priority,
-          size: action.values.size,
-          startDate: action.values.startDate,
-          dueDate: action.values.dueDate,
-          waitingOn: action.values.waitingOn,
-          reporter: action.values.reporter,
-          tags: action.values.tags,
-          relations: action.values.relations,
-          attachments: action.values.attachments,
-          deliverables: action.values.deliverables,
+          title: action.values.title ?? t.title,
+          description: action.values.description !== undefined ? action.values.description : t.description,
+          project: action.values.project ?? t.project,
+          status: newStatus,
+          type: action.values.type ?? t.type,
+          priority: action.values.priority ?? t.priority,
+          size: action.values.size !== undefined ? action.values.size : t.size,
+          startDate: action.values.startDate !== undefined ? action.values.startDate : t.startDate,
+          dueDate: action.values.dueDate !== undefined ? action.values.dueDate : t.dueDate,
+          waitingOn: action.values.waitingOn !== undefined ? action.values.waitingOn : t.waitingOn,
+          reporter: action.values.reporter ?? t.reporter,
+          tags: action.values.tags ?? t.tags,
+          relations: action.values.relations ?? t.relations,
+          attachments: action.values.attachments ?? t.attachments,
+          deliverables: action.values.deliverables ?? t.deliverables,
           statusHistory: statusChanged
-            ? [...t.statusHistory, { fromStatus: t.status, toStatus: action.values.status, changedAt: action.changedAt }]
+            ? [...t.statusHistory, { fromStatus: t.status, toStatus: newStatus, changedAt: action.changedAt }]
             : t.statusHistory,
           completedAt: statusChanged
-            ? (action.values.status === "done" ? action.changedAt : undefined)
+            ? (newStatus === "done" ? action.changedAt : undefined)
             : t.completedAt,
         };
       });
