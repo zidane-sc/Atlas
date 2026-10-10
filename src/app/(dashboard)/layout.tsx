@@ -26,18 +26,19 @@ export default async function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  // eslint-disable-next-line react-hooks/purity -- server component, Date.now() is fine here
-  const now = Date.now();
-  const session = await auth();
-  if (!session?.user?.email) {
-    redirect("/auth");
-  }
+  try {
+    // eslint-disable-next-line react-hooks/purity -- server component, Date.now() is fine here
+    const now = Date.now();
+    const session = await auth();
+    if (!session?.user?.email) {
+      redirect("/auth");
+    }
 
-  const owner = await db.user.upsert({
-    where: { email: session.user.email },
-    update: {},
-    create: { email: session.user.email, name: session.user.name ?? session.user.email },
-  });
+    const owner = await db.user.upsert({
+      where: { email: session.user.email },
+      update: {},
+      create: { email: session.user.email, name: session.user.name ?? session.user.email },
+    });
 
   // Only seed on first login (new account) — upsert returns created record via update: {}
   // If we just created the user, seed initial data. We can detect this by checking if
@@ -173,4 +174,14 @@ export default async function DashboardLayout({
       </SettingsProvider>
     </SessionProvider>
   );
+  } catch (err: any) {
+    if (err?.digest?.startsWith("NEXT_REDIRECT")) throw err;
+    return (
+      <div className="p-8 text-red-500 font-mono bg-black text-sm whitespace-pre-wrap">
+        <h1 className="text-xl font-bold mb-4">Dashboard Server Error</h1>
+        <p>{err?.message || String(err)}</p>
+        <pre className="mt-4 text-xs opacity-70">{err?.stack}</pre>
+      </div>
+    );
+  }
 }
