@@ -2,7 +2,6 @@
 
 import { useEffect, useState, useMemo, useRef } from "react";
 import { Check, ChevronDown, Copy, Trash2, Info, Pin, Bot, Cpu } from "lucide-react";
-import { cn } from "@/lib/utils";
 import { DatePicker } from "@/components/ui/DatePicker";
 import { BattleTimer } from "@/components/gamification/BattleTimer";
 import {
@@ -57,26 +56,18 @@ import type {
   Reporter,
 } from "@/types/task";
 
-function Section({ title, shape, defaultOpen = true, children }: { title: string; shape: string; defaultOpen?: boolean; children: React.ReactNode }) {
-  const [open, setOpen] = useState(defaultOpen);
+function Section({ title, shape, defaultOpen = false, children }: { title: string; shape: string; defaultOpen?: boolean; children: React.ReactNode }) {
   return (
-    <div className="border-2 border-border bg-card/60 overflow-hidden">
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center justify-between px-3 py-2 border-b border-border bg-[var(--color-bg-panel-alt)] text-left text-xs font-bold font-mono tracking-wider text-foreground hover:bg-[var(--color-bg-panel)] transition-colors cursor-pointer select-none"
-      >
+    <Collapsible defaultOpen={defaultOpen} className="border-2 border-border">
+      <CollapsibleTrigger className="group flex w-full items-center justify-between px-3 py-2.5 text-left text-sm font-semibold tracking-widest text-foreground hover:bg-[var(--color-bg-panel-alt)] transition-colors cursor-pointer select-none">
         <span className="flex items-center gap-2">
           <span style={{ color: "var(--color-primary-gold)" }}>{shape}</span>
-          <span className="uppercase">{title}</span>
+          <span>{title}</span>
         </span>
-        <ChevronDown
-          size={14}
-          className={cn("transition-transform duration-200 text-muted-foreground", open && "rotate-180")}
-        />
-      </button>
-      {open && <div className="p-3 text-xs">{children}</div>}
-    </div>
+        <ChevronDown size={14} className="transition-transform duration-200 group-data-[panel-open]:rotate-180" />
+      </CollapsibleTrigger>
+      <CollapsibleContent className="border-t-2 border-border px-3 py-3 text-sm">{children}</CollapsibleContent>
+    </Collapsible>
   );
 }
 
@@ -114,7 +105,7 @@ export function TaskFormSheet() {
   return (
     <Sheet open={sheet.open} onOpenChange={(open) => !open && closeForm()}>
       <SheetContent
-        className="w-full inset-0 max-w-full sm:inset-y-0 sm:right-0 sm:left-auto sm:w-[520px] sm:max-w-[520px] h-full gap-0 border-l-2 border-border p-0 rounded-none overflow-hidden flex flex-col"
+        className="w-full max-w-full sm:max-w-lg sm:w-[520px] gap-0 overflow-y-auto border-l-2 border-border p-0"
       >
         {sheet.open && <TaskFormBody key={sheet.task?.id ?? "create"} mode={sheet.mode} task={sheet.task} />}
       </SheetContent>
@@ -350,9 +341,9 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
     : (liveTask?.timeSpentSeconds ?? 0) + (isTiming ? liveSeconds : 0);
 
   return (
-    <form onSubmit={onSubmit} className="flex h-full flex-col min-h-0 overflow-hidden">
+    <form onSubmit={onSubmit} className="flex flex-col">
       <SheetHeader
-        className="flex-row items-center justify-between gap-2 space-y-0 border-b border-border py-3 px-4 shrink-0"
+        className="flex-row items-center justify-between gap-2 space-y-0 border-b border-border py-3 px-4"
         style={{ backgroundColor: "var(--color-bg-panel-alt)" }}
       >
         <div className="flex items-center gap-2">
@@ -425,8 +416,8 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
         </div>
       )}
 
-      <div className="flex flex-1 flex-col gap-3 overflow-y-auto p-4 pt-3 scroll-shadow">
-        <Section title="Core" shape="■" defaultOpen>
+      <div className="flex flex-col gap-3 p-4 pt-3">
+        <Section title="Core" shape="■" defaultOpen={true}>
           <div className="flex flex-col gap-3">
             <div className="grid grid-cols-2 gap-3">
               <div>
@@ -883,7 +874,7 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
               (taskDetail?.agent && ((taskDetail.agent.runs?.length ?? 0) > 0 || (taskDetail.agent.checkpoints?.length ?? 0) > 0)) ||
               (task as any)?.waitingReason
             ) && (
-              <Section title="MCP Agent Memory & Runs" shape="⚡" defaultOpen>
+              <Section title="MCP Agent Memory & Runs" shape="⚡" defaultOpen={true}>
                 <div className="flex flex-col gap-3 p-2.5 bg-primary/5 border-2 border-cyan-500/40 text-xs shadow-[2px_2px_0_rgba(16,224,224,0.15)] max-w-full overflow-hidden">
                   {/* Latest Checkpoint or Waiting Reason */}
                   {((taskDetail?.agent?.checkpoints?.length ?? 0) > 0 && taskDetail?.agent?.checkpoints?.[0]) ? (
@@ -1019,7 +1010,7 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
         )}
       </div>
 
-      <div className="flex items-center justify-between border-t border-border p-4 shrink-0" style={{ backgroundColor: "var(--color-bg-panel-alt)" }}>
+      <div className="flex items-center justify-between border-t border-border p-4 sticky bottom-0 z-20" style={{ backgroundColor: "var(--color-bg-panel-alt)" }}>
         <Button type="button" variant="ghost" onClick={closeForm} disabled={submitting}>Cancel</Button>
         <Button type="submit" disabled={submitting}>{submitting ? "⋳ Saving..." : <><Check size={12} />{mode === "edit" ? "Save Changes" : "Create Quest"}</> }</Button>
       </div>
