@@ -41,6 +41,7 @@ import {
 import type { TaskFilters } from "@/lib/task-filters";
 import type { SavedFilterClient } from "@/lib/actions/filters";
 import { saveFilterAction as apiSaveFilter, deleteFilterAction as apiDeleteFilter, updateFilterAction as apiUpdateFilter } from "@/lib/actions/filters";
+import { playChime } from "@/lib/audio";
 
 interface SheetState {
   open: boolean;
@@ -61,35 +62,7 @@ interface CompletionOverlay {
   streak?: number;
 }
 
-export function playChime() {
-  const AudioContextClass =
-    window.AudioContext ||
-    (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-  if (!AudioContextClass) return;
-
-  const ctx = new AudioContextClass();
-  const now = ctx.currentTime;
-
-  // Triad notes: E5, G5, C6 (classic happy level-up sound!)
-  const notes = [659.25, 783.99, 1046.50];
-  notes.forEach((freq, idx) => {
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-
-    osc.type = "sine";
-    osc.frequency.setValueAtTime(freq, now + idx * 0.08);
-
-    gain.gain.setValueAtTime(0, now + idx * 0.08);
-    gain.gain.linearRampToValueAtTime(0.15, now + idx * 0.08 + 0.03);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.08 + 0.3);
-
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-
-    osc.start(now + idx * 0.08);
-    osc.stop(now + idx * 0.08 + 0.35);
-  });
-}
+export { playChime } from "@/lib/audio";
 
 interface TasksContextValue {
   tasks: Task[];

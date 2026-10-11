@@ -2,9 +2,10 @@
 
 import { useEffect, useRef } from 'react';
 import { X } from 'lucide-react';
+import { useSettings } from '@/components/providers/SettingsProvider';
 import type { NotificationPayload } from '@/components/providers/NotificationProvider';
 import { getNotificationMessage, shouldPlaySound } from '@/lib/notification-events';
-import { useSettings } from '@/components/providers/SettingsProvider';
+import { playRetroBlip } from '@/lib/audio';
 
 export function NotificationQueue({
   notifications,
@@ -23,41 +24,28 @@ export function NotificationQueue({
   onUndo?: () => void;
 }) {
   const settings = useSettings();
-  const audioRef = useRef<HTMLAudioElement | null>(null);
   const lastPlayedIdRef = useRef<string | null>(null);
 
   const notificationsEnabled = typeof settings === 'object' && 'notificationsEnabled' in settings ? settings.notificationsEnabled : true;
-  const visibleNotifications = notificationsEnabled
-    ? notifications
-    : notifications.filter((n) => n.event.type !== 'task:overdue' && n.event.type !== 'task:due-soon');
+  const soundEnabled = typeof settings === 'object' && 'soundEnabled' in settings ? settings.soundEnabled : true;
 
   useEffect(() => {
-    if (visibleNotifications.length === 0) return;
+    if (!notificationsEnabled || notifications.length === 0) return;
 
-    const latest = visibleNotifications[0];
+    const latest = notifications[0];
     if (latest.id === lastPlayedIdRef.current) return;
 
-    const soundEnabled = typeof settings === 'object' && 'soundEnabled' in settings ? settings.soundEnabled : true;
     if (shouldPlaySound(latest.event) && soundEnabled) {
-      try {
-        if (audioRef.current) {
-          audioRef.current.currentTime = 0;
-          audioRef.current.play().catch(() => {
-            // Silent fail if audio fails
-          });
-          lastPlayedIdRef.current = latest.id;
-        }
-      } catch (err) {
-        // Silent fail
-      }
+      playRetroBlip();
+      lastPlayedIdRef.current = latest.id;
     }
-  }, [visibleNotifications, settings]);
+  }, [notifications, notificationsEnabled, soundEnabled]);
+
+  if (!notificationsEnabled || notifications.length === 0) return null;
 
   return (
-    <>
-      <audio ref={audioRef} src="/sounds/notification.mp3" />
-      <div className="fixed top-4 right-4 z-50 flex flex-col gap-2 max-w-sm pointer-events-none">
-        {visibleNotifications.map((notification) => {
+    <div className="fixed top-4 right-4 z-50 flex flex-col gap-2 max-w-sm pointer-events-none">
+      {notifications.map((notification) => {
           const { icon, text } = getNotificationMessage(notification.event);
           const isRescheduledEvent = notification.event.type === 'task:rescheduled';
           const showUndoButton = isRescheduledEvent && lastReschedule && onUndo;
@@ -91,6 +79,5 @@ export function NotificationQueue({
           );
         })}
       </div>
-    </>
   );
 }

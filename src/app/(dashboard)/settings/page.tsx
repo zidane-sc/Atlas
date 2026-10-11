@@ -256,26 +256,26 @@ export default function Page() {
         <Toggle
           checked={notificationsEnabled}
           onChange={(val) => void updateSetting("notifications", val)}
-          label="Notifications"
-          description="Overdue quest alerts"
+          label="In-App Notifications"
+          description="Toast banners for task completions, updates, and due alerts"
         />
         <Toggle
           checked={soundEnabled}
           onChange={(val) => void updateSetting("soundEnabled", val)}
-          label="Sound Effects"
-          description="Subtle chimes on task complete and level-up"
+          label="Sound Effects (SFX)"
+          description="Subtle 8-bit chimes on task complete, level-up, and UI interactions"
         />
         <Toggle
           checked={reduceMotion}
           onChange={setReduceMotion}
           label="Reduce Motion"
-          description="Shortens all animation durations"
+          description="Shortens all animation durations to instant (0.01ms)"
         />
         <Toggle
           checked={compactView}
           onChange={(val) => void updateSetting("compactView", val)}
           label="Compact View"
-          description="Tighter spacing in list and table views"
+          description="Dense spacing in task lists and smart views"
         />
 
         <SectionDivider>Pomodoro Timer</SectionDivider>
