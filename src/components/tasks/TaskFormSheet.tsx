@@ -958,36 +958,42 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
                       <span>Hermes Sessions & Runs:</span>
                       <span className="text-[9px] font-normal opacity-70">L2 Pointer</span>
                     </div>
-                    <div className="space-y-1.5">
-                      {(taskDetail?.agent?.runs ?? []).slice(0, 5).map((r) => (
-                        <div key={r.id} className="p-1.5 bg-background/50 border border-border flex flex-col gap-1">
-                          <div className="flex items-center justify-between gap-1">
-                            <span className="font-bold text-foreground truncate max-w-[220px]" title={r.agentName}>
-                              👤 {r.agentName}
-                            </span>
-                            <span className={r.status === "active" ? "text-green-400 font-bold px-1 bg-green-950/40 border border-green-500/30 text-[9px]" : "px-1 bg-muted/40 border border-border text-[9px]"}>
-                              {r.status.toUpperCase()}
-                            </span>
-                          </div>
-
-                          {/* Session ID pointer */}
-                          {r.sessionId && (
-                            <div className="flex items-center justify-between text-[10px] bg-secondary/40 px-1.5 py-0.5 border border-border/60">
-                              <span className="text-muted-foreground">Session ID:</span>
-                              <span className="text-[var(--color-primary-gold)] font-bold select-all truncate max-w-[240px]" title={r.sessionId}>
-                                🔑 {r.sessionId}
+                    {((taskDetail?.agent?.runs?.length ?? 0) === 0) ? (
+                      <div className="p-1.5 bg-background/50 border border-border text-muted-foreground italic">
+                        No active/completed agent session registered for this quest yet.
+                      </div>
+                    ) : (
+                      <div className="space-y-1.5">
+                        {taskDetail?.agent?.runs?.slice(0, 5).map((r) => (
+                          <div key={r.id} className="p-1.5 bg-background/50 border border-border flex flex-col gap-1">
+                            <div className="flex items-center justify-between gap-1">
+                              <span className="font-bold text-foreground truncate max-w-[220px]" title={r.agentName}>
+                                👤 {r.agentName}
+                              </span>
+                              <span className={r.status === "active" ? "text-green-400 font-bold px-1 bg-green-950/40 border border-green-500/30 text-[9px]" : "px-1 bg-muted/40 border border-border text-[9px]"}>
+                                {r.status.toUpperCase()}
                               </span>
                             </div>
-                          )}
 
-                          {/* Platform & Thread / Topic details */}
-                          <div className="flex items-center justify-between text-[9px] text-muted-foreground">
-                            <span>Origin: {r.platform || "telegram"}{r.threadId ? ` (topic #${r.threadId})` : ""}</span>
-                            <span>{new Date(r.startedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                            {/* Session ID pointer */}
+                            {r.sessionId && (
+                              <div className="flex items-center justify-between text-[10px] bg-secondary/40 px-1.5 py-0.5 border border-border/60">
+                                <span className="text-muted-foreground">Session ID:</span>
+                                <span className="text-[var(--color-primary-gold)] font-bold select-all truncate max-w-[240px]" title={r.sessionId}>
+                                  🔑 {r.sessionId}
+                                </span>
+                              </div>
+                            )}
+
+                            {/* Platform & Thread / Topic details */}
+                            <div className="flex items-center justify-between text-[9px] text-muted-foreground">
+                              <span>Origin: {r.platform || "telegram"}{r.threadId ? ` (topic #${r.threadId})` : ""}</span>
+                              <span>{new Date(r.startedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                            </div>
                           </div>
-                        </div>
-                      ))}
-                    </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
               </Section>
