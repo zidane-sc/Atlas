@@ -22,6 +22,13 @@ export async function GET(req: Request) {
     const appliedNames = new Set(appliedRows.map((r) => r.migration_name));
     logs.push(`Currently applied: ${Array.from(appliedNames).join(", ")}`);
 
+    // Ensure waiting_reason and metadata columns exist on tasks
+    await db.$executeRawUnsafe(`
+      ALTER TABLE "tasks" ADD COLUMN IF NOT EXISTS "waiting_reason" TEXT;
+      ALTER TABLE "tasks" ADD COLUMN IF NOT EXISTS "metadata" JSONB;
+    `);
+    logs.push("Ensured waiting_reason and metadata on tasks ✅");
+
     // 2. Migration 1: 20261010000000_align_schema (Ensure tables exist regardless of _prisma_migrations record)
     logs.push("Ensuring align_schema tables exist...");
     await db.$executeRawUnsafe(`
@@ -446,7 +453,7 @@ export async function GET(req: Request) {
     const taskCols: any[] = await db.$queryRawUnsafe(`
       SELECT column_name, data_type, udt_name 
       FROM information_schema.columns 
-      WHERE table_name = 'tasks' AND column_name IN ('size', 'effort', 'story_point', 'sprint_id');
+      WHERE table_name = 'tasks';
     `);
 
     const recentSyncEvents: any[] = await db.$queryRawUnsafe(`
@@ -466,9 +473,18 @@ export async function GET(req: Request) {
     const settings: any[] = await db.setting.findMany();
 
     let integrationCredsCount = 0;
+    let tablesInDb: any[] = [];
     try {
       const creds: any[] = await db.$queryRawUnsafe(`SELECT count(*) as count FROM integration_credentials;`);
       integrationCredsCount = Number(creds[0]?.count ?? 0);
+    } catch {
+      // Non-fatal
+    }
+
+    try {
+      tablesInDb = await db.$queryRawUnsafe(`
+        SELECT table_name FROM information_schema.tables WHERE table_schema = 'public';
+      `);
     } catch {
       // Non-fatal
     }
@@ -478,6 +494,7 @@ export async function GET(req: Request) {
       message: "Database schema migration completed successfully",
       logs,
       taskColumns: taskCols,
+      tables: tablesInDb.map((t: any) => t.table_name),
       recentSyncEvents,
       users,
       settings,
