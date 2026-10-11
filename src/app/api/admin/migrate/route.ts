@@ -22,6 +22,15 @@ export async function GET(req: Request) {
     const appliedNames = new Set(appliedRows.map((r) => r.migration_name));
     logs.push(`Currently applied: ${Array.from(appliedNames).join(", ")}`);
 
+    // Ensure task_reporter enum has 'agent' value
+    await db.$executeRawUnsafe(`
+      DO $$ BEGIN
+        ALTER TYPE "task_reporter" ADD VALUE IF NOT EXISTS 'agent';
+      EXCEPTION WHEN duplicate_object THEN null;
+      END $$;
+    `);
+    logs.push("Ensured agent in task_reporter enum ✅");
+
     // Ensure MCP integration tables exist
     await db.$executeRawUnsafe(`
         CREATE TABLE IF NOT EXISTS "integration_credentials" (
