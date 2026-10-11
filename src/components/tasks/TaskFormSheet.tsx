@@ -493,16 +493,15 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
               <label className={LC}>Description</label>
               <textarea
                 aria-label="Description"
-                rows={3}
-                className={`${FIELD} resize-y text-xs font-mono`}
-                placeholder="Additional context or notes..."
+                className={`${FIELD} resize-none`}
+                rows={4}
                 value={form.description ?? ""}
                 onChange={(e) => set("description", e.target.value)}
+                placeholder="Context, acceptance criteria..."
               />
             </div>
 
             <div className="grid grid-cols-2 gap-3">
-
               <div>
                 <label className={LC}>Project</label>
                 <div className="relative">
@@ -565,7 +564,7 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
 
             </div>
 
-            {(form.status === "in_progress" && form.waitingOn) && (
+            {form.status === "in_progress" && (
               <div>
                 <label className={LC}>Waiting On</label>
                 <input
@@ -577,18 +576,6 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
                 />
               </div>
             )}
-
-            <div>
-              <label className={LC}>Description</label>
-              <textarea
-                aria-label="Description"
-                className={`${FIELD} resize-none`}
-                rows={4}
-                value={form.description ?? ""}
-                onChange={(e) => set("description", e.target.value)}
-                placeholder="Context, acceptance criteria..."
-              />
-            </div>
 
             <div>
               <label className={LC}>Tags</label>
@@ -954,7 +941,7 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
                           return (
                             <>
                               {Object.entries(modelMap).map(([mName, data]) => (
-                                <div key={mName} className="p-1.5 bg-background/60 border border-border font-mono text-[11px] min-w-0">
+                                <div key={mName} className="p-1.5 bg-background/60 border border-border font-mono text-[11px] min-w-0 overflow-hidden">
                                   <div className="font-bold text-[var(--color-primary-gold)] truncate" title={mName}>{mName}</div>
                                   <div className="text-muted-foreground flex flex-wrap justify-between gap-1 mt-0.5">
                                     <span>{data.prompt.toLocaleString()} prompt · {data.completion.toLocaleString()} comp</span>
