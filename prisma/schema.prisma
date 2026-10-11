@@ -33,6 +33,7 @@ model User {
   activityLogs ActivityLog[]
   xpLogs       XpLog[]
   settings     Setting[]
+  credentials  IntegrationCredential[]
 
   @@map("users")
 }
@@ -65,6 +66,7 @@ enum TaskStatus {
   backlog
   todo
   in_progress
+  waiting
   done
   archived
 
@@ -364,6 +366,9 @@ model Task {
   archivedAt  DateTime? @map("archived_at")
   deletedAt   DateTime? @map("deleted_at")
 
+  waitingReason String? @map("waiting_reason")
+  metadata      Json?   @map("metadata")
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
@@ -372,6 +377,9 @@ model Task {
   activityLogs  ActivityLog[]
   workSessions  WorkSession[]
   xpLogs        XpLog[]
+  sources       TaskSource[]
+  agentRuns     AgentRun[]
+  checkpoints   AgentCheckpoint[]
 
   @@unique([ownerId, code])
   @@index([status])
@@ -383,4 +391,101 @@ model Task {
   @@index([ownerId, deletedAt, status])
   @@index([ownerId, deletedAt, createdAt])
   @@map("tasks")
+}
+
+model IntegrationCredential {
+  id          String    @id @default(uuid()) @db.Uuid
+  userId      String    @map("user_id") @db.Uuid
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  label       String
+  tokenHash   String    @unique @map("token_hash")
+  tokenPrefix String    @map("token_prefix")
+  scopes      String[]  @default(["tasks:read", "tasks:write", "runs:write"])
+  lastUsedAt  DateTime? @map("last_used_at")
+  revokedAt   DateTime? @map("revoked_at")
+  expiresAt   DateTime? @map("expires_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  agentRuns AgentRun[]
+
+  @@index([userId])
+  @@map("integration_credentials")
+}
+
+model TaskSource {
+  id           String   @id @default(uuid()) @db.Uuid
+  taskId       String   @map("task_id") @db.Uuid
+  task         Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  provider     String   // github_pr, telegram_topic, jira, manual
+  canonicalKey String   @map("canonical_key") // e.g. "github.com/dealls/backend/421", "telegram:-100123:2303"
+  url          String?
+  metadata     Json?
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  @@unique([taskId, provider, canonicalKey])
+  @@index([canonicalKey])
+  @@map("task_sources")
+}
+
+model AgentRun {
+  id            String                 @id @default(uuid()) @db.Uuid
+  taskId        String                 @map("task_id") @db.Uuid
+  task          Task                   @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  credentialId  String?                @map("credential_id") @db.Uuid
+  credential    IntegrationCredential? @relation(fields: [credentialId], references: [id], onDelete: SetNull)
+  agentName     String                 @default("hermes") @map("agent_name")
+  agentProfile  String?                @map("agent_profile")
+  externalRunId String?                @map("external_run_id")
+  sessionId     String?                @map("session_id") // Hermes session_id
+  platform      String?                // telegram, cli, etc.
+  chatId        String?                @map("chat_id")
+  threadId      String?                @map("thread_id")
+  status        String                 @default("active") // active, completed, failed
+  startedAt     DateTime               @default(now()) @map("started_at")
+  endedAt       DateTime?              @map("ended_at")
+
+  checkpoints AgentCheckpoint[]
+  usageEvents AgentUsageEvent[]
+
+  @@index([taskId])
+  @@index([sessionId])
+  @@map("agent_runs")
+}
+
+model AgentCheckpoint {
+  id               String    @id @default(uuid()) @db.Uuid
+  taskId           String    @map("task_id") @db.Uuid
+  task             Task      @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  runId            String?   @map("run_id") @db.Uuid
+  run              AgentRun? @relation(fields: [runId], references: [id], onDelete: SetNull)
+  revision         Int       @default(1)
+  summary          String
+  checkpointState  String?   @map("checkpoint_state") // waiting_external, in_progress, finished
+  waitingReason    String?   @map("waiting_reason")
+  nextStep         String?   @map("next_step")
+  provenanceSource String?   @map("provenance_source") // PR URL, commit SHA, log ref
+  payload          Json?
+  createdAt        DateTime  @default(now()) @map("created_at")
+
+  @@index([taskId, revision])
+  @@map("agent_checkpoints")
+}
+
+model AgentUsageEvent {
+  id               String    @id @default(uuid()) @db.Uuid
+  runId            String    @map("run_id") @db.Uuid
+  run              AgentRun  @relation(fields: [runId], references: [id], onDelete: Cascade)
+  sourceEventId    String?   @map("source_event_id")
+  model            String
+  provider         String?
+  promptTokens     Int       @default(0) @map("prompt_tokens")
+  completionTokens Int       @default(0) @map("completion_tokens")
+  totalTokens      Int       @default(0) @map("total_tokens")
+  cacheReadTokens  Int       @default(0) @map("cache_read_tokens")
+  cacheWriteTokens Int       @default(0) @map("cache_write_tokens")
+  costUsd          Float?    @map("cost_usd")
+  createdAt        DateTime  @default(now()) @map("created_at")
+
+  @@index([runId])
+  @@map("agent_usage_events")
 }
