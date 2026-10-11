@@ -34,10 +34,9 @@ function parseDate(dateStr: string | null | undefined): Date | null {
 function normalizeTaskStatus(status: unknown): DbTaskStatus {
   const s = String(status || "").toLowerCase();
   if (s === "inbox") return "backlog";
-  if (s === "ready" || s === "blocked") return "todo";
-  if (s === "waiting_external") return "waiting";
+  if (s === "ready" || s === "blocked" || s === "waiting_external") return "todo";
   if (s === "testing") return "in_progress";
-  if (["backlog", "todo", "in_progress", "waiting", "done", "archived"].includes(s)) {
+  if (["backlog", "todo", "in_progress", "done", "archived"].includes(s)) {
     return s as DbTaskStatus;
   }
   return "todo";

@@ -5,7 +5,6 @@ export const STATUS_LABEL: Record<TaskStatus, string> = {
   backlog: "Backlog",
   todo: "Todo",
   in_progress: "In Progress",
-  waiting: "Waiting",
   done: "Done",
   archived: "Archived",
 };
@@ -14,7 +13,6 @@ export const STATUS_COLOR_VAR: Record<TaskStatus, string> = {
   backlog: "--color-status-inbox",
   todo: "--color-status-inbox",
   in_progress: "--color-status-in-progress",
-  waiting: "--color-priority-p1",
   done: "--color-status-done",
   archived: "--color-text-muted",
 };
@@ -24,7 +22,6 @@ export const STATUS_SHAPE: Record<TaskStatus, string> = {
   backlog: "▣",
   todo: "□",
   in_progress: "▶",
-  waiting: "⏳",
   done: "✓",
   archived: "□",
 };
@@ -33,7 +30,6 @@ export const KANBAN_COLUMNS: TaskStatus[] = [
   "backlog",
   "todo",
   "in_progress",
-  "waiting",
   "done",
   "archived",
 ];

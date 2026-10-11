@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useRef, useState, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { ConfirmButton } from "@/components/ui/ConfirmButton";
@@ -13,12 +13,6 @@ import { getWorkspaceHistoryForExport, getTasksForExport, importWorkspaceData, t
 import { validateImportPayload } from "@/lib/validation/import-validation";
 import { ImportPreviewModal } from "@/components/ImportPreviewModal";
 import { playChime, playRetroBlip } from "@/lib/audio";
-import {
-  listCredentialsAction,
-  createCredentialAction,
-  revokeCredentialAction,
-  type CredentialSummary,
-} from "@/lib/actions/integrations";
 import type { Project, Sprint } from "@/types/gamification";
 import type { Task } from "@/types/task";
 
@@ -136,44 +130,8 @@ export default function Page() {
   const sheet = characterSheet;
   const importInputRef = useRef<HTMLInputElement>(null);
   const [isEditingName, setIsEditingName] = useState(false);
-  const [nameInput, setNameInput] = useState(session?.user?.name || "Zidane Sc");
+  const [nameInput, setNameInput] = useState(session?.user?.name ?? "");
   const [savingName, setSavingName] = useState(false);
-
-  // MCP Integrations State
-  const [credentials, setCredentials] = useState<CredentialSummary[]>([]);
-  const [newKeyLabel, setNewKeyLabel] = useState("Hermes Agent");
-  const [generatedKey, setGeneratedKey] = useState<string | null>(null);
-  const [creatingKey, setCreatingKey] = useState(false);
-  const [copiedKey, setCopiedKey] = useState(false);
-
-  useEffect(() => {
-    void listCredentialsAction().then((res) => {
-      if (res.success) setCredentials(res.data);
-    });
-  }, []);
-
-  const handleGenerateKey = async () => {
-    setCreatingKey(true);
-    const res = await createCredentialAction(newKeyLabel);
-    if (res.success) {
-      setGeneratedKey(res.data.plainToken);
-      setCredentials((prev) => [res.data.credential, ...prev]);
-      notify("MCP API Key generated!", "success");
-    } else {
-      notify(res.error.message, "error");
-    }
-    setCreatingKey(false);
-  };
-
-  const handleRevokeKey = async (id: string) => {
-    const res = await revokeCredentialAction(id);
-    if (res.success) {
-      setCredentials((prev) => prev.filter((c) => c.id !== id));
-      notify("API Key revoked", "success");
-    } else {
-      notify(res.error.message, "error");
-    }
-  };
   const [importPreviewOpen, setImportPreviewOpen] = useState(false);
   const [importPreviewData, setImportPreviewData] = useState<{
     counts: { tasks: number; projects: number; sprints: number; workSessions: number; activityLogs: number };
@@ -466,108 +424,6 @@ export default function Page() {
             <span className="border border-border bg-card px-2 py-0.5 text-xs font-mono font-bold" style={{ color: "var(--color-primary-gold)" }}>{key}</span>
           </div>
         ))}
-
-        <SectionDivider>AI Agent Integrations (MCP)</SectionDivider>
-        <div className="border-b border-border py-3">
-          <div className="text-sm font-medium text-foreground mb-1">Model Context Protocol (MCP) Server</div>
-          <div className="text-xs text-muted-foreground mb-3">
-            Connect autonomous AI agents like Hermes, Claude Desktop, or Cursor to query, create, and track quests with session persistence.
-          </div>
-
-          <div className="p-3 border border-border bg-card mb-4 flex flex-col gap-2">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-mono font-bold text-[var(--color-primary-gold)]">ENDPOINT:</span>
-              <span className="text-xs font-mono select-all text-muted-foreground">https://atlas-zidane-scs-projects.vercel.app/api/mcp</span>
-            </div>
-            <div className="flex items-center justify-between border-t border-border/40 pt-2">
-              <span className="text-xs font-mono font-bold text-[var(--color-primary-gold)]">TRANSPORT:</span>
-              <span className="text-xs font-mono text-muted-foreground">Streamable HTTP (Stateless JSON-RPC)</span>
-            </div>
-          </div>
-
-          {generatedKey && (
-            <div className="p-3 border-2 border-[var(--color-primary-gold)] bg-[rgba(255,217,61,0.08)] mb-4">
-              <div className="text-xs font-bold text-[var(--color-primary-gold)] mb-1">NEW API TOKEN GENERATED (COPY NOW):</div>
-              <div className="flex items-center gap-2 mb-2">
-                <input
-                  type="text"
-                  readOnly
-                  value={generatedKey}
-                  className="flex-1 px-2 py-1 text-xs font-mono border border-border bg-black text-[var(--color-primary-gold)] select-all outline-none"
-                />
-                <button
-                  type="button"
-                  onClick={() => {
-                    navigator.clipboard.writeText(generatedKey);
-                    setCopiedKey(true);
-                    setTimeout(() => setCopiedKey(false), 2000);
-                  }}
-                  className="pixel-button px-3 py-1 text-xs border border-[var(--color-primary-gold)] bg-[var(--color-primary-gold)] text-black font-bold cursor-pointer"
-                >
-                  {copiedKey ? "COPIED!" : "COPY"}
-                </button>
-              </div>
-              <div className="text-[11px] text-muted-foreground">
-                Config snippet for Hermes (<code>~/.hermes/config.yaml</code>):
-                <pre className="mt-1 p-2 bg-black/80 border border-border text-[10px] font-mono overflow-x-auto text-green-400">
-{`mcp_servers:
-  atlas:
-    url: "https://atlas-zidane-scs-projects.vercel.app/api/mcp"
-    headers:
-      Authorization: "Bearer ${generatedKey}"`}
-                </pre>
-              </div>
-            </div>
-          )}
-
-          <div className="flex items-center gap-2 mb-4">
-            <input
-              type="text"
-              value={newKeyLabel}
-              onChange={(e) => setNewKeyLabel(e.target.value)}
-              placeholder="Key label (e.g. Hermes Agent)"
-              className="px-2.5 py-1 text-xs font-mono border border-border bg-card flex-1 outline-none focus:border-[var(--color-primary-gold)]"
-            />
-            <button
-              type="button"
-              disabled={creatingKey}
-              onClick={handleGenerateKey}
-              className="pixel-button border border-[var(--color-primary-gold)] bg-[var(--color-primary-gold)] px-3 py-1 text-xs font-bold text-black cursor-pointer disabled:opacity-50"
-            >
-              {creatingKey ? "CREATING..." : "+ GENERATE KEY"}
-            </button>
-          </div>
-
-          <div className="space-y-2">
-            <div className="text-xs font-mono text-muted-foreground uppercase tracking-wider">Active Keys:</div>
-            {credentials.length === 0 ? (
-              <div className="text-xs text-muted-foreground italic py-1">No API keys created yet.</div>
-            ) : (
-              credentials.map((cred) => (
-                <div key={cred.id} className="flex items-center justify-between p-2 border border-border bg-card/60">
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-bold text-foreground truncate">{cred.label}</span>
-                      <span className="text-[10px] font-mono px-1 py-0 border border-border bg-secondary text-muted-foreground">
-                        {cred.tokenPrefix}...
-                      </span>
-                    </div>
-                    <div className="text-[10px] text-muted-foreground font-mono mt-0.5">
-                      Last seen: {cred.lastUsedAt ? new Date(cred.lastUsedAt).toLocaleDateString() : "Never"}
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => handleRevokeKey(cred.id)}
-                    className="text-[10px] font-mono text-red-400 hover:text-red-300 border border-red-500/30 px-2 py-0.5 hover:bg-red-500/10 cursor-pointer"
-                  >
-                    REVOKE
-                  </button>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
 
         <SectionDivider>Data</SectionDivider>
         <div className="flex gap-3 pt-2">
