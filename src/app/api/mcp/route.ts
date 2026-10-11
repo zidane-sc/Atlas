@@ -219,10 +219,11 @@ async function createAtlasMcpServer(userId: string, credentialId: string) {
           priority,
           type,
           size,
-          reporter: "agent",
+          reporter: "other",
           waitingReason,
           metadata: {
             ...metadata,
+            agentReporter: "agent",
             createdByAgent: true,
             createdAtAgent: new Date().toISOString(),
           },

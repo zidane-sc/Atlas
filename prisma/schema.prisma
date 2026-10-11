@@ -105,7 +105,6 @@ enum TaskSize {
 enum TaskReporter {
   self
   other
-  agent
 
   @@map("task_reporter")
 }
