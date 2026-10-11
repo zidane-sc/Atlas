@@ -61,7 +61,7 @@ export async function domainCreateTask(
             startDate: startDate ? new Date(startDate) : undefined,
             dueDate: dueDate ? new Date(dueDate) : undefined,
             waitingReason: waitingReason || undefined,
-            metadata: metadata || undefined,
+            metadata: metadata ? (metadata as any) : undefined,
             tags: tags && tags.length > 0 ? {
               create: tags.map((name: string) => ({
                 tag: {

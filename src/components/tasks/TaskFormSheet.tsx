@@ -341,7 +341,7 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
               {currentTask.code}
             </span>
           )}
-          {task && (task.reporter === "agent" || !!(task as any).metadata?.createdByAgent) && (
+          {task && (task.reporter === "agent" || !!(task as any).metadata?.createdByAgent || !!(task as any).waitingReason) && (
             <span className="px-1.5 py-0.5 text-[9px] font-mono font-bold border border-cyan-500/50 bg-cyan-950/60 text-cyan-300 flex items-center gap-1">
               <Bot size={11} /> AI SPAWNED
             </span>
@@ -854,21 +854,24 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
         {mode === "edit" && task && (
           <>
             {/* AI Agent Telemetry & Checkpoints */}
-            {Boolean(taskDetail?.agent && ((taskDetail.agent.runs?.length ?? 0) > 0 || (taskDetail.agent.checkpoints?.length ?? 0) > 0)) && (
+            {Boolean(
+              (taskDetail?.agent && ((taskDetail.agent.runs?.length ?? 0) > 0 || (taskDetail.agent.checkpoints?.length ?? 0) > 0)) ||
+              (task as any)?.waitingReason
+            ) && (
               <Section title="AI Agent Memory & Runs" shape="🤖">
-                <div className="flex flex-col gap-3 p-2.5 bg-primary/5 border-2 border-[var(--color-primary-gold)]/40 text-xs">
-                  {/* Latest Checkpoint */}
-                  {(taskDetail?.agent?.checkpoints?.length ?? 0) > 0 && taskDetail?.agent?.checkpoints?.[0] && (
+                <div className="flex flex-col gap-3 p-2.5 bg-primary/5 border-2 border-cyan-500/40 text-xs shadow-[2px_2px_0_rgba(16,224,224,0.15)]">
+                  {/* Latest Checkpoint or Waiting Reason */}
+                  {((taskDetail?.agent?.checkpoints?.length ?? 0) > 0 && taskDetail?.agent?.checkpoints?.[0]) ? (
                     <div>
-                      <div className="font-mono font-bold text-[10px] text-[var(--color-primary-gold)] uppercase mb-1 flex items-center gap-1.5">
+                      <div className="font-mono font-bold text-[10px] text-cyan-400 uppercase mb-1 flex items-center gap-1.5">
                         <Bot size={12} /> Latest Checkpoint (Rev #{taskDetail.agent.checkpoints[0].revision})
                       </div>
                       <p className="bg-background/80 p-2 border border-border text-foreground font-mono leading-relaxed">
                         {taskDetail.agent.checkpoints[0].summary}
                       </p>
                       {taskDetail.agent.checkpoints[0].waitingReason && (
-                        <div className="mt-1 text-[11px] font-mono text-amber-400">
-                          ⏳ Waiting on: {taskDetail.agent.checkpoints[0].waitingReason}
+                        <div className="mt-1 text-[11px] font-mono text-amber-400 bg-amber-950/20 p-1 border border-amber-500/30">
+                          ⏸️ Idling Reason: {taskDetail.agent.checkpoints[0].waitingReason}
                         </div>
                       )}
                       {taskDetail.agent.checkpoints[0].nextStep && (
@@ -877,7 +880,16 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
                         </div>
                       )}
                     </div>
-                  )}
+                  ) : (task as any)?.waitingReason ? (
+                    <div>
+                      <div className="font-mono font-bold text-[10px] text-cyan-400 uppercase mb-1 flex items-center gap-1.5">
+                        <Bot size={12} /> Agent Status Note
+                      </div>
+                      <div className="text-[11px] font-mono text-amber-400 bg-amber-950/20 p-1.5 border border-amber-500/30">
+                        ⏸️ Idling Reason: {(task as any).waitingReason}
+                      </div>
+                    </div>
+                  ) : null}
 
                   {/* Multi-Model & Token Breakdown */}
                   {Boolean(taskDetail?.agent?.runs?.some((r) => r.usageEvents && r.usageEvents.length > 0)) && (
