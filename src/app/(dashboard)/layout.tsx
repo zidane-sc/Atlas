@@ -66,9 +66,6 @@ export default async function DashboardLayout({
       take: 200,
       include: {
         tags: { select: { tag: { select: { name: true } } } },
-        relations: { select: { relationType: true, relatedTask: { select: { id: true, title: true } } } },
-        attachments: true,
-        deliverables: true,
       },
     }),
     // Unbounded (no `take`) — the 200-cap above exists for the interactive views, but
@@ -83,7 +80,7 @@ export default async function DashboardLayout({
         status: true,
         type: true,
         priority: true,
-        projectId: true,
+        size: true,
         completedAt: true,
         dueDate: true,
         createdAt: true,

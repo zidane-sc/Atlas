@@ -5,7 +5,7 @@ export default function manifest(): MetadataRoute.Manifest {
     name: "Atlas - Your Second Brain",
     short_name: "Atlas",
     description: "Gamified personal task manager with retro pixel-RPG aesthetics",
-    start_url: "/",
+    start_url: "/tasks",
     display: "standalone",
     background_color: "#0d0f14",
     theme_color: "#0d0f14",

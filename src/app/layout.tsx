@@ -32,6 +32,11 @@ export const metadata: Metadata = {
     capable: true,
     statusBarStyle: "black-translucent",
     title: "Atlas",
+    startupImage: [
+      {
+        url: "/icon-512.png",
+      },
+    ],
   },
   icons: {
     icon: [
