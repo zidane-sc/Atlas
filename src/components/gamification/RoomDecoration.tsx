@@ -495,7 +495,7 @@ export function RoomDecoration() {
             }}
             style={{
               left: `${dragging?.category === "chair" && dragPos ? dragPos.x : chairPos.x}%`,
-              bottom: `${Math.min(14, dragging?.category === "chair" && dragPos ? dragPos.y : chairPos.y)}%`,
+              bottom: `${Math.min(9, dragging?.category === "chair" && dragPos ? dragPos.y : chairPos.y)}%`,
               zIndex: 9,
               fontSize: "36px",
               touchAction: "none",
@@ -527,7 +527,7 @@ export function RoomDecoration() {
             }}
             style={{
               left: `${dragging?.category === "desk" && dragPos ? dragPos.x : deskPos.x}%`,
-              bottom: `${Math.min(12, dragging?.category === "desk" && dragPos ? dragPos.y : deskPos.y)}%`,
+              bottom: `${Math.min(8, dragging?.category === "desk" && dragPos ? dragPos.y : deskPos.y)}%`,
               zIndex: 10,
               fontSize: "44px",
               touchAction: "none",
@@ -559,7 +559,7 @@ export function RoomDecoration() {
             }}
             style={{
               left: `${dragging?.category === "decor" && dragPos ? dragPos.x : decorPos.x}%`,
-              bottom: `${Math.min(10, dragging?.category === "decor" && dragPos ? dragPos.y : decorPos.y)}%`,
+              bottom: `${Math.min(8, dragging?.category === "decor" && dragPos ? dragPos.y : decorPos.y)}%`,
               zIndex: 12,
               fontSize: "26px",
               touchAction: "none",

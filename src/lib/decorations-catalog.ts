@@ -15,11 +15,11 @@ export const DEFAULT_DECORATION_POSITIONS: Record<string, { x: number; y: number
 
 export const DECORATIONS_CATALOG: DecorationItem[] = [
   // Desks
-  { id: "desk-wood", name: "Wooden Desk", category: "desk", cost: 0, description: "Simple sturdy wood desk", emoji: "🪵" },
-  { id: "desk-crt", name: "CRT Setup", category: "desk", cost: 10, description: "Classic retro terminal screen", emoji: "📺" },
-  { id: "desk-rgb", name: "RGB Gaming Desk", category: "desk", cost: 35, description: "Pulsing neon and speed", emoji: "⌨️" },
-  { id: "desk-standing", name: "Standing Hacker Desk", category: "desk", cost: 45, description: "Dual monitors for maximum velocity", emoji: "🖥️" },
-  { id: "desk-alchemist", name: "Alchemist Workbench", category: "desk", cost: 60, description: "Bubbling potions and ancient scrolls", emoji: "⚗️" },
+  { id: "desk-wood", name: "Wooden Desk", category: "desk", cost: 0, description: "Sturdy handcrafted timber desk", emoji: "🪵" },
+  { id: "desk-crt", name: "Retro Terminal", category: "desk", cost: 10, description: "Solid oak table with vintage CRT terminal", emoji: "🖥️" },
+  { id: "desk-rgb", name: "RGB Battle Station", category: "desk", cost: 35, description: "Carbon desk with mechanical keyboard & neon", emoji: "⌨️" },
+  { id: "desk-standing", name: "Hacker Standing Desk", category: "desk", cost: 45, description: "Adjustable desk with multi-monitor setup", emoji: "🎛️" },
+  { id: "desk-alchemist", name: "Alchemist Workbench", category: "desk", cost: 60, description: "Bubbling potions, ancient scrolls & stone counter", emoji: "⚗️" },
 
   // Chairs
   { id: "chair-stool", name: "Wooden Stool", category: "chair", cost: 0, description: "Creaky but reliable stool", emoji: "🪑" },
