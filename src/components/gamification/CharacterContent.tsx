@@ -103,20 +103,20 @@ export default function CharacterContent() {
                   </div>
                 </div>
               ) : (
-                <div className="mb-3 font-display text-base text-foreground flex justify-between items-center">
-                  {session?.user?.name ?? "Aric Stormcloak"}
+                <div className="mb-2 font-display text-xs sm:text-sm text-foreground flex justify-between items-center">
+                  <span>{session?.user?.name && session.user.name !== "Passcode" ? session.user.name : "Zidane Sc"}</span>
                   <button
                     onClick={() => {
-                      setFormName(session?.user?.name ?? "");
+                      setFormName(session?.user?.name && session.user.name !== "Passcode" ? session.user.name : "Zidane Sc");
                       setIsEditing(true);
                     }}
-                    className="text-xs px-2 py-1 border border-border rounded hover:bg-primary/10"
+                    className="pixel-button text-xs font-mono px-2.5 py-0.5 border border-border bg-card hover:border-[var(--color-primary-gold)] cursor-pointer"
                   >
                     Edit
                   </button>
                 </div>
               )}
-              <div className="mb-3 font-display text-[11px]" style={{ color: "var(--color-primary-gold)" }}>
+              <div className="mb-2 font-display text-[10px]" style={{ color: "var(--color-primary-gold)" }}>
                 {sheet.classTitle.toUpperCase()}
               </div>
               <div className="flex gap-2">

@@ -22,30 +22,30 @@ export function SmartViewTaskCard({ task, onSelect }: { task: Task; onSelect: (t
     >
       <div>
         {/* Top bar: Type + Code + Project + Pin + Priority */}
-        <div className="mb-1 flex items-center justify-between text-xs">
+        <div className="mb-1.5 flex items-center justify-between text-xs">
           <div className="flex items-center gap-1.5 min-w-0">
             <span className="text-sm shrink-0" aria-hidden>{TYPE_ICON[task.type]}</span>
-            <span className="font-mono text-[11px] font-bold text-[var(--color-primary-gold)] truncate">{task.code}</span>
+            <span className="font-mono text-xs font-bold text-[var(--color-primary-gold)] truncate">{task.code}</span>
             {task.project && (
-              <span className="hidden sm:inline-block max-w-[100px] truncate text-[10px] text-muted-foreground border border-border px-1 py-0 bg-secondary/30">
+              <span className="hidden sm:inline-block max-w-[110px] truncate text-xs text-muted-foreground border border-border px-1 py-0 bg-secondary/30">
                 {task.project}
               </span>
             )}
           </div>
           <div className="flex items-center gap-1.5 shrink-0">
-            {task.pinned && <Pin size={12} style={{ color: "var(--color-primary-gold)", fill: "var(--color-primary-gold)" }} />}
+            {task.pinned && <Pin size={13} style={{ color: "var(--color-primary-gold)", fill: "var(--color-primary-gold)" }} />}
             <PriorityMark priority={task.priority} />
           </div>
         </div>
 
         {/* Title */}
-        <h3 className="mb-2 text-xs font-bold leading-snug text-foreground group-hover:text-primary transition-colors line-clamp-2">
+        <h3 className="mb-2 text-sm font-semibold leading-snug text-foreground group-hover:text-primary transition-colors line-clamp-2">
           {task.title}
         </h3>
       </div>
 
       {/* Meta bottom bar */}
-      <div className="flex flex-wrap items-center gap-1.5 text-[10px] pt-1.5 border-t border-border/40 font-mono">
+      <div className="flex flex-wrap items-center gap-1.5 text-xs pt-1.5 border-t border-border/40 font-mono">
         <span
           className="px-1.5 py-0.5 border font-bold"
           style={{

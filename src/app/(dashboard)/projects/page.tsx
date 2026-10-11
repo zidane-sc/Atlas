@@ -14,50 +14,51 @@ export default function Page() {
   return (
     <div className="flex h-full flex-col">
       <div
-        className="flex items-center justify-between px-6 py-3"
+        className="flex items-center justify-between px-4 py-2.5"
         style={{ borderBottom: "1px solid var(--color-border)", backgroundColor: "var(--color-bg-panel-alt)" }}
       >
         <h1 className="font-display" style={{ fontSize: "11px", color: "var(--color-primary-gold)" }}>◈ PROJECTS</h1>
-        <Button size="sm" onClick={openCreateForm}><Plus size={12} /> New Project</Button>
+        <Button size="sm" onClick={openCreateForm} className="h-7 text-xs"><Plus size={12} /> New Project</Button>
       </div>
-      <div className="flex-1 overflow-y-auto p-4 sm:p-6">
-        <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 md:grid-cols-2 xl:grid-cols-3">
+      <div className="flex-1 overflow-y-auto p-3 sm:p-4">
+        <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 max-w-6xl">
           {projects.map((p) => {
             const projectTasks = allTasks.filter((t) => t.project === p.name);
             const completedTasks = projectTasks.filter((t) => t.status === "done").length;
             const inProgress = projectTasks.filter((t) => t.status === "in_progress").length;
-            // Blocked/waiting_external removed in simplified status model
             const pct = projectTasks.length > 0 ? Math.round((completedTasks / projectTasks.length) * 100) : 0;
             return (
               <div
                 key={p.id}
                 onClick={() => openEditForm(p)}
-                className="cursor-pointer border-2 border-l-4 bg-card p-5 transition-colors hover:border-primary"
+                className="cursor-pointer border-2 border-l-4 bg-card p-3 sm:p-3.5 transition-colors hover:border-primary flex flex-col justify-between"
                 style={{ borderColor: "var(--color-border)", borderLeftColor: p.customColor || `var(${p.colorVar})` }}
               >
-                <div className="mb-3 flex items-start justify-between">
-                  <div>
-                    <div className="mb-1 flex items-center gap-2">
-                      <span className="text-xl">{p.emoji}</span>
-                      <span className="text-base text-foreground">{p.name}</span>
-                      <span className="text-sm text-muted-foreground">{p.category}</span>
+                <div>
+                  <div className="mb-2 flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <div className="mb-0.5 flex items-center gap-1.5">
+                        <span className="text-base shrink-0">{p.emoji}</span>
+                        <span className="text-xs font-bold text-foreground truncate">{p.name}</span>
+                        <span className="text-[11px] text-muted-foreground font-mono">[{p.category}]</span>
+                      </div>
+                      <p className="text-xs text-muted-foreground line-clamp-2">{p.description}</p>
                     </div>
-                    <p className="text-sm text-muted-foreground">{p.description}</p>
+                    <span
+                      className="border px-1.5 py-0.5 text-[10px] font-mono font-bold whitespace-nowrap shrink-0"
+                      style={{ borderColor: resolveColorVar(p.colorVar), color: resolveColorVar(p.colorVar) }}
+                    >
+                      {p.status.replace("_", " ").toUpperCase()}
+                    </span>
                   </div>
-                  <span
-                    className="border px-1.5 py-0.5 text-sm whitespace-nowrap"
-                    style={{ borderColor: resolveColorVar(p.colorVar), color: resolveColorVar(p.colorVar) }}
-                  >
-                    {p.status.replace("_", " ").toUpperCase()}
-                  </span>
                 </div>
-                <PixBar value={completedTasks} max={projectTasks.length || 1} colorVar={p.colorVar} blocks={16} />
-                <div className="mt-1 mb-3 text-sm text-muted-foreground">
-                  {pct}% — {completedTasks}/{projectTasks.length}
-                </div>
-                <div className="flex flex-wrap gap-4 text-sm">
-                  {inProgress > 0 && <span style={{ color: "var(--color-status-in-progress)" }}>▶ {inProgress} in progress</span>}
-                  {/* Blocked/Waiting removed in simplified status model */}
+
+                <div className="pt-2 border-t border-border/40">
+                  <PixBar value={completedTasks} max={projectTasks.length || 1} colorVar={p.colorVar} blocks={16} />
+                  <div className="mt-1 flex items-center justify-between text-xs text-muted-foreground font-mono">
+                    <span>{pct}% ({completedTasks}/{projectTasks.length})</span>
+                    {inProgress > 0 && <span style={{ color: "var(--color-status-in-progress)" }}>▶ {inProgress} active</span>}
+                  </div>
                 </div>
               </div>
             );

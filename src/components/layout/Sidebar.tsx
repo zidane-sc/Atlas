@@ -3,7 +3,7 @@
 import { useMemo, useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Moon, PanelLeftIcon, Plus, Search, X } from "lucide-react";
+import { LogOut, PanelLeftIcon, Plus, Search, X } from "lucide-react";
 import { Companion } from "@/components/gamification/Companion";
 import { SaveAndQuitOverlay } from "@/components/gamification/SaveAndQuitOverlay";
 import { XpBar } from "@/components/gamification/XpBar";
@@ -409,7 +409,7 @@ export function Sidebar() {
                 collapsed ? "lg:h-9 lg:w-9 lg:p-0" : "px-3 py-1.5"
               )}
             >
-              <Moon size={14} className={cn(collapsed && "lg:size-4")} />
+              <LogOut size={14} className={cn(collapsed && "lg:size-4")} />
               <span className={cn(collapsed && "lg:hidden")}>Save &amp; Quit</span>
             </button>
             {collapsed && (

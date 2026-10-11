@@ -1,6 +1,7 @@
 "use client";
 
-import { Plus } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Plus, List as ListIcon, LayoutGrid } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useTasks } from "@/components/providers/TasksProvider";
 import { useSettings } from "@/components/providers/SettingsProvider";
@@ -28,6 +29,20 @@ export function FilteredView({
 }) {
   const { openEditForm, openCreateForm } = useTasks();
   const { compactView } = useSettings();
+  const [viewMode, setViewMode] = useState<"list" | "cards">("list");
+
+  useEffect(() => {
+    const saved = localStorage.getItem("atlas:smartview_mode");
+    if (saved === "cards" || saved === "list") {
+      setViewMode(saved);
+    }
+  }, []);
+
+  const handleModeChange = (mode: "list" | "cards") => {
+    setViewMode(mode);
+    localStorage.setItem("atlas:smartview_mode", mode);
+  };
+
   const sortedTasks = [...tasks].sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0));
 
   return (
@@ -44,6 +59,34 @@ export function FilteredView({
           <p className="text-xs text-muted-foreground">{desc}</p>
         </div>
         <div className="flex items-center gap-2">
+          {/* List vs Cards view toggle */}
+          <div className="flex items-center border border-border">
+            <button
+              type="button"
+              onClick={() => handleModeChange("list")}
+              className="flex items-center gap-1 px-2 py-0.5 text-xs font-mono transition-colors cursor-pointer"
+              style={{
+                backgroundColor: viewMode === "list" ? "var(--color-bg-panel)" : "transparent",
+                color: viewMode === "list" ? "var(--color-primary-gold)" : "var(--color-text-muted)",
+              }}
+              title="List View"
+            >
+              <ListIcon size={11} /> List
+            </button>
+            <button
+              type="button"
+              onClick={() => handleModeChange("cards")}
+              className="flex items-center gap-1 px-2 py-0.5 text-xs font-mono transition-colors cursor-pointer"
+              style={{
+                backgroundColor: viewMode === "cards" ? "var(--color-bg-panel)" : "transparent",
+                color: viewMode === "cards" ? "var(--color-primary-gold)" : "var(--color-text-muted)",
+              }}
+              title="Cards View"
+            >
+              <LayoutGrid size={11} /> Cards
+            </button>
+          </div>
+
           <span className="font-mono text-xs font-bold" style={{ color: `var(${colorVar})` }}>({tasks.length})</span>
           {showNewQuest && <Button size="sm" onClick={openCreateForm} className="h-7 text-xs"><Plus size={12} /> New</Button>}
         </div>
@@ -54,12 +97,12 @@ export function FilteredView({
             <div className="mb-2 font-mono text-xl">{empty}</div>
             <div className="text-xs">Clear skies, adventurer.</div>
           </div>
-        ) : compactView ? (
-          <div className="p-3 sm:p-4">
-            <TaskListView tasks={sortedTasks} variant="compact" />
+        ) : viewMode === "list" || compactView ? (
+          <div className="p-3 sm:p-4 max-w-5xl">
+            <TaskListView tasks={sortedTasks} variant="row" />
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2.5 sm:gap-3 p-3 sm:p-4 auto-rows-max">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2.5 sm:gap-3 p-3 sm:p-4 max-w-6xl auto-rows-max">
             {sortedTasks.map((t) => (
               <SmartViewTaskCard key={t.id} task={t} onSelect={openEditForm} />
             ))}
