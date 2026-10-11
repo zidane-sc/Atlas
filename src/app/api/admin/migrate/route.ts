@@ -363,12 +363,26 @@ export async function GET(req: Request) {
       SELECT id, user_id, type, created_at FROM sync_events ORDER BY created_at DESC LIMIT 5;
     `);
 
+    // Clean up any legacy "Passcode" name
+    await db.user.updateMany({
+      where: { name: "Passcode" },
+      data: { name: "Zidane Sc" },
+    });
+
+    const users: any[] = await db.user.findMany({
+      select: { id: true, email: true, name: true, createdAt: true },
+    });
+
+    const settings: any[] = await db.setting.findMany();
+
     return NextResponse.json({
       success: true,
       message: "Database schema migration completed successfully",
       logs,
       taskColumns: taskCols,
       recentSyncEvents,
+      users,
+      settings,
     });
   } catch (err: any) {
     console.error("Migration endpoint error:", err);

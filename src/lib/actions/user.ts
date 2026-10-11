@@ -76,14 +76,12 @@ export async function updateUserSettingAction(
   }
 
   try {
-    const user = await db.user.findUnique({
+    const user = await db.user.upsert({
       where: { email: session.user.email },
+      update: {},
+      create: { email: session.user.email, name: session.user.name && session.user.name !== "Passcode" ? session.user.name : "Zidane Sc" },
       select: { id: true },
     });
-
-    if (!user) {
-      return { success: false, error: { code: "NOT_FOUND", message: "User not found." } };
-    }
 
     // Upsert setting
     await db.setting.upsert({

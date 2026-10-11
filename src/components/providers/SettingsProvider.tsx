@@ -2,6 +2,29 @@
 
 import { createContext, useContext, useEffect, useMemo, useState, useCallback } from "react";
 import type { UserSetting } from "@/types/settings";
+import { updateUserSettingAction } from "@/lib/actions/user";
+
+const DEFAULT_SETTINGS: Record<string, unknown> = {
+  notifications: true,
+  soundEnabled: true,
+  reduceMotion: false,
+  compactView: false,
+  focusMinutes: 25,
+  breakMinutes: 5,
+  defaultView: "dashboard",
+};
+
+function initializeSettings(initial: UserSetting[]): UserSetting[] {
+  const map = new Map<string, unknown>(Object.entries(DEFAULT_SETTINGS));
+  if (Array.isArray(initial)) {
+    for (const s of initial) {
+      if (s && s.key) {
+        map.set(s.key, s.value);
+      }
+    }
+  }
+  return Array.from(map.entries()).map(([key, value]) => ({ key, value } as UserSetting));
+}
 
 interface SettingsContextValue {
   settings: UserSetting[];
@@ -26,10 +49,13 @@ export function SettingsProvider({
   initialSettings: UserSetting[];
   children: React.ReactNode;
 }) {
-  const [settings, setSettings] = useState<UserSetting[]>(initialSettings);
+  const [settings, setSettings] = useState<UserSetting[]>(() => initializeSettings(initialSettings));
 
   const getSettingValue = useCallback(
-    (key: string) => settings.find((s) => s.key === key)?.value,
+    (key: string) => {
+      const match = settings.find((s) => s.key === key);
+      return match !== undefined ? match.value : DEFAULT_SETTINGS[key];
+    },
     [settings]
   );
 
@@ -50,27 +76,41 @@ export function SettingsProvider({
   }, [compactView]);
 
   const updateSetting = useCallback(async (key: string, value: unknown) => {
-    // Optimistic update
+    // 1. Optimistic update
     setSettings((prev) => {
-      const exists = prev.find((s) => s.key === key);
+      const exists = prev.some((s) => s.key === key);
       if (exists) {
         return prev.map((s) => (s.key === key ? { ...s, value } : s));
       }
       return [...prev, { key, value } as UserSetting];
     });
 
-    const { updateUserSettingAction } = await import("@/lib/actions/user");
-    const res = await updateUserSettingAction(key, value);
-    if (res.success) {
-      setSettings(res.data);
-      return true;
+    try {
+      const res = await updateUserSettingAction(key, value);
+      if (res.success && Array.isArray(res.data)) {
+        // Merge with existing state so default keys are never dropped
+        setSettings((prev) => {
+          const map = new Map(prev.map((s) => [s.key, s.value]));
+          for (const s of res.data) {
+            map.set(s.key, s.value);
+          }
+          return Array.from(map.entries()).map(([k, v]) => ({ key: k, value: v } as UserSetting));
+        });
+        return true;
+      }
+      return false;
+    } catch (err) {
+      console.error("Failed to update user setting:", err);
+      return false;
     }
-    return false;
   }, []);
 
-  const setReduceMotion = useCallback((value: boolean) => {
-    void updateSetting("reduceMotion", value);
-  }, [updateSetting]);
+  const setReduceMotion = useCallback(
+    (value: boolean) => {
+      void updateSetting("reduceMotion", value);
+    },
+    [updateSetting]
+  );
 
   const value = useMemo<SettingsContextValue>(
     () => ({

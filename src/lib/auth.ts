@@ -51,7 +51,7 @@ const providers = [
             const input = credentials?.passcode;
             if (typeof input === "string" && verifyPasscode(input, passcode)) {
               const email = allowedEmails[0];
-              return { id: "passcode-user", email, name: "Passcode" };
+              return { id: "passcode-user", email, name: "Zidane Sc" };
             }
             return null;
           },
@@ -75,10 +75,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     },
     jwt({ token, trigger, session, user }) {
       if (user) {
-        token.name = user.name;
+        token.name = user.name === "Passcode" ? "Zidane Sc" : user.name;
       }
       if (trigger === "update" && session?.user?.name) {
         token.name = session.user.name;
+      }
+      if (token.name === "Passcode") {
+        token.name = "Zidane Sc";
       }
       return token;
     },

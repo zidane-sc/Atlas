@@ -89,7 +89,7 @@ function Toggle({
         role="switch"
         aria-checked={checked}
         onClick={() => onChange(!checked)}
-        className="relative mt-0.5 ml-4 h-5 w-11 shrink-0 border-2 transition-colors"
+        className="relative mt-0.5 ml-4 h-5 w-11 shrink-0 border-2 transition-colors cursor-pointer"
         style={{
           backgroundColor: checked ? "var(--color-primary-gold)" : "var(--color-bg-panel-alt)",
           borderColor: checked ? "var(--color-primary-gold)" : "var(--color-border)",
@@ -108,7 +108,18 @@ export default function Page() {
   const { data: session, update: updateSession } = useSession();
   const { characterSheet, bonusXp, bonusCoins, reset: resetTasks } = useTasks();
   const { projects, reset: resetProjects } = useProjects();
-  const { settings, updateSetting, reduceMotion, setReduceMotion } = useSettings();
+  const {
+    settings,
+    updateSetting,
+    reduceMotion,
+    setReduceMotion,
+    soundEnabled,
+    focusMinutes,
+    breakMinutes,
+    notificationsEnabled,
+    compactView,
+    defaultView,
+  } = useSettings();
   const { notify } = useNotifications();
   const sheet = characterSheet;
   const importInputRef = useRef<HTMLInputElement>(null);
@@ -122,13 +133,6 @@ export default function Page() {
     payload: any;
   } | null>(null);
   const [isImporting, setIsImporting] = useState(false);
-
-  const getSetting = useCallback((key: string, defaultValue?: any): any => {
-    const setting = settings.find((s) => s.key === key);
-    if (setting !== undefined) return setting?.value;
-    if (defaultValue !== undefined) return defaultValue;
-    return false;
-  }, [settings]);
 
   const handleSaveName = async () => {
     if (!nameInput.trim()) {
@@ -146,11 +150,6 @@ export default function Page() {
     }
     setSavingName(false);
   };
-
-  const handleToggle = useCallback((key: string, defaultValue: boolean = false) => {
-    const current = getSetting(key, defaultValue);
-    void updateSetting(key, !current);
-  }, [getSetting, updateSetting]);
 
   const onExport = async () => {
     const [history, tasksForExport] = await Promise.all([getWorkspaceHistoryForExport(), getTasksForExport()]);
@@ -254,10 +253,30 @@ export default function Page() {
 
       <div className="max-w-2xl flex-1 overflow-y-auto p-6">
         <SectionDivider>Experience</SectionDivider>
-        <Toggle checked={getSetting("notifications", true) !== false} onChange={() => handleToggle("notifications", true)} label="Notifications" description="Overdue quest alerts" />
-        <Toggle checked={getSetting("soundEnabled", true) !== false} onChange={() => handleToggle("soundEnabled", true)} label="Sound Effects" description="Subtle chimes on task complete and level-up" />
-        <Toggle checked={!!reduceMotion} onChange={setReduceMotion} label="Reduce Motion" description="Shortens all animation durations" />
-        <Toggle checked={!!getSetting("compactView", false)} onChange={() => handleToggle("compactView", false)} label="Compact View" description="Tighter spacing in list and table views" />
+        <Toggle
+          checked={notificationsEnabled}
+          onChange={(val) => void updateSetting("notifications", val)}
+          label="Notifications"
+          description="Overdue quest alerts"
+        />
+        <Toggle
+          checked={soundEnabled}
+          onChange={(val) => void updateSetting("soundEnabled", val)}
+          label="Sound Effects"
+          description="Subtle chimes on task complete and level-up"
+        />
+        <Toggle
+          checked={reduceMotion}
+          onChange={setReduceMotion}
+          label="Reduce Motion"
+          description="Shortens all animation durations"
+        />
+        <Toggle
+          checked={compactView}
+          onChange={(val) => void updateSetting("compactView", val)}
+          label="Compact View"
+          description="Tighter spacing in list and table views"
+        />
 
         <SectionDivider>Pomodoro Timer</SectionDivider>
         <div className="flex items-center justify-between border-b border-border py-3">
@@ -270,7 +289,7 @@ export default function Page() {
               type="number"
               min={1}
               max={120}
-              value={getSetting("focusMinutes", 25) as number}
+              value={focusMinutes}
               onChange={(e) => void updateSetting("focusMinutes", Math.max(1, Math.min(120, Number(e.target.value))))}
               className="w-16 border border-border bg-card px-2 py-1 text-center text-sm"
             />
@@ -287,7 +306,7 @@ export default function Page() {
               type="number"
               min={1}
               max={120}
-              value={getSetting("breakMinutes", 5) as number}
+              value={breakMinutes}
               onChange={(e) => void updateSetting("breakMinutes", Math.max(1, Math.min(120, Number(e.target.value))))}
               className="w-16 border border-border bg-card px-2 py-1 text-center text-sm"
             />
@@ -300,7 +319,7 @@ export default function Page() {
           <div className="mb-1 text-sm text-foreground">Default View</div>
           <div className="mb-2 text-sm text-muted-foreground">Screen shown on app open</div>
           <select
-            value={(getSetting("defaultView", "dashboard") as string) || "dashboard"}
+            value={defaultView}
             onChange={(e) => void updateSetting("defaultView", e.target.value)}
             className="border-2 border-border bg-secondary px-2 py-1 text-sm text-foreground"
           >
@@ -313,43 +332,61 @@ export default function Page() {
 
         <SectionDivider>Account</SectionDivider>
         <div className="border-b border-border py-3">
-          <div className="mb-2 text-sm text-muted-foreground">Adventurer Name</div>
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-sm text-foreground">Adventurer Name</span>
+            <span className="text-xs text-muted-foreground">{session?.user?.email}</span>
+          </div>
+          <div className="text-xs text-muted-foreground mb-3">Your character display name across quests, logs, and character sheet.</div>
           {isEditingName ? (
-            <div className="flex gap-2">
+            <div className="flex items-center gap-2">
               <input
                 type="text"
                 value={nameInput}
                 onChange={(e) => setNameInput(e.target.value)}
-                className="flex-1 border border-border bg-card px-2 py-1 text-sm rounded"
+                placeholder="Enter character name"
+                className="pixel-panel flex-1 border-2 border-border bg-card px-3 py-1.5 text-sm text-foreground outline-none focus:border-[var(--color-primary-gold)]"
+                autoFocus
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleSaveName();
+                  if (e.key === "Escape") {
+                    setIsEditingName(false);
+                    setNameInput(session?.user?.name || "Zidane Sc");
+                  }
+                }}
               />
               <button
+                type="button"
                 onClick={handleSaveName}
                 disabled={savingName}
-                className="px-3 py-1 bg-primary text-primary-foreground rounded text-xs"
+                className="pixel-button border-2 border-[var(--color-primary-gold)] bg-[var(--color-primary-gold)] px-3 py-1.5 text-xs font-bold text-black disabled:opacity-50 cursor-pointer"
               >
-                {savingName ? "Saving..." : "Save"}
+                {savingName ? "SAVING..." : "SAVE"}
               </button>
               <button
+                type="button"
                 onClick={() => {
                   setIsEditingName(false);
-                  setNameInput(session?.user?.name ?? "");
+                  setNameInput(session?.user?.name || "Zidane Sc");
                 }}
-                className="px-3 py-1 border border-border rounded text-xs"
+                className="pixel-button border-2 border-border bg-card px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground cursor-pointer"
               >
-                Cancel
+                CANCEL
               </button>
             </div>
           ) : (
             <div className="flex items-center justify-between">
-              <span className="text-sm text-foreground">{session?.user?.name ?? "Aric Stormcloak"}</span>
+              <span className="font-mono text-sm font-bold" style={{ color: "var(--color-primary-gold)" }}>
+                {session?.user?.name && session.user.name !== "Passcode" ? session.user.name : "Zidane Sc"}
+              </span>
               <button
+                type="button"
                 onClick={() => {
-                  setNameInput(session?.user?.name ?? "");
+                  setNameInput(session?.user?.name && session.user.name !== "Passcode" ? session.user.name : "Zidane Sc");
                   setIsEditingName(true);
                 }}
-                className="text-xs px-2 py-1 border border-border rounded hover:bg-primary/10"
+                className="pixel-button border border-border bg-card px-2.5 py-1 text-xs text-foreground hover:border-[var(--color-primary-gold)] cursor-pointer"
               >
-                Edit
+                EDIT
               </button>
             </div>
           )}

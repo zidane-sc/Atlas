@@ -38,8 +38,16 @@ export default async function DashboardLayout({
   const owner = await db.user.upsert({
     where: { email: session.user.email },
     update: {},
-    create: { email: session.user.email, name: session.user.name ?? session.user.email },
+    create: { email: session.user.email, name: session.user.name && session.user.name !== "Passcode" ? session.user.name : "Zidane Sc" },
   });
+
+  if (owner.name === "Passcode") {
+    await db.user.update({
+      where: { id: owner.id },
+      data: { name: "Zidane Sc" },
+    });
+    owner.name = "Zidane Sc";
+  }
 
   // Only seed on first login (new account) — upsert returns created record via update: {}
   // If we just created the user, seed initial data. We can detect this by checking if
