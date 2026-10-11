@@ -105,7 +105,7 @@ export function TaskFormSheet() {
   return (
     <Sheet open={sheet.open} onOpenChange={(open) => !open && closeForm()}>
       <SheetContent
-        className="w-full max-w-full sm:max-w-lg sm:w-[520px] gap-0 overflow-y-auto border-l-2 border-border p-0"
+        className="w-full inset-0 max-w-full sm:inset-y-0 sm:right-0 sm:left-auto sm:w-[520px] sm:max-w-[520px] gap-0 overflow-y-auto border-l-2 border-border p-0 rounded-none"
       >
         {sheet.open && <TaskFormBody key={sheet.task?.id ?? "create"} mode={sheet.mode} task={sheet.task} />}
       </SheetContent>
