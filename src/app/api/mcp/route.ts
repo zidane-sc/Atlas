@@ -35,7 +35,7 @@ async function createAtlasMcpServer(userId: string, credentialId: string) {
       description: "Search or resolve existing tasks/quests by code (e.g. CR-421), title, PR URL, or status filter.",
       inputSchema: {
         query: z.string().optional().describe("Free-text search or code/PR number"),
-        status: z.enum(["backlog", "todo", "in_progress", "waiting", "done", "archived"]).optional(),
+        status: z.enum(["backlog", "todo", "in_progress", "done", "archived"]).optional(),
         sourceKey: z.string().optional().describe("Canonical source key like github.com/owner/repo/pull/123"),
         limit: z.number().int().min(1).max(50).default(10),
       },
@@ -184,7 +184,7 @@ async function createAtlasMcpServer(userId: string, credentialId: string) {
       inputSchema: {
         title: z.string().min(1),
         description: z.string().optional(),
-        status: z.enum(["backlog", "todo", "in_progress", "waiting", "done"]).default("in_progress"),
+        status: z.enum(["backlog", "todo", "in_progress", "done"]).default("in_progress"),
         priority: z.enum(["high", "medium", "low"]).default("medium"),
         type: z.enum(["coding", "research", "design", "documentation", "bug", "meeting", "admin"]).default("coding"),
         size: z.enum(["xs", "s", "m", "l", "xl"]).optional(),
@@ -344,7 +344,6 @@ async function createAtlasMcpServer(userId: string, credentialId: string) {
         // Sync back to task status
         if (checkpointState === "waiting_external") {
           await domainUpdateTask(userId, taskId, {
-            status: "waiting",
             waitingReason: waitingReason || summary,
           });
         }

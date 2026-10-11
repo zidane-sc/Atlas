@@ -2,7 +2,6 @@ export type TaskStatus =
   | "backlog"
   | "todo"
   | "in_progress"
-  | "waiting"
   | "done"
   | "archived";
 

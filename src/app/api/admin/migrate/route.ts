@@ -316,8 +316,7 @@ export async function GET(req: Request) {
             END;
         EXCEPTION WHEN OTHERS THEN null;
         END $$;
-
-        -- task_size enum and column
+        -- 3. Migration 2: 20261011000000_simplify_schema
         DO $$ BEGIN
           CREATE TYPE "task_size" AS ENUM ('xs', 's', 'm', 'l', 'xl');
         EXCEPTION WHEN duplicate_object THEN null;
@@ -346,6 +345,9 @@ export async function GET(req: Request) {
         CREATE INDEX IF NOT EXISTS "sync_events_user_id_created_at_idx" ON "sync_events"("user_id", "created_at");
 
         -- 4. MCP Agent Tables
+        ALTER TABLE "tasks" ADD COLUMN IF NOT EXISTS "waiting_reason" TEXT;
+        ALTER TABLE "tasks" ADD COLUMN IF NOT EXISTS "metadata" JSONB;
+
         CREATE TABLE IF NOT EXISTS "integration_credentials" (
             "id" UUID NOT NULL,
             "user_id" UUID NOT NULL,

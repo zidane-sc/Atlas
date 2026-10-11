@@ -1,6 +1,6 @@
 import type { ImportPayload, ValidationError, ImportValidationResult } from "@/lib/types/import-types";
 
-const validTaskStatuses = new Set(["backlog", "todo", "in_progress", "waiting", "done", "archived", "inbox", "ready", "blocked", "waiting_external", "testing"]);
+const validTaskStatuses = new Set(["backlog", "todo", "in_progress", "done", "archived", "inbox", "ready", "blocked", "waiting_external", "testing"]);
 const validTaskTypes = new Set(["coding", "research", "design", "documentation", "bug", "meeting", "admin", "investigation", "study", "analysis", "deployment", "maintenance", "refactor", "incident", "communication"]);
 const validTaskPriorities = new Set(["high", "medium", "low", "p0", "p1", "p2", "p3", "p4"]);
 const validTaskSizes = new Set(["xs", "s", "m", "l", "xl"]);

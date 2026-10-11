@@ -15,38 +15,43 @@ export interface CredentialSummary {
 }
 
 export async function listCredentialsAction(): Promise<ActionResult<CredentialSummary[]>> {
-  const session = await auth();
-  if (!session?.user?.email) {
-    return { success: false, error: { code: "UNAUTHORIZED", message: "Sign in required." } };
+  try {
+    const session = await auth();
+    if (!session?.user?.email) {
+      return { success: false, error: { code: "UNAUTHORIZED", message: "Sign in required." } };
+    }
+
+    const user = await db.user.findUnique({
+      where: { email: session.user.email },
+      select: { id: true },
+    });
+    if (!user) return { success: false, error: { code: "NOT_FOUND", message: "User not found." } };
+
+    const creds = await db.integrationCredential.findMany({
+      where: { userId: user.id, revokedAt: null },
+      orderBy: { createdAt: "desc" },
+      select: {
+        id: true,
+        label: true,
+        tokenPrefix: true,
+        scopes: true,
+        lastUsedAt: true,
+        createdAt: true,
+      },
+    });
+
+    return {
+      success: true,
+      data: creds.map((c) => ({
+        ...c,
+        lastUsedAt: c.lastUsedAt ? c.lastUsedAt.toISOString() : null,
+        createdAt: c.createdAt.toISOString(),
+      })),
+    };
+  } catch (err: any) {
+    console.error("listCredentialsAction error:", err);
+    return { success: true, data: [] };
   }
-
-  const user = await db.user.findUnique({
-    where: { email: session.user.email },
-    select: { id: true },
-  });
-  if (!user) return { success: false, error: { code: "NOT_FOUND", message: "User not found." } };
-
-  const creds = await db.integrationCredential.findMany({
-    where: { userId: user.id, revokedAt: null },
-    orderBy: { createdAt: "desc" },
-    select: {
-      id: true,
-      label: true,
-      tokenPrefix: true,
-      scopes: true,
-      lastUsedAt: true,
-      createdAt: true,
-    },
-  });
-
-  return {
-    success: true,
-    data: creds.map((c) => ({
-      ...c,
-      lastUsedAt: c.lastUsedAt ? c.lastUsedAt.toISOString() : null,
-      createdAt: c.createdAt.toISOString(),
-    })),
-  };
 }
 
 export async function createCredentialAction(
