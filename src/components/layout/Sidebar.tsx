@@ -54,8 +54,8 @@ function NavLink({ href, label, icon: Icon, count, badgeColorVar, collapsed }: N
         prefetch={true}
         onClick={() => setNavigatingTo(href)}
         className={cn(
-          "flex w-full items-center gap-2.5 px-3 py-1.5 text-xs transition-all",
-          collapsed ? "lg:justify-center lg:px-0 lg:py-2" : "hover:translate-x-0.5"
+          "flex w-full items-center gap-2.5 px-3 py-1.5 text-xs transition-colors hover:bg-[var(--color-bg-panel)]",
+          collapsed && "lg:justify-center lg:px-0 lg:py-2"
         )}
         style={{
           backgroundColor: active ? "var(--color-bg-panel)" : "transparent",
@@ -172,11 +172,11 @@ export function Sidebar() {
       )}
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-50 flex h-full shrink-0 flex-col overflow-y-auto border-r-2 border-border transition-all duration-200 lg:static lg:translate-x-0",
+          "fixed inset-y-0 left-0 z-50 flex h-full shrink-0 flex-col overflow-y-auto overflow-x-hidden no-scrollbar border-r-2 border-border transition-all duration-200 lg:static lg:translate-x-0",
           mobileOpen ? "translate-x-0 w-72" : "-translate-x-full",
           collapsed ? "lg:w-16" : "lg:w-56"
         )}
-        style={{ backgroundColor: "var(--color-bg-panel-alt)", overflowX: "visible" }}
+        style={{ backgroundColor: "var(--color-bg-panel-alt)" }}
       >
         {/* Header */}
         <div className="flex h-12 items-center justify-between px-3 border-b border-border">
@@ -321,7 +321,7 @@ export function Sidebar() {
         </div>
 
         {/* Navigation items */}
-        <nav className="flex-1 overflow-y-auto py-1">
+        <nav className="flex-1 overflow-y-auto overflow-x-hidden no-scrollbar py-1">
           <GroupLabel collapsed={collapsed}>CORE</GroupLabel>
           {NAV_CORE.map((item) => (
             <NavLink key={item.href} {...item} collapsed={collapsed} />
@@ -331,8 +331,8 @@ export function Sidebar() {
             <Link
               href={NAV_TASKS.href}
               className={cn(
-                "flex w-full items-center gap-2 px-3 py-1.5 text-xs transition-all",
-                collapsed ? "lg:justify-center lg:px-0 lg:py-2" : "hover:translate-x-0.5"
+                "flex w-full items-center gap-2 px-3 py-1.5 text-xs transition-colors hover:bg-[var(--color-bg-panel)]",
+                collapsed ? "lg:justify-center lg:px-0 lg:py-2" : ""
               )}
               style={{
                 backgroundColor: tasksActive ? "var(--color-bg-panel)" : "transparent",
