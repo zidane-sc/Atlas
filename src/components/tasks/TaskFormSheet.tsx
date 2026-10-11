@@ -178,7 +178,15 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
   // Full status history + comments are no longer part of the bulk task fetch (performance —
   // docs/05-backlog.md §8 finding #16), so fetch them on-demand here, the only place either
   // is displayed.
-  const [taskDetail, setTaskDetail] = useState<{ statusHistory: TaskStatusLogEntry[]; comments: TaskComment[]; agent?: TaskAgentDetails } | null>(null);
+  const [taskDetail, setTaskDetail] = useState<{
+    tags?: string[];
+    relations?: any[];
+    attachments?: any[];
+    deliverables?: any[];
+    statusHistory: TaskStatusLogEntry[];
+    comments: TaskComment[];
+    agent?: TaskAgentDetails;
+  } | null>(null);
   const [taskDetailLoading, setTaskDetailLoading] = useState(mode === "edit" && !!task);
 
   const refreshTaskDetail = async () => {
@@ -197,21 +205,27 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
     setTaskDetailLoading(true);
     (async () => {
       const result = await getTaskDetails(task.id);
-      if (cancelled) return;
-      if (result.success) {
-        setTaskDetail(result.data);
-      } else {
-        notify(result.error?.message ?? "Failed to load task history/comments.", "error");
+      if (!cancelled) {
+        if (result.success) {
+          setTaskDetail(result.data);
+          // Sync live attachments/deliverables/relations into form state if present
+          if (result.data.attachments && result.data.attachments.length > 0) {
+            setForm((prev) => ({ ...prev, attachments: result.data.attachments }));
+          }
+          if (result.data.deliverables && result.data.deliverables.length > 0) {
+            setForm((prev) => ({ ...prev, deliverables: result.data.deliverables }));
+          }
+          if (result.data.relations && result.data.relations.length > 0) {
+            setForm((prev) => ({ ...prev, relations: result.data.relations }));
+          }
+        }
+        setTaskDetailLoading(false);
       }
-      setTaskDetailLoading(false);
     })();
     return () => {
       cancelled = true;
     };
-    // Runs once per task the sheet is opened for — TaskFormSheet already remounts
-    // (`key={sheet.task?.id ?? "create"}`) whenever the edited task changes.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [task?.id, mode]);
+  }, [mode, task?.id]);
 
   const projectOptions = useMemo(() => {
     return projectSearch

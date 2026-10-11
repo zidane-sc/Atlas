@@ -64,6 +64,12 @@ export default async function DashboardLayout({
       where: { ownerId: owner.id, deletedAt: null },
       orderBy: { createdAt: "desc" },
       take: 200,
+      include: {
+        tags: { select: { tag: { select: { name: true } } } },
+        relations: { select: { relationType: true, relatedTask: { select: { id: true, title: true } } } },
+        attachments: true,
+        deliverables: true,
+      },
     }),
     // Unbounded (no `take`) — the 200-cap above exists for the interactive views, but
     // gamification/statistics need lifetime totals (XP, achievement tiers, longest-ever
@@ -115,7 +121,7 @@ export default async function DashboardLayout({
     });
   }
 
-  const tasks = dbTasks.map((t) => mapDbTaskToClient(t, dbProjects, []));
+  const tasks = dbTasks.map((t) => mapDbTaskToClient(t as any, dbProjects, []));
   const allDoneTasks = rawDbAllDoneTasks.map((t) => mapDbTaskToClient(t, dbProjects, []));
   const projects = dbProjects.map(mapDbProjectToClient);
   const characterSheetData = await getCharacterSheetData(owner.id, {

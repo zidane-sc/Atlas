@@ -7,7 +7,7 @@ import { createTaskSchema, updateTaskSchema } from "@/lib/schemas/task";
 import { Prisma, type Task } from "@/generated/prisma/client";
 import type { ActionResult } from "@/lib/actions/types";
 import { generateTaskCode, getNextTaskCodeNumber } from "@/lib/task-code";
-import type { TaskComment, TaskStatus, TaskStatusLogEntry } from "@/types/task";
+import type { TaskComment, TaskStatus, TaskStatusLogEntry, TaskRelation, TaskAttachment, TaskDeliverable } from "@/types/task";
 import { getCharacterSheetData, type CharacterSheetData } from "@/lib/character-sheet-data";
 import { seedInitialData } from "@/lib/seeders/initial-data";
 import { broadcastSyncEvent } from "@/lib/sync-events";
@@ -409,7 +409,15 @@ export interface TaskAgentDetails {
 
 export async function getTaskDetails(
   taskId: string
-): Promise<ActionResult<{ statusHistory: TaskStatusLogEntry[]; comments: TaskComment[]; agent?: TaskAgentDetails }>> {
+): Promise<ActionResult<{
+  tags: string[];
+  relations: TaskRelation[];
+  attachments: TaskAttachment[];
+  deliverables: TaskDeliverable[];
+  statusHistory: TaskStatusLogEntry[];
+  comments: TaskComment[];
+  agent?: TaskAgentDetails;
+}>> {
   const session = await auth();
   if (!session?.user?.email) {
     return { success: false, error: { code: "UNAUTHORIZED", message: "Sign in required." } };
@@ -418,6 +426,10 @@ export async function getTaskDetails(
   const task = await db.task.findFirst({
     where: { id: taskId, owner: { email: session.user.email } },
     select: {
+      tags: { select: { tag: { select: { name: true } } } },
+      relations: { select: { relationType: true, relatedTask: { select: { id: true, title: true } } } },
+      attachments: true,
+      deliverables: true,
       statusHistory: {
         orderBy: { changedAt: "asc" },
         select: { fromStatus: true, toStatus: true, changedAt: true },
@@ -481,6 +493,24 @@ export async function getTaskDetails(
   return {
     success: true,
     data: {
+      tags: task.tags?.map((t: any) => t.tag?.name || t).filter(Boolean) ?? [],
+      relations: task.relations?.map((r: any) => ({
+        relationType: r.relationType,
+        taskId: r.relatedTask?.id,
+        title: r.relatedTask?.title,
+      })) ?? [],
+      attachments: task.attachments?.map((a: any) => ({
+        id: a.id,
+        type: a.type,
+        label: a.label ?? "",
+        url: a.url,
+      })) ?? [],
+      deliverables: task.deliverables?.map((d: any) => ({
+        id: d.id,
+        type: d.type,
+        label: d.label ?? "",
+        urlOrContent: d.urlOrContent,
+      })) ?? [],
       statusHistory: task.statusHistory.map((h) => ({
         fromStatus: h.fromStatus as TaskStatus | null,
         toStatus: h.toStatus as TaskStatus,
