@@ -22,12 +22,96 @@ export async function GET(req: Request) {
     const appliedNames = new Set(appliedRows.map((r) => r.migration_name));
     logs.push(`Currently applied: ${Array.from(appliedNames).join(", ")}`);
 
-    // Ensure waiting_reason and metadata columns exist on tasks
+    // Ensure MCP integration tables exist
     await db.$executeRawUnsafe(`
-      ALTER TABLE "tasks" ADD COLUMN IF NOT EXISTS "waiting_reason" TEXT;
-      ALTER TABLE "tasks" ADD COLUMN IF NOT EXISTS "metadata" JSONB;
+        CREATE TABLE IF NOT EXISTS "integration_credentials" (
+            "id" UUID NOT NULL DEFAULT gen_random_uuid(),
+            "user_id" UUID NOT NULL,
+            "label" TEXT NOT NULL,
+            "token_hash" TEXT NOT NULL UNIQUE,
+            "token_prefix" TEXT NOT NULL,
+            "scopes" TEXT[] DEFAULT ARRAY['tasks:read', 'tasks:write', 'runs:write']::TEXT[],
+            "last_used_at" TIMESTAMP(3),
+            "revoked_at" TIMESTAMP(3),
+            "expires_at" TIMESTAMP(3),
+            "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            CONSTRAINT "integration_credentials_pkey" PRIMARY KEY ("id"),
+            CONSTRAINT "integration_credentials_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE
+        );
+        CREATE INDEX IF NOT EXISTS "integration_credentials_user_id_idx" ON "integration_credentials"("user_id");
+
+        CREATE TABLE IF NOT EXISTS "task_sources" (
+            "id" UUID NOT NULL DEFAULT gen_random_uuid(),
+            "task_id" UUID NOT NULL,
+            "provider" TEXT NOT NULL,
+            "canonical_key" TEXT NOT NULL,
+            "url" TEXT,
+            "metadata" JSONB,
+            "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            CONSTRAINT "task_sources_pkey" PRIMARY KEY ("id"),
+            CONSTRAINT "task_sources_task_id_fkey" FOREIGN KEY ("task_id") REFERENCES "tasks"("id") ON DELETE CASCADE,
+            CONSTRAINT "task_sources_task_id_provider_canonical_key_key" UNIQUE ("task_id", "provider", "canonical_key")
+        );
+        CREATE INDEX IF NOT EXISTS "task_sources_canonical_key_idx" ON "task_sources"("canonical_key");
+
+        CREATE TABLE IF NOT EXISTS "agent_runs" (
+            "id" UUID NOT NULL DEFAULT gen_random_uuid(),
+            "task_id" UUID NOT NULL,
+            "credential_id" UUID,
+            "agent_name" TEXT NOT NULL DEFAULT 'hermes',
+            "agent_profile" TEXT,
+            "external_run_id" TEXT,
+            "session_id" TEXT,
+            "platform" TEXT,
+            "chat_id" TEXT,
+            "thread_id" TEXT,
+            "status" TEXT NOT NULL DEFAULT 'active',
+            "started_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            "ended_at" TIMESTAMP(3),
+            CONSTRAINT "agent_runs_pkey" PRIMARY KEY ("id"),
+            CONSTRAINT "agent_runs_task_id_fkey" FOREIGN KEY ("task_id") REFERENCES "tasks"("id") ON DELETE CASCADE,
+            CONSTRAINT "agent_runs_credential_id_fkey" FOREIGN KEY ("credential_id") REFERENCES "integration_credentials"("id") ON DELETE SET NULL
+        );
+        CREATE INDEX IF NOT EXISTS "agent_runs_task_id_idx" ON "agent_runs"("task_id");
+        CREATE INDEX IF NOT EXISTS "agent_runs_session_id_idx" ON "agent_runs"("session_id");
+
+        CREATE TABLE IF NOT EXISTS "agent_checkpoints" (
+            "id" UUID NOT NULL DEFAULT gen_random_uuid(),
+            "task_id" UUID NOT NULL,
+            "run_id" UUID,
+            "revision" INTEGER NOT NULL DEFAULT 1,
+            "summary" TEXT NOT NULL,
+            "checkpoint_state" TEXT,
+            "waiting_reason" TEXT,
+            "next_step" TEXT,
+            "provenance_source" TEXT,
+            "payload" JSONB,
+            "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            CONSTRAINT "agent_checkpoints_pkey" PRIMARY KEY ("id"),
+            CONSTRAINT "agent_checkpoints_task_id_fkey" FOREIGN KEY ("task_id") REFERENCES "tasks"("id") ON DELETE CASCADE,
+            CONSTRAINT "agent_checkpoints_run_id_fkey" FOREIGN KEY ("run_id") REFERENCES "agent_runs"("id") ON DELETE SET NULL
+        );
+        CREATE INDEX IF NOT EXISTS "agent_checkpoints_task_id_revision_idx" ON "agent_checkpoints"("task_id", "revision");
+
+        CREATE TABLE IF NOT EXISTS "agent_usage_events" (
+            "id" UUID NOT NULL DEFAULT gen_random_uuid(),
+            "run_id" UUID NOT NULL,
+            "source_event_id" TEXT,
+            "model" TEXT NOT NULL,
+            "provider" TEXT,
+            "prompt_tokens" INTEGER NOT NULL DEFAULT 0,
+            "completion_tokens" INTEGER NOT NULL DEFAULT 0,
+            "total_tokens" INTEGER NOT NULL DEFAULT 0,
+            "cache_read_tokens" INTEGER NOT NULL DEFAULT 0,
+            "cache_write_tokens" INTEGER NOT NULL DEFAULT 0,
+            "cost_usd" DOUBLE PRECISION,
+            "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            CONSTRAINT "agent_usage_events_pkey" PRIMARY KEY ("id"),
+            CONSTRAINT "agent_usage_events_run_id_fkey" FOREIGN KEY ("run_id") REFERENCES "agent_runs"("id") ON DELETE CASCADE
+        );
+        CREATE INDEX IF NOT EXISTS "agent_usage_events_run_id_idx" ON "agent_usage_events"("run_id");
     `);
-    logs.push("Ensured waiting_reason and metadata on tasks ✅");
+    logs.push("Ensured MCP integration tables exist ✅");
 
     // 2. Migration 1: 20261010000000_align_schema (Ensure tables exist regardless of _prisma_migrations record)
     logs.push("Ensuring align_schema tables exist...");
