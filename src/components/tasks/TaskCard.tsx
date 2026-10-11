@@ -66,26 +66,25 @@ function TaskCardComponent({
         boxShadow: isAgentTask ? "0 0 10px rgba(16, 224, 224, 0.15), 3px 3px 0 0 rgba(0,0,0,0.8)" : undefined,
         ...draggableProps?.style,
       }}
-      className="quest-card flex w-full cursor-grab flex-col gap-1.5 p-2.5 text-left select-none animate-in fade-in zoom-in-95"
+      className="quest-card flex w-full cursor-grab flex-col gap-2 p-3 text-left select-none animate-in fade-in zoom-in-95"
     >
-      <div className="flex items-center justify-between gap-2">
+      {/* Top row: Code + Type + AI Label + Priority + Status Move */}
+      <div className="flex items-center justify-between gap-2 border-b border-border/30 pb-1.5">
         <div className="flex items-center gap-1.5 min-w-0">
           <span aria-hidden className="text-sm shrink-0 leading-none">{TYPE_ICON[task.type]}</span>
-          <span className="text-xs font-mono font-bold tracking-tight text-[var(--color-primary-gold)] truncate">{task.code}</span>
+          <span className="text-xs font-mono font-bold tracking-tight text-[var(--color-primary-gold)]">
+            {task.code}
+          </span>
           {isAgentTask && (
             <span
-              className="px-1 py-0 text-[9px] font-mono font-bold border border-cyan-500/40 bg-cyan-950/40 text-cyan-300"
+              className="px-1.5 py-0 text-[9px] font-mono font-bold border border-cyan-500/50 bg-cyan-950/60 text-cyan-300"
               title="Spawned by Hermes Agent"
             >
               🤖 AI
             </span>
           )}
-          {task.project && (
-            <span className="hidden sm:inline-block max-w-[90px] truncate text-[9px] font-mono text-muted-foreground border border-border px-1 py-0 bg-secondary/40">
-              {task.project}
-            </span>
-          )}
         </div>
+
         <div className="flex items-center gap-1.5 shrink-0">
           <PriorityMark priority={task.priority} />
           {onMoveStatus && (
@@ -105,26 +104,42 @@ function TaskCardComponent({
           )}
         </div>
       </div>
-      <p className="line-clamp-2 text-xs font-bold leading-tight text-foreground">{task.title}</p>
-      <div className="flex items-center justify-between gap-2 pt-1 border-t border-border/40 font-mono">
-        <div className="flex flex-wrap gap-1">
-          {task.tags.slice(0, 2).map((t) => (
+
+      {/* Task Title (Prominent & Clear) */}
+      <h4 className="text-xs font-bold leading-normal text-foreground line-clamp-2">
+        {task.title}
+      </h4>
+
+      {/* Bottom meta row: Project pill + Tags + Due Date + Size */}
+      <div className="flex flex-wrap items-center justify-between gap-1.5 pt-1.5 border-t border-border/40 font-mono text-[10px]">
+        <div className="flex items-center gap-1 min-w-0">
+          {task.project && (
+            <span className="max-w-[100px] truncate px-1 py-0 border border-border bg-secondary/50 text-muted-foreground">
+              {task.project}
+            </span>
+          )}
+          {task.tags.slice(0, 1).map((t) => (
             <TagPill key={t} tag={t} />
           ))}
         </div>
-        {task.dueDate && (
-          <span className="shrink-0 text-[10px] font-mono font-bold" style={{ color: overdue ? "var(--color-status-blocked)" : "var(--color-text-muted)" }}>
-            {overdue && "⚠ "}{formatDueDate(task.dueDate)}
-          </span>
-        )}
-      </div>
-      {task.size != null && (
-        <div className="text-[9px] font-mono text-muted-foreground">
-          SIZE: {task.size.toUpperCase()}
+
+        <div className="flex items-center gap-1.5 shrink-0 ml-auto">
+          {task.size != null && (
+            <span className="text-muted-foreground">
+              {task.size.toUpperCase()}
+            </span>
+          )}
+          {task.dueDate && (
+            <span style={{ color: overdue ? "var(--color-status-blocked)" : "var(--color-text-muted)" }}>
+              {overdue && "⚠ "}{formatDueDate(task.dueDate)}
+            </span>
+          )}
         </div>
-      )}
+      </div>
+
+      {/* Idling / Blocked Status strip */}
       {task.status === "in_progress" && (task.waitingOn || task.waitingReason) && (
-        <div className="text-[10px] font-mono text-amber-400 bg-amber-950/30 border border-amber-500/30 px-1 py-0.5 truncate">
+        <div className="mt-0.5 text-[10px] font-mono text-amber-400 bg-amber-950/40 border border-amber-500/40 px-1.5 py-0.5 truncate">
           ⏸️ {task.waitingReason || task.waitingOn}
         </div>
       )}

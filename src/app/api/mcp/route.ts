@@ -180,7 +180,7 @@ async function createAtlasMcpServer(userId: string, credentialId: string) {
   server.registerTool(
     "atlas_create_task",
     {
-      description: "Create a new task in Atlas, optionally binding it to a project, description, size, and canonical external source (e.g. PR URL).",
+      description: "Create a new task in Atlas, optionally binding it to a project, description, size, relations, attachments, deliverables, and canonical external source.",
       inputSchema: {
         title: z.string().min(1).describe("Concise task/quest title"),
         description: z.string().optional().describe("Context, PR description, or reproduction steps"),
@@ -191,6 +191,25 @@ async function createAtlasMcpServer(userId: string, credentialId: string) {
         size: z.enum(["xs", "s", "m", "l", "xl"]).optional().describe("Estimated task size"),
         waitingReason: z.string().optional().describe("If idling, why (e.g. Waiting for PR review)"),
         metadata: z.record(z.string(), z.any()).optional().describe("Extra structured info (models, prUrl, etc.)"),
+        attachments: z
+          .array(
+            z.object({
+              type: z.enum(["github_pr", "github_issue", "link", "file", "other"]).default("github_pr"),
+              url: z.string(),
+              label: z.string().optional(),
+            })
+          )
+          .optional()
+          .describe("Relevant links or PRs"),
+        deliverables: z
+          .array(
+            z.object({
+              type: z.enum(["pr", "doc", "design", "other"]).default("pr"),
+              urlOrContent: z.string(),
+            })
+          )
+          .optional()
+          .describe("Final PR or outcome artifacts"),
         source: z
           .object({
             provider: z.string().default("github_pr"),
@@ -200,7 +219,7 @@ async function createAtlasMcpServer(userId: string, credentialId: string) {
           .optional(),
       },
     },
-    async ({ title, description, projectName, status, priority, type, size, waitingReason, metadata, source }) => {
+    async ({ title, description, projectName, status, priority, type, size, waitingReason, metadata, attachments, deliverables, source }) => {
       try {
         let projectId: string | undefined;
         if (projectName) {
@@ -221,6 +240,8 @@ async function createAtlasMcpServer(userId: string, credentialId: string) {
           size,
           reporter: "other",
           waitingReason,
+          attachments,
+          deliverables,
           metadata: {
             ...metadata,
             agentReporter: "agent",
@@ -320,7 +341,7 @@ async function createAtlasMcpServer(userId: string, credentialId: string) {
   server.registerTool(
     "atlas_save_checkpoint",
     {
-      description: "Save a structured checkpoint/summary on a task, updating status and waiting reason.",
+      description: "Save a structured checkpoint/summary on a task, optionally adding comments or attachments.",
       inputSchema: {
         taskId: z.string().uuid(),
         runId: z.string().uuid().optional(),
@@ -329,9 +350,10 @@ async function createAtlasMcpServer(userId: string, credentialId: string) {
         waitingReason: z.string().optional(),
         nextStep: z.string().optional(),
         provenanceSource: z.string().optional().describe("e.g. commit SHA, PR link"),
+        comment: z.string().optional().describe("Auto-post a comment under the task for teammates to read"),
       },
     },
-    async ({ taskId, runId, summary, checkpointState, waitingReason, nextStep, provenanceSource }) => {
+    async ({ taskId, runId, summary, checkpointState, waitingReason, nextStep, provenanceSource, comment }) => {
       try {
         const task = await db.task.findFirst({
           where: { id: taskId, ownerId: userId, deletedAt: null },
@@ -360,6 +382,16 @@ async function createAtlasMcpServer(userId: string, credentialId: string) {
             provenanceSource,
           },
         });
+
+        if (comment) {
+          await db.comment.create({
+            data: {
+              taskId,
+              authorId: userId,
+              content: `🤖 [AI Agent]: ${comment}`,
+            },
+          });
+        }
 
         // Sync back to task status
         if (checkpointState === "waiting_external") {

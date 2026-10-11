@@ -105,7 +105,7 @@ export function TaskFormSheet() {
   return (
     <Sheet open={sheet.open} onOpenChange={(open) => !open && closeForm()}>
       <SheetContent
-        className="w-full max-w-full sm:max-w-xl sm:w-[540px] h-full sm:h-auto gap-0 overflow-y-auto border-l-2 border-border p-0 rounded-none"
+        className="w-full inset-0 max-w-full sm:inset-y-0 sm:right-0 sm:left-auto sm:max-w-xl sm:w-[540px] h-full gap-0 overflow-y-auto border-l-2 border-border p-0 rounded-none"
       >
         {sheet.open && <TaskFormBody key={sheet.task?.id ?? "create"} mode={sheet.mode} task={sheet.task} />}
       </SheetContent>
@@ -591,7 +591,7 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
           </div>
         </Section>
 
-        <Section title="Relations" shape="◈">
+        <Section title="Relations" shape="◈" defaultOpen={form.relations.length > 0}>
           <div className="flex flex-col gap-2">
             {form.relations.length === 0 ? (
               <p className="text-muted-foreground">No relations yet.</p>
@@ -680,7 +680,7 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
           </div>
         </Section>
 
-        <Section title="Attachments" shape="▶">
+        <Section title="Attachments" shape="▶" defaultOpen={form.attachments.length > 0}>
           <div className="flex flex-col gap-2">
             {form.attachments.length === 0 ? (
               <p className="text-muted-foreground">None yet.</p>
@@ -781,7 +781,7 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
           </div>
         </Section>
 
-        <Section title="Deliverables" shape="◆">
+        <Section title="Deliverables" shape="◆" defaultOpen={form.deliverables.length > 0}>
           <div className="flex flex-col gap-2">
             {form.deliverables.length === 0 ? (
               <p className="text-muted-foreground">None yet.</p>
@@ -858,7 +858,7 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
               (taskDetail?.agent && ((taskDetail.agent.runs?.length ?? 0) > 0 || (taskDetail.agent.checkpoints?.length ?? 0) > 0)) ||
               (task as any)?.waitingReason
             ) && (
-              <Section title="AI Agent Memory & Runs" shape="🤖">
+              <Section title="AI Agent Memory & Runs" shape="🤖" defaultOpen>
                 <div className="flex flex-col gap-3 p-2.5 bg-primary/5 border-2 border-cyan-500/40 text-xs shadow-[2px_2px_0_rgba(16,224,224,0.15)]">
                   {/* Latest Checkpoint or Waiting Reason */}
                   {((taskDetail?.agent?.checkpoints?.length ?? 0) > 0 && taskDetail?.agent?.checkpoints?.[0]) ? (
@@ -951,7 +951,7 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
               </Section>
             )}
 
-            <Section title="Comments" shape="💬">
+            <Section title="Comments" shape="💬" defaultOpen={Boolean(taskDetail?.comments && taskDetail.comments.length > 0)}>
               <div className="flex flex-col gap-2">
                 <ul className="flex flex-col gap-2 max-h-48 overflow-y-auto border-b border-border pb-2">
                   {taskDetailLoading ? (
@@ -974,7 +974,7 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
               </div>
             </Section>
 
-            <Section title="History" shape="◫">
+            <Section title="History" shape="◫" defaultOpen={Boolean(taskDetail?.statusHistory && taskDetail.statusHistory.length > 1)}>
               <ul className="flex flex-col gap-1">
                 {taskDetailLoading ? (
                   <li className="text-xs text-muted-foreground italic">Loading history…</li>
