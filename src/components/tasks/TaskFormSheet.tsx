@@ -416,7 +416,8 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
         </div>
       )}
 
-      <div className="flex flex-col gap-3 p-4 pt-3">
+      {/* Form body */}
+      <div className="flex flex-col gap-3 p-4 pt-3 pb-24">
         <Section title="Core" shape="■" defaultOpen={true}>
           <div className="flex flex-col gap-3">
             <div className="grid grid-cols-2 gap-3">
