@@ -529,16 +529,29 @@ export function RoomDecoration() {
               left: `${dragging?.category === "desk" && dragPos ? dragPos.x : deskPos.x}%`,
               bottom: `${Math.min(8, dragging?.category === "desk" && dragPos ? dragPos.y : deskPos.y)}%`,
               zIndex: 10,
-              fontSize: "44px",
               touchAction: "none",
               transition: dragging?.category === "desk" ? "none" : "all 200ms",
             }}
             title={`${deskObj.name} (drag to move)`}
           >
-            <span className="relative z-10 filter drop-shadow-[0_6px_8px_rgba(0,0,0,0.8)] group-hover:scale-105 transition-transform">
-              {deskObj.emoji}
-            </span>
-            <div className="contact-shadow" style={{ width: "90%", height: "12px" }} />
+            {/* Handcrafted retro pixel wooden desk foundation with monitor/gear mounted on top */}
+            <div className="relative z-10 flex flex-col items-center">
+              {/* Gear on desk surface */}
+              <span className="text-3xl -mb-2 filter drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] group-hover:scale-105 transition-transform">
+                {deskObj.emoji}
+              </span>
+              {/* Solid pixel wood desk surface */}
+              <div
+                className="w-16 h-3 border-2 border-[#3d1e06] shadow-[2px_2px_0_rgba(0,0,0,0.8)]"
+                style={{ background: "linear-gradient(180deg, #965a29 0%, #6d3913 100%)" }}
+              />
+              {/* Sturdy desk legs */}
+              <div className="flex justify-between w-14 h-4 px-1">
+                <div className="w-2.5 h-full bg-[#4a260c] border-x border-[#2c1303]" />
+                <div className="w-2.5 h-full bg-[#4a260c] border-x border-[#2c1303]" />
+              </div>
+            </div>
+            <div className="contact-shadow" style={{ width: "95%", height: "10px", bottom: "-4px" }} />
             {dragging?.category === "desk" && dragPos && (
               <span className="absolute -bottom-4 left-1/2 -translate-x-1/2 whitespace-nowrap bg-deep border border-primary-gold px-1 py-0 text-[7px] font-mono text-primary-gold font-bold z-30">
                 {dragPos.x}%, {dragPos.y}%
@@ -561,17 +574,27 @@ export function RoomDecoration() {
               left: `${dragging?.category === "decor" && dragPos ? dragPos.x : decorPos.x}%`,
               bottom: `${Math.min(8, dragging?.category === "decor" && dragPos ? dragPos.y : decorPos.y)}%`,
               zIndex: 12,
-              fontSize: "26px",
               touchAction: "none",
               animation: decorObj.id === "decor-lava" ? "pixelPulse 2s ease-in-out infinite" : "none",
               transition: dragging?.category === "decor" ? "none" : "all 200ms",
             }}
             title={`${decorObj.name} (drag to move)`}
           >
-            <span className="relative z-10 filter drop-shadow-[0_4px_6px_rgba(0,0,0,0.7)] group-hover:scale-110 transition-transform">
-              {decorObj.emoji}
-            </span>
-            <div className="contact-shadow" style={{ width: "60%", height: "6px" }} />
+            {/* Small pixel wooden side stool / stand so decor never sits directly on bare floor */}
+            <div className="relative z-10 flex flex-col items-center">
+              <span className="text-xl -mb-1 filter drop-shadow-[0_2px_3px_rgba(0,0,0,0.8)] group-hover:scale-110 transition-transform">
+                {decorObj.emoji}
+              </span>
+              <div
+                className="w-7 h-2 border border-[#3d1e06] shadow-[1px_1px_0_rgba(0,0,0,0.8)]"
+                style={{ background: "#7c431d" }}
+              />
+              <div className="flex justify-between w-6 h-2 px-0.5">
+                <div className="w-1 h-full bg-[#4a260c]" />
+                <div className="w-1 h-full bg-[#4a260c]" />
+              </div>
+            </div>
+            <div className="contact-shadow" style={{ width: "80%", height: "5px", bottom: "-3px" }} />
             {dragging?.category === "decor" && dragPos && (
               <span className="absolute -bottom-4 left-1/2 -translate-x-1/2 whitespace-nowrap bg-deep border border-primary-gold px-1 py-0 text-[7px] font-mono text-primary-gold font-bold z-30">
                 {dragPos.x}%, {dragPos.y}%
