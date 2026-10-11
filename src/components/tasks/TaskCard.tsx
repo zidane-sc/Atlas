@@ -139,7 +139,7 @@ function TaskCardComponent({
 
       {/* Idling / Blocked Status strip */}
       {task.status === "in_progress" && (task.waitingOn || task.waitingReason) && (
-        <div className="mt-0.5 text-[10px] font-mono text-amber-400 bg-amber-950/40 border border-amber-500/40 px-1.5 py-0.5 truncate">
+        <div className="mt-0.5 text-[10px] font-mono text-amber-400 bg-amber-950/40 border border-amber-500/40 px-1.5 py-0.5 break-words">
           ⏸️ {task.waitingReason || task.waitingOn}
         </div>
       )}

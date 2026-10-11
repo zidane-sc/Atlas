@@ -105,7 +105,7 @@ export function TaskFormSheet() {
   return (
     <Sheet open={sheet.open} onOpenChange={(open) => !open && closeForm()}>
       <SheetContent
-        className="w-full inset-0 max-w-full sm:inset-y-0 sm:right-0 sm:left-auto sm:max-w-xl sm:w-[540px] h-full gap-0 overflow-y-auto border-l-2 border-border p-0 rounded-none"
+        className="w-full inset-0 max-w-full sm:inset-y-0 sm:right-0 sm:left-auto sm:max-w-xl sm:w-[540px] h-full gap-0 border-l-2 border-border p-0 rounded-none overflow-hidden flex flex-col"
       >
         {sheet.open && <TaskFormBody key={sheet.task?.id ?? "create"} mode={sheet.mode} task={sheet.task} />}
       </SheetContent>
@@ -327,9 +327,9 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
     : (liveTask?.timeSpentSeconds ?? 0) + (isTiming ? liveSeconds : 0);
 
   return (
-    <form onSubmit={onSubmit} className="flex h-full flex-col">
+    <form onSubmit={onSubmit} className="flex h-full flex-col min-h-0 overflow-hidden">
       <SheetHeader
-        className="flex-row items-center justify-between gap-2 space-y-0 border-b border-border py-3 px-4"
+        className="flex-row items-center justify-between gap-2 space-y-0 border-b border-border py-3 px-4 shrink-0"
         style={{ backgroundColor: "var(--color-bg-panel-alt)" }}
       >
         <div className="flex items-center gap-2">
@@ -390,14 +390,16 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
       </div>
 
       {mode === "edit" && task && liveTask && (
-        <BattleTimer
-          task={liveTask}
-          isTiming={isTiming}
-          totalSeconds={totalSeconds}
-          onStart={() => startTimer(task.id)}
-          onStop={stopTimer}
-          phase={activeTimer?.phase}
-        />
+        <div className="shrink-0">
+          <BattleTimer
+            task={liveTask}
+            isTiming={isTiming}
+            totalSeconds={totalSeconds}
+            onStart={() => startTimer(task.id)}
+            onStop={stopTimer}
+            phase={activeTimer?.phase}
+          />
+        </div>
       )}
 
       <div className="flex flex-1 flex-col gap-3 overflow-y-auto p-4 pt-3 scroll-shadow">
@@ -464,7 +466,20 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
               </div>
             </div>
 
+            <div>
+              <label className={LC}>Description</label>
+              <textarea
+                aria-label="Description"
+                rows={3}
+                className={`${FIELD} resize-y text-xs font-mono`}
+                placeholder="Additional context or notes..."
+                value={form.description ?? ""}
+                onChange={(e) => set("description", e.target.value)}
+              />
+            </div>
+
             <div className="grid grid-cols-2 gap-3">
+
               <div>
                 <label className={LC}>Project</label>
                 <div className="relative">
@@ -994,7 +1009,7 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
         )}
       </div>
 
-      <div className="flex items-center justify-between border-t border-border p-4" style={{ backgroundColor: "var(--color-bg-panel-alt)" }}>
+      <div className="flex items-center justify-between border-t border-border p-4 shrink-0" style={{ backgroundColor: "var(--color-bg-panel-alt)" }}>
         <Button type="button" variant="ghost" onClick={closeForm} disabled={submitting}>Cancel</Button>
         <Button type="submit" disabled={submitting}>{submitting ? "⋳ Saving..." : <><Check size={12} />{mode === "edit" ? "Save Changes" : "Create Quest"}</> }</Button>
       </div>
