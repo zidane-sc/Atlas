@@ -38,7 +38,7 @@ export async function domainCreateTask(
     };
   }
 
-  const { startDate, dueDate, waitingReason, metadata, ...rest } = parsed.data;
+  const { startDate, dueDate, waitingReason, metadata, tags, relations, attachments, deliverables, ...rest } = parsed.data;
 
   const MAX_CODE_COLLISION_RETRIES = 3;
   for (let attempt = 1; attempt <= MAX_CODE_COLLISION_RETRIES; attempt++) {
@@ -61,8 +61,8 @@ export async function domainCreateTask(
             dueDate: dueDate ? new Date(dueDate) : undefined,
             waitingReason: waitingReason || undefined,
             metadata: metadata || undefined,
-            tags: rest.tags && rest.tags.length > 0 ? {
-              create: rest.tags.map((name: string) => ({
+            tags: tags && tags.length > 0 ? {
+              create: tags.map((name: string) => ({
                 tag: {
                   connectOrCreate: {
                     where: { name },
@@ -71,21 +71,21 @@ export async function domainCreateTask(
                 },
               })),
             } : undefined,
-            relations: (rest.relations ?? []).length > 0 ? {
-              create: (rest.relations ?? []).map((r) => ({
+            relations: relations && relations.length > 0 ? {
+              create: relations.map((r) => ({
                 relationType: r.relationType as any,
                 relatedTask: { connect: { id: r.taskId } },
               })),
             } : undefined,
-            attachments: (rest.attachments ?? []).length > 0 ? {
-              create: (rest.attachments ?? []).map((a) => ({
+            attachments: attachments && attachments.length > 0 ? {
+              create: attachments.map((a) => ({
                 type: a.type as any,
                 url: a.url,
                 label: a.label,
               })),
             } : undefined,
-            deliverables: (rest.deliverables ?? []).length > 0 ? {
-              create: (rest.deliverables ?? []).map((d) => ({
+            deliverables: deliverables && deliverables.length > 0 ? {
+              create: deliverables.map((d) => ({
                 type: d.type as any,
                 urlOrContent: d.urlOrContent ?? "",
               })),
