@@ -79,25 +79,25 @@ function Toggle({
   description: string;
 }) {
   return (
-    <div className="flex items-start justify-between border-b border-border py-3">
+    <div className="flex items-start justify-between border-b border-border py-2.5">
       <div>
-        <div className="text-sm text-foreground">{label}</div>
-        <div className="text-sm text-muted-foreground">{description}</div>
+        <div className="text-xs font-bold text-foreground">{label}</div>
+        <div className="text-[11px] text-muted-foreground">{description}</div>
       </div>
       <button
         type="button"
         role="switch"
         aria-checked={checked}
         onClick={() => onChange(!checked)}
-        className="relative mt-0.5 ml-4 h-5 w-11 shrink-0 border-2 transition-colors cursor-pointer"
+        className="relative mt-0.5 ml-4 h-5 w-10 shrink-0 border-2 transition-colors cursor-pointer"
         style={{
           backgroundColor: checked ? "var(--color-primary-gold)" : "var(--color-bg-panel-alt)",
           borderColor: checked ? "var(--color-primary-gold)" : "var(--color-border)",
         }}
       >
         <span
-          className="absolute top-0.5 left-0.5 h-3.5 w-3.5 bg-foreground transition-transform"
-          style={{ transform: checked ? "translateX(22px)" : "translateX(0)" }}
+          className="absolute top-0.5 left-0.5 h-3 w-3 bg-foreground transition-transform"
+          style={{ transform: checked ? "translateX(18px)" : "translateX(0)" }}
         />
       </button>
     </div>
@@ -247,11 +247,11 @@ export default function Page() {
 
   return (
     <div className="flex h-full flex-col">
-      <div className="px-6 py-3" style={{ borderBottom: "1px solid var(--color-border)", backgroundColor: "var(--color-bg-panel-alt)" }}>
+      <div className="px-4 py-2.5" style={{ borderBottom: "1px solid var(--color-border)", backgroundColor: "var(--color-bg-panel-alt)" }}>
         <h1 className="font-display" style={{ fontSize: "11px", color: "var(--color-primary-gold)" }}>⚙ SETTINGS</h1>
       </div>
 
-      <div className="max-w-2xl flex-1 overflow-y-auto p-6">
+      <div className="max-w-2xl flex-1 overflow-y-auto p-4 sm:p-5">
         <SectionDivider>Experience</SectionDivider>
         <Toggle
           checked={notificationsEnabled}

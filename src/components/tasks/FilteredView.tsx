@@ -33,7 +33,7 @@ export function FilteredView({
   return (
     <div className="flex h-full flex-col">
       <div
-        className="flex items-center justify-between gap-4 px-6 py-3"
+        className="flex items-center justify-between gap-4 px-4 py-2.5"
         style={{ borderBottom: "1px solid var(--color-border)", backgroundColor: "var(--color-bg-panel-alt)" }}
       >
         <div>
@@ -41,25 +41,25 @@ export function FilteredView({
             <Icon size={12} />
             <h1 className="font-display" style={{ fontSize: "11px", color: `var(${colorVar})` }}>{title}</h1>
           </div>
-          <p className="text-sm text-muted-foreground">{desc}</p>
+          <p className="text-xs text-muted-foreground">{desc}</p>
         </div>
         <div className="flex items-center gap-2">
-          <span className="font-['VT323'] text-sm" style={{ color: `var(${colorVar})` }}>({tasks.length})</span>
-          {showNewQuest && <Button size="sm" onClick={openCreateForm}><Plus size={12} /> New</Button>}
+          <span className="font-mono text-xs font-bold" style={{ color: `var(${colorVar})` }}>({tasks.length})</span>
+          {showNewQuest && <Button size="sm" onClick={openCreateForm} className="h-7 text-xs"><Plus size={12} /> New</Button>}
         </div>
       </div>
       <div className="flex-1 overflow-y-auto">
         {tasks.length === 0 ? (
           <div className="flex h-full flex-col items-center justify-center text-muted-foreground">
-            <div className="mb-3 text-3xl">{empty}</div>
-            <div className="text-sm">Clear skies, adventurer.</div>
+            <div className="mb-2 font-mono text-xl">{empty}</div>
+            <div className="text-xs">Clear skies, adventurer.</div>
           </div>
         ) : compactView ? (
-          <div className="p-4">
+          <div className="p-3 sm:p-4">
             <TaskListView tasks={sortedTasks} variant="compact" />
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-4 auto-rows-max">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2.5 sm:gap-3 p-3 sm:p-4 auto-rows-max">
             {sortedTasks.map((t) => (
               <SmartViewTaskCard key={t.id} task={t} onSelect={openEditForm} />
             ))}

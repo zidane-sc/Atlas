@@ -80,7 +80,7 @@ export default function Page() {
             <button
               key={id}
               onClick={() => setTab(id)}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-sm whitespace-nowrap transition-all font-medium"
+              className="flex items-center gap-1.5 px-3 py-1 text-xs whitespace-nowrap transition-all font-mono font-bold cursor-pointer"
               style={{
                 color: active ? "var(--color-primary-gold)" : "var(--color-text-muted)",
                 backgroundColor: active ? "var(--color-bg-panel)" : "transparent",
@@ -98,14 +98,14 @@ export default function Page() {
           <div className="ml-auto mr-2 flex items-center gap-0 border border-border">
             <button
               onClick={() => setListMode("list")}
-              className="flex items-center gap-1 px-2 py-0.5 text-sm transition-colors"
+              className="flex items-center gap-1 px-2 py-0.5 text-xs font-mono transition-colors cursor-pointer"
               style={{ backgroundColor: listMode === "list" ? "var(--color-bg-panel)" : "transparent", color: listMode === "list" ? "var(--color-primary-gold)" : "var(--color-text-muted)" }}
             >
               <ListIcon size={10} /> List
             </button>
             <button
               onClick={() => setListMode("table")}
-              className="flex items-center gap-1 px-2 py-0.5 text-sm transition-colors"
+              className="flex items-center gap-1 px-2 py-0.5 text-xs font-mono transition-colors cursor-pointer"
               style={{ backgroundColor: listMode === "table" ? "var(--color-bg-panel)" : "transparent", color: listMode === "table" ? "var(--color-primary-gold)" : "var(--color-text-muted)" }}
             >
               <Table2 size={10} /> Table
@@ -281,9 +281,9 @@ function TableTab({
         <thead className="sticky top-0" style={{ backgroundColor: "var(--color-bg-deep)", borderBottom: "2px solid var(--color-border)" }}>
           <tr>
             <SortableCol col="priority" ch="PRIORITY" {...sortHeaderProps} />
-            <th className="px-3 py-2 text-left text-sm font-mono font-bold" style={{ color: "var(--color-primary-gold)" }}>CODE</th>
+            <th className="px-3 py-1.5 text-left text-xs font-mono font-bold" style={{ color: "var(--color-primary-gold)" }}>CODE</th>
             <SortableCol col="status" ch="STATUS" {...sortHeaderProps} />
-            <th className="px-3 py-2 text-left text-sm text-muted-foreground">TYPE</th>
+            <th className="px-3 py-1.5 text-left text-xs text-muted-foreground font-mono">TYPE</th>
             <SortableCol col="title" ch="TITLE" {...sortHeaderProps} />
             <SortableCol col="due" ch="DUE" {...sortHeaderProps} />
           </tr>
@@ -295,14 +295,14 @@ function TableTab({
               <tr
                 key={t.id}
                 onClick={() => onSelect(t)}
-                className="cursor-pointer border-b border-border transition-colors hover:bg-[var(--color-bg-panel-alt)]"
+                className="cursor-pointer border-b border-border transition-colors hover:bg-[var(--color-bg-panel-alt)] text-xs"
               >
-                <td className="px-3 py-2"><PriorityMark priority={t.priority} withLabel /></td>
-                <td className="px-3 py-2 text-xs font-mono font-bold" style={{ color: "var(--color-primary-gold)" }}>{t.code}</td>
-                <td className="px-3 py-2"><StatusBadge status={t.status} /></td>
-                <td className="px-3 py-2 text-sm">{TYPE_ICON[t.type]}</td>
-                <td className="max-w-xs truncate px-3 py-2 text-sm text-foreground">{t.title}</td>
-                <td className="px-3 py-2 text-sm" style={{ color: ov ? "var(--color-status-blocked)" : "var(--color-text-muted)" }}>{formatDueDate(t.dueDate)}</td>
+                <td className="px-3 py-1.5"><PriorityMark priority={t.priority} withLabel /></td>
+                <td className="px-3 py-1.5 text-[11px] font-mono font-bold" style={{ color: "var(--color-primary-gold)" }}>{t.code}</td>
+                <td className="px-3 py-1.5"><StatusBadge status={t.status} /></td>
+                <td className="px-3 py-1.5 text-xs">{TYPE_ICON[t.type]}</td>
+                <td className="max-w-xs truncate px-3 py-1.5 text-xs text-foreground font-medium">{t.title}</td>
+                <td className="px-3 py-1.5 text-[11px] font-mono" style={{ color: ov ? "var(--color-status-blocked)" : "var(--color-text-muted)" }}>{formatDueDate(t.dueDate)}</td>
               </tr>
             );
           })}

@@ -16,21 +16,23 @@ export function StatPanel({
   const style = colorVar
     ? {
         fontFamily: "var(--font-press-start), monospace",
-        fontSize: "24px",
+        fontSize: "18px",
         color: `var(${colorVar})`,
         textShadow: value > 0 ? `0 0 8px color-mix(in srgb, var(${colorVar}) 40%, transparent)` : "none",
       }
-    : { fontFamily: "var(--font-press-start), monospace", fontSize: "24px" };
+    : { fontFamily: "var(--font-press-start), monospace", fontSize: "18px" };
+
   const content = (
     <>
-      <div style={style}>
-        {shape && <span className="mr-1">{shape}</span>}
-        {value}
+      <div className="flex items-center gap-1.5" style={style}>
+        {shape && <span className="text-xs shrink-0">{shape}</span>}
+        <span>{value}</span>
       </div>
-      <div className="mt-2 text-sm tracking-widest text-muted-foreground uppercase">{label}</div>
+      <div className="mt-1 text-[11px] tracking-wider text-muted-foreground uppercase font-mono">{label}</div>
     </>
   );
-  const className = "block border-2 border-border bg-card p-4 text-left transition-all hover:brightness-110";
+
+  const className = "block border-2 border-border bg-card p-3 text-left transition-all hover:brightness-110 cursor-pointer";
   const hoverProps = {
     onMouseEnter: (e: React.MouseEvent<HTMLElement>) => {
       if (colorVar) e.currentTarget.style.borderColor = `var(${colorVar})`;
@@ -39,6 +41,7 @@ export function StatPanel({
       e.currentTarget.style.borderColor = "var(--color-border)";
     },
   };
+
   return href ? (
     <Link href={href} className={className} {...hoverProps}>{content}</Link>
   ) : (

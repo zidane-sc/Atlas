@@ -54,11 +54,11 @@ function TaskCardComponent({
         boxShadow: dragging ? "0 4px 12px rgba(0,0,0,0.2) inset" : "none",
         ...draggableProps?.style,
       }}
-      className="pixel-panel flex w-full cursor-grab flex-col gap-2 border-2 p-3 text-left transition-all duration-200 hover:brightness-110 hover:cursor-grab focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 animate-in fade-in zoom-in-95"
+      className="pixel-panel flex w-full cursor-grab flex-col gap-1.5 border-2 p-2.5 text-left transition-all duration-200 hover:brightness-110 hover:cursor-grab focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 animate-in fade-in zoom-in-95"
     >
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-1">
-          <span aria-hidden className="text-base leading-none">{TYPE_ICON[task.type]}</span>
+          <span aria-hidden className="text-sm leading-none">{TYPE_ICON[task.type]}</span>
           <span className="text-xs font-mono font-bold" style={{ color: "var(--color-primary-gold)" }}>{task.code}</span>
         </div>
         <div className="flex items-center gap-1.5">
@@ -70,7 +70,7 @@ function TaskCardComponent({
               onClick={(e) => e.stopPropagation()}
               onKeyDown={(e) => e.stopPropagation()}
               onChange={(e) => onMoveStatus(task, e.target.value as TaskStatus)}
-              className="border-2 border-border bg-secondary px-2 py-1 text-xs text-foreground outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:border-primary font-medium transition-colors cursor-pointer hover:bg-secondary/80"
+              className="border border-border bg-secondary px-1.5 py-0.5 text-[11px] text-foreground outline-none focus-visible:ring-1 focus-visible:ring-primary font-mono transition-colors cursor-pointer"
               style={{ color: `var(${STATUS_COLOR_VAR[task.status]})` }}
             >
               {KANBAN_COLUMNS.map((s) => (
@@ -80,26 +80,26 @@ function TaskCardComponent({
           )}
         </div>
       </div>
-      <p className="line-clamp-2 text-sm leading-tight text-foreground">{task.title}</p>
-      <div className="flex items-center justify-between gap-2">
+      <p className="line-clamp-2 text-xs font-bold leading-tight text-foreground">{task.title}</p>
+      <div className="flex items-center justify-between gap-2 pt-1 border-t border-border/30">
         <div className="flex flex-wrap gap-1">
           {task.tags.slice(0, 2).map((t) => (
             <TagPill key={t} tag={t} />
           ))}
         </div>
         {task.dueDate && (
-          <span className="shrink-0 text-sm" style={{ color: overdue ? "var(--color-status-blocked)" : "var(--color-text-muted)" }}>
+          <span className="shrink-0 text-[11px] font-mono" style={{ color: overdue ? "var(--color-status-blocked)" : "var(--color-text-muted)" }}>
             {overdue && "⚠ "}{formatDueDate(task.dueDate)}
           </span>
         )}
       </div>
       {task.size != null && (
-        <div className="text-sm text-muted-foreground">
-          {task.size.toUpperCase()} SP{task.size ? ` · ${task.size.toUpperCase()}` : ""}
+        <div className="text-[10px] font-mono text-muted-foreground">
+          SIZE: {task.size.toUpperCase()}
         </div>
       )}
       {task.status === "in_progress" && task.waitingOn && (
-        <div className="text-sm" style={{ color: "var(--color-status-blocked)" }}>✕ {task.waitingOn}</div>
+        <div className="text-[11px] font-mono" style={{ color: "var(--color-status-blocked)" }}>✕ {task.waitingOn}</div>
       )}
     </div>
   );

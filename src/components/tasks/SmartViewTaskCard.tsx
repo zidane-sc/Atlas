@@ -8,37 +8,46 @@ import { Pin } from "lucide-react";
 import type { Task } from "@/types/task";
 
 export function SmartViewTaskCard({ task, onSelect }: { task: Task; onSelect: (task: Task) => void }) {
-  const isOverdueTask = isOverdue(task.dueDate, MOCK_NOW);
+  const isOverdueTask = isOverdue(task.dueDate, MOCK_NOW) && task.status !== "done";
   const daysOverdue = task.dueDate ? Math.floor((new Date(MOCK_NOW).getTime() - new Date(task.dueDate).getTime()) / (1000 * 60 * 60 * 24)) : 0;
 
   return (
     <div
       onClick={() => onSelect(task)}
-      className="group border-2 p-3 transition-all cursor-pointer hover:bg-primary/15 active:scale-95 hover:shadow-lg relative"
+      className="group relative cursor-pointer border-2 p-2.5 transition-all hover:bg-primary/10 active:scale-[0.99] hover:shadow-[3px_3px_0_rgba(0,0,0,0.6)] flex flex-col justify-between"
       style={{
-        borderColor: task.pinned ? "var(--color-primary-gold)" : isOverdueTask ? "var(--color-status-blocked)" : "var(--color-primary-gold)",
-        backgroundColor: task.pinned ? "rgba(255,217,61,0.08)" : isOverdueTask ? "rgba(255,0,0,0.08)" : "transparent",
-        borderWidth: task.pinned ? "3px" : "2px",
+        borderColor: task.pinned ? "var(--color-primary-gold)" : isOverdueTask ? "var(--color-status-blocked)" : "var(--color-border)",
+        backgroundColor: task.pinned ? "rgba(255,217,61,0.05)" : isOverdueTask ? "rgba(255,0,0,0.05)" : "var(--color-bg-panel)",
       }}
     >
-      {/* Header: Type + Priority + Title + Pin */}
-      <div className="flex items-start gap-2 mb-2">
-        <span className="text-lg shrink-0">{TYPE_ICON[task.type]}</span>
-        <div className="flex-1 min-w-0">
-          <h3 className="text-sm font-bold text-foreground group-hover:text-primary transition-colors line-clamp-2">
-            {task.title}
-          </h3>
+      <div>
+        {/* Top bar: Type + Code + Project + Pin + Priority */}
+        <div className="mb-1 flex items-center justify-between text-xs">
+          <div className="flex items-center gap-1.5 min-w-0">
+            <span className="text-sm shrink-0" aria-hidden>{TYPE_ICON[task.type]}</span>
+            <span className="font-mono text-[11px] font-bold text-[var(--color-primary-gold)] truncate">{task.code}</span>
+            {task.project && (
+              <span className="hidden sm:inline-block max-w-[100px] truncate text-[10px] text-muted-foreground border border-border px-1 py-0 bg-secondary/30">
+                {task.project}
+              </span>
+            )}
+          </div>
+          <div className="flex items-center gap-1.5 shrink-0">
+            {task.pinned && <Pin size={12} style={{ color: "var(--color-primary-gold)", fill: "var(--color-primary-gold)" }} />}
+            <PriorityMark priority={task.priority} />
+          </div>
         </div>
-        <div className="flex items-center gap-1 shrink-0">
-          {task.pinned && <Pin size={14} style={{ color: "var(--color-primary-gold)", fill: "var(--color-primary-gold)" }} />}
-          <PriorityMark priority={task.priority} />
-        </div>
+
+        {/* Title */}
+        <h3 className="mb-2 text-xs font-bold leading-snug text-foreground group-hover:text-primary transition-colors line-clamp-2">
+          {task.title}
+        </h3>
       </div>
 
-      {/* Status + Due Date (prominent) */}
-      <div className="flex items-center gap-2 mb-2">
+      {/* Meta bottom bar */}
+      <div className="flex flex-wrap items-center gap-1.5 text-[10px] pt-1.5 border-t border-border/40 font-mono">
         <span
-          className="px-2 py-1 border text-xs font-bold"
+          className="px-1.5 py-0.5 border font-bold"
           style={{
             borderColor: "var(--color-border)",
             backgroundColor: "var(--color-bg-panel-alt)",
@@ -49,62 +58,36 @@ export function SmartViewTaskCard({ task, onSelect }: { task: Task; onSelect: (t
 
         {task.dueDate && (
           <span
-            className="px-2 py-1 border font-bold text-xs"
+            className="px-1.5 py-0.5 border"
             style={{
               borderColor: isOverdueTask ? "var(--color-status-blocked)" : "var(--color-border)",
               backgroundColor: isOverdueTask ? "var(--color-status-blocked)" : "transparent",
-              color: isOverdueTask ? "white" : "var(--color-text-muted)",
+              color: isOverdueTask ? "#fff" : "var(--color-text-muted)",
             }}
           >
-            {isOverdueTask ? `⚠ ${daysOverdue}d OVERDUE` : `📅 ${formatDueDate(task.dueDate)}`}
+            {isOverdueTask ? `⚠ ${daysOverdue}d` : formatDueDate(task.dueDate)}
+          </span>
+        )}
+
+        {task.size && (
+          <span className="px-1.5 py-0.5 border border-border text-muted-foreground">
+            {task.size.toUpperCase()}
+          </span>
+        )}
+
+        {task.tags && task.tags.length > 0 && (
+          <span className="text-primary truncate max-w-[80px]">
+            #{task.tags[0]}
+            {task.tags.length > 1 && ` +${task.tags.length - 1}`}
+          </span>
+        )}
+
+        {(task.timeSpentSeconds ?? 0) > 0 && (
+          <span className="ml-auto text-muted-foreground">
+            ⏱{Math.floor((task.timeSpentSeconds ?? 0) / 60)}m
           </span>
         )}
       </div>
-
-      {/* Stats: Effort + Story Points + Project */}
-      <div className="grid grid-cols-3 gap-2 mb-2 text-center">
-        {task.size ? (
-          <div className="border border-border p-1 bg-secondary/30">
-            <div className="text-xs text-muted-foreground">SIZE</div>
-            <div className="text-sm font-bold">{task.size.toUpperCase()}</div>
-          </div>
-        ) : (
-                  <div className="border border-border/30 p-1 bg-secondary/10">
-                    <div className="text-xs text-muted-foreground">—</div>
-                  </div>
-                )}
-      </div>
-
-      {/* Tags + Description */}
-      <div className="space-y-1">
-        {task.tags.length > 0 && (
-          <div className="flex flex-wrap gap-1">
-            {task.tags.slice(0, 3).map((tag) => (
-              <span key={tag} className="text-xs px-1.5 py-0.5 border border-border text-primary" style={{ backgroundColor: "var(--color-bg-panel-alt)" }}>
-                #{tag}
-              </span>
-            ))}
-            {task.tags.length > 3 && (
-              <span className="text-xs px-1.5 py-0.5 text-muted-foreground">+{task.tags.length - 3}</span>
-            )}
-          </div>
-        )}
-
-        {task.description && (
-          <p className="text-xs text-muted-foreground line-clamp-2 italic border-t border-border/40 pt-1">
-            {task.description}
-          </p>
-        )}
-      </div>
-
-      {/* Time spent indicator */}
-      {(task.timeSpentSeconds ?? 0) > 0 && (
-        <div className="mt-2 pt-2 border-t border-border/40">
-          <div className="text-xs text-muted-foreground">
-            ⏱ {Math.floor((task.timeSpentSeconds ?? 0) / 3600)}h {Math.floor(((task.timeSpentSeconds ?? 0) % 3600) / 60)}m spent
-          </div>
-        </div>
-      )}
     </div>
   );
 }
