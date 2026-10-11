@@ -8,9 +8,9 @@ export interface DecorationItem {
 }
 
 export const DEFAULT_DECORATION_POSITIONS: Record<string, { x: number; y: number }> = {
-  desk: { x: 55, y: 12 },
-  chair: { x: 40, y: 12 },
-  decor: { x: 75, y: 14 },
+  desk: { x: 55, y: 8 },
+  chair: { x: 38, y: 8 },
+  decor: { x: 74, y: 10 },
 };
 
 export const DECORATIONS_CATALOG: DecorationItem[] = [

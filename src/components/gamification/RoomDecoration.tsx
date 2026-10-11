@@ -247,9 +247,9 @@ export function RoomDecoration() {
     const rawYFromTop = ((point.y - roomRect.top - dragging.offsetY) / roomRect.height) * 100;
     const rawY = 100 - rawYFromTop;
 
-    // Constrain within floor zone: X: 4% - 88%, Y: 6% - 26%
-    const x = Math.max(4, Math.min(88, snap(rawX)));
-    const y = Math.max(6, Math.min(26, snap(rawY)));
+    // Constrain within floor zone: X: 6% - 86%, Y: 4% - 20%
+    const x = Math.max(6, Math.min(86, snap(rawX)));
+    const y = Math.max(4, Math.min(20, snap(rawY)));
     setDragPos({ x, y });
   };
 
@@ -429,8 +429,8 @@ export function RoomDecoration() {
             triggerBubble(`*${sheet.classTitle} ${userName} ready for quests!*`, 24, 22);
           }}
           style={{
-            left: "24%",
-            bottom: "14%",
+            left: "22%",
+            bottom: "8%",
             zIndex: 15,
             fontSize: "44px",
             animation: "pixelFloat 2.5s ease-in-out infinite",
@@ -458,11 +458,11 @@ export function RoomDecoration() {
           className="absolute cursor-pointer select-none flex flex-col items-center z-20 group"
           onClick={() => {
             if (soundEnabled) playRetroSparkle();
-            triggerBubble("*Pip: Let's slay more quests today!* ⚡", 14, 11);
+            triggerBubble("*Pip: Let's slay more quests today!* ⚡", 12, 11);
           }}
           style={{
-            left: "14%",
-            bottom: "10%",
+            left: "12%",
+            bottom: "6%",
             animation: "cmpBounce 1.2s ease-in-out infinite",
           }}
           title="Pip (Companion Lv. 3) - Click me!"
