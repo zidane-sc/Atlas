@@ -43,6 +43,19 @@
   padding-right: 0.5rem !important;
 }
 
+/* Utility to hide scrollbar in horizontal scroll strips */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
 /* Hard 2px border, no radius, "pressed" state on click — docs/03-design.md §5 */
 .pixel-panel {
   border-width: 2px;

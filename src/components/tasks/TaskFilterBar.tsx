@@ -141,19 +141,19 @@ export function TaskFilterBar({
 
   return (
     <div
-      className="flex flex-wrap items-center gap-2 px-4 py-2"
-      style={{ borderBottom: "1px solid var(--color-border)", backgroundColor: "var(--color-bg-panel-alt)" }}
+      className="flex items-center gap-1.5 px-3 py-1.5 overflow-x-auto shrink-0 border-b border-border"
+      style={{ backgroundColor: "var(--color-bg-panel-alt)" }}
     >
       {/* Saved Views Dropdown */}
-      <div className="relative">
+      <div className="relative shrink-0">
         <button
           type="button"
           onClick={() => setViewsOpen((o) => !o)}
-          className="flex items-center gap-1.5 border px-2 py-1 text-sm transition-colors text-muted-foreground hover:text-foreground"
+          className="flex items-center gap-1.5 border px-2 py-1 text-xs font-mono transition-colors text-muted-foreground hover:text-foreground cursor-pointer"
           style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-bg-panel)" }}
         >
           📑 Saved Views
-          {savedFilters.length > 0 && <span className="ml-1 text-xs">({savedFilters.length})</span>}
+          {savedFilters.length > 0 && <span className="ml-1 text-[10px]">({savedFilters.length})</span>}
           <ChevronDown size={10} />
         </button>
         {viewsOpen && (
@@ -223,7 +223,7 @@ export function TaskFilterBar({
         )}
       </div>
 
-      <div className="flex items-center gap-0.5">
+      <div className="flex items-center gap-0.5 shrink-0">
         <OpToggle
           value={filters.statusOp}
           options={[{ value: "is", label: "IS" }, { value: "is_not", label: "≠" }]}
@@ -237,7 +237,7 @@ export function TaskFilterBar({
           renderOption={(s) => <span>{STATUS_SHAPE[s]} {STATUS_LABEL[s]}</span>}
         />
       </div>
-      <div className="flex items-center gap-0.5">
+      <div className="flex items-center gap-0.5 shrink-0">
         <OpToggle
           value={filters.priorityOp}
           options={[{ value: "any", label: "IS" }, { value: "gte", label: "≥" }, { value: "lte", label: "≤" }]}
@@ -251,32 +251,38 @@ export function TaskFilterBar({
           renderOption={(p) => <span>{p.toUpperCase()}</span>}
         />
       </div>
-      <FilterDropdown
-        label="Project"
-        options={projectNames}
-        selected={filters.projects}
-        onChange={(projects) => onChange({ ...filters, projects })}
-        renderOption={(p) => <span>{p}</span>}
-      />
-      <FilterDropdown
-        label="Type"
-        options={TYPES}
-        selected={filters.types}
-        onChange={(types) => onChange({ ...filters, types })}
-        renderOption={(t) => <span>{TYPE_ICON[t]} {t}</span>}
-      />
-      <FilterDropdown
-        label="Tag"
-        options={tagNames}
-        selected={filters.tags}
-        onChange={(tags) => onChange({ ...filters, tags })}
-        renderOption={(t) => <span>#{t}</span>}
-      />
+      <div className="shrink-0">
+        <FilterDropdown
+          label="Project"
+          options={projectNames}
+          selected={filters.projects}
+          onChange={(projects) => onChange({ ...filters, projects })}
+          renderOption={(p) => <span>{p}</span>}
+        />
+      </div>
+      <div className="shrink-0">
+        <FilterDropdown
+          label="Type"
+          options={TYPES}
+          selected={filters.types}
+          onChange={(types) => onChange({ ...filters, types })}
+          renderOption={(t) => <span>{TYPE_ICON[t]} {t}</span>}
+        />
+      </div>
+      <div className="shrink-0">
+        <FilterDropdown
+          label="Tag"
+          options={tagNames}
+          selected={filters.tags}
+          onChange={(tags) => onChange({ ...filters, tags })}
+          renderOption={(t) => <span>#{t}</span>}
+        />
+      </div>
 
       <button
         type="button"
         onClick={() => onChange({ ...filters, combineMode: filters.combineMode === "AND" ? "OR" : "AND" })}
-        className="border px-2 py-1 text-sm font-bold transition-colors"
+        className="shrink-0 border px-2 py-1 text-xs font-mono font-bold transition-colors cursor-pointer"
         style={{ borderColor: "var(--color-primary-gold)", backgroundColor: "var(--color-bg-panel)", color: "var(--color-primary-gold)" }}
         title="Toggle how the active filters combine"
       >
@@ -286,14 +292,14 @@ export function TaskFilterBar({
       <input
         value={filters.query}
         onChange={(e) => onChange({ ...filters, query: e.target.value })}
-        placeholder="Search title, #tag, project, attachment..."
+        placeholder="Search title, #tag, project..."
         aria-label="Search title, tag, project, or attachment"
-        className="min-w-[160px] flex-1 border px-2 py-1 text-sm text-foreground outline-none focus:border-primary"
+        className="min-w-[140px] shrink-0 sm:shrink sm:flex-1 border px-2 py-1 text-xs font-mono text-foreground outline-none focus:border-primary"
         style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-bg-panel)" }}
       />
 
       {activeCount > 0 && (
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0">
           {isSaving ? (
             <div className="flex items-center gap-1.5 border border-primary bg-card p-0.5">
               <input
