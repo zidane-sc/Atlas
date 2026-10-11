@@ -30,8 +30,9 @@ function TaskCardComponent({
   const dragging = isDragging;
   const isAgentTask =
     task.reporter === "agent" ||
-    !!(task as any).metadata?.createdByAgent ||
-    !!(task as any).waitingReason;
+    (task as any)?.metadata?.agentReporter === "agent" ||
+    !!(task as any)?.metadata?.createdByAgent ||
+    !!(task as any)?.waitingReason;
 
   return (
     // Not a <button> — a nested keyboard-operable status <select> requires div[role=button]

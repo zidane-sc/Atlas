@@ -57,11 +57,14 @@ export async function domainCreateTask(
             ...rest,
             code: taskCode,
             ownerId,
-            reporter: (rest.reporter as any) ?? "self",
+            reporter: "other",
             startDate: startDate ? new Date(startDate) : undefined,
             dueDate: dueDate ? new Date(dueDate) : undefined,
             waitingReason: waitingReason || undefined,
-            metadata: metadata ? (metadata as any) : undefined,
+            metadata: {
+              ...(metadata ? metadata : {}),
+              agentReporter: rest.reporter === "agent" ? "agent" : undefined,
+            },
             tags: tags && tags.length > 0 ? {
               create: tags.map((name: string) => ({
                 tag: {
@@ -178,7 +181,7 @@ export async function domainUpdateTask(
         data: {
           ...rest,
           projectId: rest.projectId === null ? null : rest.projectId || undefined,
-          reporter: (rest.reporter as any) ?? undefined,
+          reporter: rest.reporter === "agent" ? "other" : (rest.reporter as any) ?? undefined,
           status,
           pinned,
           completedAt,

@@ -341,7 +341,7 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
               {currentTask.code}
             </span>
           )}
-          {task && (task.reporter === "agent" || !!(task as any).metadata?.createdByAgent || !!(task as any).waitingReason) && (
+          {task && (task.reporter === "agent" || (task as any)?.metadata?.agentReporter === "agent" || !!(task as any).metadata?.createdByAgent || !!(task as any).waitingReason) && (
             <span className="px-1.5 py-0.5 text-[9px] font-mono font-bold border border-cyan-500/50 bg-cyan-950/60 text-cyan-300 flex items-center gap-1">
               <Bot size={11} /> AI SPAWNED
             </span>
