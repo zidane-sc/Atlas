@@ -56,18 +56,17 @@ import type {
   Reporter,
 } from "@/types/task";
 
-function Section({ title, shape, defaultOpen = false, children }: { title: string; shape: string; defaultOpen?: boolean; children: React.ReactNode }) {
+function Section({ title, shape, defaultOpen = true, children }: { title: string; shape: string; defaultOpen?: boolean; children: React.ReactNode }) {
   return (
-    <Collapsible defaultOpen={defaultOpen} className="border-2 border-border">
-      <CollapsibleTrigger className="group flex w-full items-center justify-between px-3 py-2.5 text-left text-sm font-semibold tracking-widest text-foreground hover:bg-[var(--color-bg-panel-alt)] transition-colors">
+    <div className="border-2 border-border bg-card/60">
+      <div className="flex w-full items-center justify-between px-3 py-2 border-b border-border bg-[var(--color-bg-panel-alt)] text-left text-xs font-bold font-mono tracking-wider text-foreground">
         <span className="flex items-center gap-2">
           <span style={{ color: "var(--color-primary-gold)" }}>{shape}</span>
-          <span>{title}</span>
+          <span className="uppercase">{title}</span>
         </span>
-        <ChevronDown size={12} className="transition-transform duration-200 group-data-[panel-open]:rotate-180" />
-      </CollapsibleTrigger>
-      <CollapsibleContent className="border-t-2 border-border px-3 py-3 text-sm">{children}</CollapsibleContent>
-    </Collapsible>
+      </div>
+      <div className="p-3 text-xs">{children}</div>
+    </div>
   );
 }
 
@@ -357,7 +356,7 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
           )}
           {task && (task.reporter === "agent" || (task as any)?.metadata?.agentReporter === "agent" || !!(task as any).metadata?.createdByAgent || !!(task as any).waitingReason) && (
             <span className="px-1.5 py-0.5 text-[9px] font-mono font-bold border border-cyan-500/50 bg-cyan-950/60 text-cyan-300 flex items-center gap-1">
-              <Bot size={11} /> AI SPAWNED
+              <Bot size={11} /> MCP SPAWNED
             </span>
           )}
         </div>
@@ -844,7 +843,7 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
                   ) : (
                     <li key={i} className="flex flex-col gap-1 border border-border p-2 bg-muted/20 cursor-pointer hover:bg-muted/30" onClick={() => {
                       setDeliverableType(d.type);
-                      setDeliverableLabel(d.label);
+                      setDeliverableLabel(d.label || "");
                       setDeliverableUrl(d.urlOrContent || "");
                       setEditingDeliverableIndex(i);
                     }}>
@@ -882,39 +881,39 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
 
         {mode === "edit" && task && (
           <>
-            {/* AI Agent Telemetry & Checkpoints */}
+            {/* MCP Agent Telemetry & Checkpoints */}
             {Boolean(
               (taskDetail?.agent && ((taskDetail.agent.runs?.length ?? 0) > 0 || (taskDetail.agent.checkpoints?.length ?? 0) > 0)) ||
               (task as any)?.waitingReason
             ) && (
-              <Section title="AI Agent Memory & Runs" shape="🤖" defaultOpen>
-                <div className="flex flex-col gap-3 p-2.5 bg-primary/5 border-2 border-cyan-500/40 text-xs shadow-[2px_2px_0_rgba(16,224,224,0.15)]">
+              <Section title="MCP Agent Memory & Runs" shape="⚡" defaultOpen>
+                <div className="flex flex-col gap-3 p-2.5 bg-primary/5 border-2 border-cyan-500/40 text-xs shadow-[2px_2px_0_rgba(16,224,224,0.15)] max-w-full overflow-hidden">
                   {/* Latest Checkpoint or Waiting Reason */}
                   {((taskDetail?.agent?.checkpoints?.length ?? 0) > 0 && taskDetail?.agent?.checkpoints?.[0]) ? (
-                    <div>
+                    <div className="min-w-0">
                       <div className="font-mono font-bold text-[10px] text-cyan-400 uppercase mb-1 flex items-center gap-1.5">
-                        <Bot size={12} /> Latest Checkpoint (Rev #{taskDetail.agent.checkpoints[0].revision})
+                        <Bot size={12} className="shrink-0" /> Latest Checkpoint (Rev #{taskDetail.agent.checkpoints[0].revision})
                       </div>
-                      <p className="bg-background/80 p-2 border border-border text-foreground font-mono leading-relaxed">
+                      <p className="bg-background/80 p-2 border border-border text-foreground font-mono leading-relaxed break-words whitespace-pre-wrap">
                         {taskDetail.agent.checkpoints[0].summary}
                       </p>
                       {taskDetail.agent.checkpoints[0].waitingReason && (
-                        <div className="mt-1 text-[11px] font-mono text-amber-400 bg-amber-950/20 p-1 border border-amber-500/30">
+                        <div className="mt-1 text-[11px] font-mono text-amber-400 bg-amber-950/20 p-1 border border-amber-500/30 break-words">
                           ⏸️ Idling Reason: {taskDetail.agent.checkpoints[0].waitingReason}
                         </div>
                       )}
                       {taskDetail.agent.checkpoints[0].nextStep && (
-                        <div className="mt-0.5 text-[11px] font-mono text-muted-foreground">
+                        <div className="mt-0.5 text-[11px] font-mono text-muted-foreground break-words">
                           ▸ Next step: {taskDetail.agent.checkpoints[0].nextStep}
                         </div>
                       )}
                     </div>
                   ) : (task as any)?.waitingReason ? (
-                    <div>
+                    <div className="min-w-0">
                       <div className="font-mono font-bold text-[10px] text-cyan-400 uppercase mb-1 flex items-center gap-1.5">
-                        <Bot size={12} /> Agent Status Note
+                        <Bot size={12} className="shrink-0" /> MCP Status Note
                       </div>
-                      <div className="text-[11px] font-mono text-amber-400 bg-amber-950/20 p-1.5 border border-amber-500/30">
+                      <div className="text-[11px] font-mono text-amber-400 bg-amber-950/20 p-1.5 border border-amber-500/30 break-words">
                         ⏸️ Idling Reason: {(task as any).waitingReason}
                       </div>
                     </div>
@@ -922,9 +921,9 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
 
                   {/* Multi-Model & Token Breakdown */}
                   {Boolean(taskDetail?.agent?.runs?.some((r) => r.usageEvents && r.usageEvents.length > 0)) && (
-                    <div className="border-t border-border/40 pt-2">
+                    <div className="border-t border-border/40 pt-2 min-w-0">
                       <div className="font-mono font-bold text-[10px] text-muted-foreground uppercase mb-1.5 flex items-center gap-1">
-                        <Cpu size={12} /> Models & Token Consumption:
+                        <Cpu size={12} className="shrink-0" /> Models & Token Consumption:
                       </div>
                       <div className="space-y-1.5">
                         {(() => {
@@ -945,15 +944,15 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
                           return (
                             <>
                               {Object.entries(modelMap).map(([mName, data]) => (
-                                <div key={mName} className="p-1.5 bg-background/60 border border-border font-mono text-[11px]">
-                                  <div className="font-bold text-[var(--color-primary-gold)] truncate">{mName}</div>
-                                  <div className="text-muted-foreground flex justify-between mt-0.5">
+                                <div key={mName} className="p-1.5 bg-background/60 border border-border font-mono text-[11px] min-w-0">
+                                  <div className="font-bold text-[var(--color-primary-gold)] truncate" title={mName}>{mName}</div>
+                                  <div className="text-muted-foreground flex flex-wrap justify-between gap-1 mt-0.5">
                                     <span>{data.prompt.toLocaleString()} prompt · {data.completion.toLocaleString()} comp</span>
                                     <span>{data.total.toLocaleString()} tokens {data.cost > 0 && `(~$${data.cost.toFixed(3)})`}</span>
                                   </div>
                                 </div>
                               ))}
-                              <div className="flex justify-between font-mono font-bold text-[11px] text-foreground pt-1">
+                              <div className="flex flex-wrap justify-between gap-1 font-mono font-bold text-[11px] text-foreground pt-1 border-t border-border/30">
                                 <span>Total Burn:</span>
                                 <span>⚡ {grandTotal.toLocaleString()} tokens {totalCost > 0 && `(~$${totalCost.toFixed(3)})`}</span>
                               </div>
@@ -965,12 +964,12 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
                   )}
 
                   {/* Active/Recent Runs */}
-                  <div className="border-t border-border/40 pt-2 text-[10px] font-mono text-muted-foreground">
-                    <div className="font-bold uppercase mb-0.5">Agent Sessions:</div>
+                  <div className="border-t border-border/40 pt-2 text-[10px] font-mono text-muted-foreground min-w-0">
+                    <div className="font-bold uppercase mb-0.5">MCP Sessions:</div>
                     {(taskDetail?.agent?.runs ?? []).slice(0, 3).map((r) => (
-                      <div key={r.id} className="flex justify-between py-0.5">
-                        <span>{r.agentName} ({r.platform || "telegram"}:{r.threadId || "main"})</span>
-                        <span className={r.status === "active" ? "text-green-400 font-bold" : ""}>
+                      <div key={r.id} className="flex flex-wrap justify-between gap-1 py-0.5">
+                        <span className="truncate max-w-[280px]">{r.agentName} ({r.platform || "telegram"}:{r.threadId || "main"})</span>
+                        <span className={r.status === "active" ? "text-green-400 font-bold shrink-0" : "shrink-0"}>
                           {r.status.toUpperCase()}
                         </span>
                       </div>

@@ -52,7 +52,7 @@ export interface TaskAttachment {
 
 export interface TaskDeliverable {
   type: DeliverableType;
-  label: string;
+  label?: string;
   urlOrContent?: string;
 }
 

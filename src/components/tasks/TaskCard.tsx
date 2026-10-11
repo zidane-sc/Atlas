@@ -78,9 +78,9 @@ function TaskCardComponent({
           {isAgentTask && (
             <span
               className="px-1.5 py-0 text-[9px] font-mono font-bold border border-cyan-500/50 bg-cyan-950/60 text-cyan-300"
-              title="Spawned by Hermes Agent"
+              title="Spawned via Atlas MCP Server"
             >
-              🤖 AI
+              ⚡ MCP
             </span>
           )}
         </div>
@@ -94,27 +94,27 @@ function TaskCardComponent({
               onClick={(e) => e.stopPropagation()}
               onKeyDown={(e) => e.stopPropagation()}
               onChange={(e) => onMoveStatus(task, e.target.value as TaskStatus)}
-              className="border border-border bg-secondary px-1.5 py-0.5 text-[10px] text-foreground outline-none focus-visible:ring-1 focus-visible:ring-primary font-mono transition-colors cursor-pointer"
+              className="border border-border bg-secondary/80 px-1 py-0.5 text-[9px] text-foreground outline-none font-mono cursor-pointer"
               style={{ color: `var(${STATUS_COLOR_VAR[task.status]})` }}
             >
               {KANBAN_COLUMNS.map((s) => (
-                <option key={s} value={s}>{STATUS_SHAPE[s]} {STATUS_LABEL[s]}</option>
+                <option key={s} value={s}>{STATUS_LABEL[s]}</option>
               ))}
             </select>
           )}
         </div>
       </div>
 
-      {/* Task Title (Prominent & Clear) */}
-      <h4 className="text-xs font-bold leading-normal text-foreground line-clamp-2">
+      {/* Task Title (Prominent, High-Contrast & Clear) */}
+      <h4 className="text-sm font-semibold leading-snug text-foreground line-clamp-3 my-0.5">
         {task.title}
       </h4>
 
       {/* Bottom meta row: Project pill + Tags + Due Date + Size */}
-      <div className="flex flex-wrap items-center justify-between gap-1.5 pt-1.5 border-t border-border/40 font-mono text-[10px]">
-        <div className="flex items-center gap-1 min-w-0">
+      <div className="flex items-center justify-between gap-1.5 pt-1.5 border-t border-border/40 font-mono text-[10px]">
+        <div className="flex items-center gap-1.5 min-w-0">
           {task.project && (
-            <span className="max-w-[100px] truncate px-1 py-0 border border-border bg-secondary/50 text-muted-foreground">
+            <span className="max-w-[90px] truncate px-1.5 py-0 border border-border bg-secondary/50 text-muted-foreground">
               {task.project}
             </span>
           )}
@@ -125,7 +125,7 @@ function TaskCardComponent({
 
         <div className="flex items-center gap-1.5 shrink-0 ml-auto">
           {task.size != null && (
-            <span className="text-muted-foreground">
+            <span className="text-muted-foreground font-bold">
               {task.size.toUpperCase()}
             </span>
           )}
@@ -139,7 +139,7 @@ function TaskCardComponent({
 
       {/* Idling / Blocked Status strip */}
       {task.status === "in_progress" && (task.waitingOn || task.waitingReason) && (
-        <div className="mt-0.5 text-[10px] font-mono text-amber-400 bg-amber-950/40 border border-amber-500/40 px-1.5 py-0.5 break-words">
+        <div className="text-[10px] font-mono text-amber-400 bg-amber-950/40 border border-amber-500/40 px-2 py-1 leading-tight break-words">
           ⏸️ {task.waitingReason || task.waitingOn}
         </div>
       )}

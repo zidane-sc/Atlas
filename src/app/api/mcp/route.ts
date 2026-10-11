@@ -36,11 +36,12 @@ async function createAtlasMcpServer(userId: string, credentialId: string) {
       inputSchema: {
         query: z.string().optional().describe("Free-text search or code/PR number"),
         status: z.enum(["backlog", "todo", "in_progress", "done", "archived"]).optional(),
+        isIdling: z.boolean().optional().describe("Filter tasks that have a waiting/idling reason set"),
         sourceKey: z.string().optional().describe("Canonical source key like github.com/owner/repo/pull/123"),
         limit: z.number().int().min(1).max(50).default(10),
       },
     },
-    async ({ query, status, sourceKey, limit }) => {
+    async ({ query, status, isIdling, sourceKey, limit }) => {
       try {
         const whereClause: any = {
           ownerId: userId,
@@ -49,6 +50,10 @@ async function createAtlasMcpServer(userId: string, credentialId: string) {
 
         if (status) {
           whereClause.status = status;
+        }
+
+        if (isIdling) {
+          whereClause.waitingReason = { not: null };
         }
 
         if (sourceKey) {
