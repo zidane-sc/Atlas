@@ -49,19 +49,22 @@ function TaskCardComponent({
       style={{
         borderColor: dragging ? "var(--color-primary-gold)" : `var(${STATUS_COLOR_VAR[task.status]})`,
         backgroundColor: dragging ? "var(--color-bg-panel)" : "var(--color-bg-panel-alt)",
-        opacity: dragging ? 0.6 : 1,
-        borderStyle: dragging ? "dashed" : "solid",
-        boxShadow: dragging ? "0 4px 12px rgba(0,0,0,0.2) inset" : "none",
+        opacity: dragging ? 0.75 : 1,
         ...draggableProps?.style,
       }}
-      className="pixel-panel flex w-full cursor-grab flex-col gap-1.5 border-2 p-2.5 text-left transition-all duration-200 hover:brightness-110 hover:cursor-grab focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 animate-in fade-in zoom-in-95"
+      className="quest-card flex w-full cursor-grab flex-col gap-1.5 p-2.5 text-left select-none animate-in fade-in zoom-in-95"
     >
       <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-1">
-          <span aria-hidden className="text-sm leading-none">{TYPE_ICON[task.type]}</span>
-          <span className="text-xs font-mono font-bold" style={{ color: "var(--color-primary-gold)" }}>{task.code}</span>
+        <div className="flex items-center gap-1.5 min-w-0">
+          <span aria-hidden className="text-sm shrink-0 leading-none">{TYPE_ICON[task.type]}</span>
+          <span className="text-xs font-mono font-bold tracking-tight text-[var(--color-primary-gold)] truncate">{task.code}</span>
+          {task.project && (
+            <span className="hidden sm:inline-block max-w-[90px] truncate text-[9px] font-mono text-muted-foreground border border-border px-1 py-0 bg-secondary/40">
+              {task.project}
+            </span>
+          )}
         </div>
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1.5 shrink-0">
           <PriorityMark priority={task.priority} />
           {onMoveStatus && (
             <select
@@ -70,7 +73,7 @@ function TaskCardComponent({
               onClick={(e) => e.stopPropagation()}
               onKeyDown={(e) => e.stopPropagation()}
               onChange={(e) => onMoveStatus(task, e.target.value as TaskStatus)}
-              className="border border-border bg-secondary px-1.5 py-0.5 text-[11px] text-foreground outline-none focus-visible:ring-1 focus-visible:ring-primary font-mono transition-colors cursor-pointer"
+              className="border border-border bg-secondary px-1.5 py-0.5 text-[10px] text-foreground outline-none focus-visible:ring-1 focus-visible:ring-primary font-mono transition-colors cursor-pointer"
               style={{ color: `var(${STATUS_COLOR_VAR[task.status]})` }}
             >
               {KANBAN_COLUMNS.map((s) => (
@@ -81,25 +84,25 @@ function TaskCardComponent({
         </div>
       </div>
       <p className="line-clamp-2 text-xs font-bold leading-tight text-foreground">{task.title}</p>
-      <div className="flex items-center justify-between gap-2 pt-1 border-t border-border/30">
+      <div className="flex items-center justify-between gap-2 pt-1 border-t border-border/40 font-mono">
         <div className="flex flex-wrap gap-1">
           {task.tags.slice(0, 2).map((t) => (
             <TagPill key={t} tag={t} />
           ))}
         </div>
         {task.dueDate && (
-          <span className="shrink-0 text-[11px] font-mono" style={{ color: overdue ? "var(--color-status-blocked)" : "var(--color-text-muted)" }}>
+          <span className="shrink-0 text-[10px] font-mono font-bold" style={{ color: overdue ? "var(--color-status-blocked)" : "var(--color-text-muted)" }}>
             {overdue && "⚠ "}{formatDueDate(task.dueDate)}
           </span>
         )}
       </div>
       {task.size != null && (
-        <div className="text-[10px] font-mono text-muted-foreground">
+        <div className="text-[9px] font-mono text-muted-foreground">
           SIZE: {task.size.toUpperCase()}
         </div>
       )}
       {task.status === "in_progress" && task.waitingOn && (
-        <div className="text-[11px] font-mono" style={{ color: "var(--color-status-blocked)" }}>✕ {task.waitingOn}</div>
+        <div className="text-[10px] font-mono text-[var(--color-status-blocked)]">✕ {task.waitingOn}</div>
       )}
     </div>
   );

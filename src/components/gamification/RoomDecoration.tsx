@@ -326,12 +326,13 @@ export function RoomDecoration() {
 
         {/* Floor background */}
         <div
-          className="absolute inset-x-0 bottom-0 transition-all duration-300"
+          className="absolute inset-x-0 bottom-0 transition-all duration-300 isometric-grid"
           style={{
-            height: "32%",
+            height: "36%",
             background: floorConfig.background,
             backgroundColor: floorConfig.bgColor,
             opacity: floorConfig.opacity ?? 1,
+            boxShadow: "inset 0 12px 24px rgba(0,0,0,0.6)",
           }}
         />
 
@@ -429,18 +430,19 @@ export function RoomDecoration() {
           }}
           style={{
             left: "24%",
-            bottom: "16%",
+            bottom: "14%",
             zIndex: 15,
-            fontSize: "40px",
+            fontSize: "44px",
             animation: "pixelFloat 2.5s ease-in-out infinite",
           }}
           title="Click to interact"
         >
-          <span className="filter drop-shadow-[0_4px_6px_rgba(0,0,0,0.7)] group-hover:scale-110 transition-transform">
+          <span className="relative z-10 filter drop-shadow-[0_4px_6px_rgba(0,0,0,0.8)] group-hover:scale-110 transition-transform">
             🧙‍♂️
           </span>
+          <div className="contact-shadow" />
           <div
-            className="border px-1.5 py-0.5 mt-0.5 text-[8px] font-mono font-bold tracking-widest uppercase truncate max-w-[80px]"
+            className="relative z-10 border px-1.5 py-0.5 mt-0.5 text-[8px] font-mono font-bold tracking-widest uppercase truncate max-w-[80px]"
             style={{
               backgroundColor: "var(--color-bg-deep)",
               borderColor: "var(--color-border)",
@@ -460,16 +462,17 @@ export function RoomDecoration() {
           }}
           style={{
             left: "14%",
-            bottom: "11%",
+            bottom: "10%",
             animation: "cmpBounce 1.2s ease-in-out infinite",
           }}
           title="Pip (Companion Lv. 3) - Click me!"
         >
-          <span className="text-2xl filter drop-shadow-[0_2px_4px_rgba(0,0,0,0.7)] group-hover:scale-125 transition-transform">
+          <span className="relative z-10 text-2xl filter drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] group-hover:scale-125 transition-transform">
             🐥
           </span>
+          <div className="contact-shadow" style={{ width: "80%" }} />
           <span
-            className="text-[7px] font-mono font-bold px-1 py-0 border opacity-80"
+            className="relative z-10 text-[7px] font-mono font-bold px-1 py-0 border opacity-80"
             style={{
               backgroundColor: "var(--color-bg-deep)",
               borderColor: "var(--color-border)",
@@ -483,7 +486,7 @@ export function RoomDecoration() {
         {/* Placed Chair */}
         {chairObj && currentChair === chairObj.id && (
           <div
-            className="absolute select-none cursor-grab active:cursor-grabbing group"
+            className="absolute select-none cursor-grab active:cursor-grabbing group flex flex-col items-center"
             onMouseDown={(e) => handleDragStart(e, "chair", chairPos.x, chairPos.y)}
             onTouchStart={(e) => handleDragStart(e, "chair", chairPos.x, chairPos.y)}
             onClick={() => {
@@ -494,16 +497,18 @@ export function RoomDecoration() {
               left: `${dragging?.category === "chair" && dragPos ? dragPos.x : chairPos.x}%`,
               bottom: `${dragging?.category === "chair" && dragPos ? dragPos.y : chairPos.y}%`,
               zIndex: 8,
-              fontSize: "38px",
+              fontSize: "36px",
               touchAction: "none",
               transition: dragging?.category === "chair" ? "none" : "all 200ms",
-              filter: "drop-shadow(0 4px 6px rgba(0,0,0,0.65))",
             }}
             title={`${chairObj.name} (drag to move)`}
           >
-            {chairObj.emoji}
+            <span className="relative z-10 filter drop-shadow-[0_4px_6px_rgba(0,0,0,0.7)] group-hover:scale-105 transition-transform">
+              {chairObj.emoji}
+            </span>
+            <div className="contact-shadow" />
             {dragging?.category === "chair" && dragPos && (
-              <span className="absolute -bottom-4 left-1/2 -translate-x-1/2 whitespace-nowrap bg-deep border border-primary-gold px-1 py-0 text-[7px] font-mono text-primary-gold font-bold">
+              <span className="absolute -bottom-4 left-1/2 -translate-x-1/2 whitespace-nowrap bg-deep border border-primary-gold px-1 py-0 text-[7px] font-mono text-primary-gold font-bold z-30">
                 {dragPos.x}%, {dragPos.y}%
               </span>
             )}
@@ -513,7 +518,7 @@ export function RoomDecoration() {
         {/* Placed Desk */}
         {deskObj && currentDesk === deskObj.id && (
           <div
-            className="absolute select-none cursor-grab active:cursor-grabbing group"
+            className="absolute select-none cursor-grab active:cursor-grabbing group flex flex-col items-center"
             onMouseDown={(e) => handleDragStart(e, "desk", deskPos.x, deskPos.y)}
             onTouchStart={(e) => handleDragStart(e, "desk", deskPos.x, deskPos.y)}
             onClick={() => {
@@ -527,13 +532,15 @@ export function RoomDecoration() {
               fontSize: "44px",
               touchAction: "none",
               transition: dragging?.category === "desk" ? "none" : "all 200ms",
-              filter: "drop-shadow(0 6px 8px rgba(0,0,0,0.7))",
             }}
             title={`${deskObj.name} (drag to move)`}
           >
-            {deskObj.emoji}
+            <span className="relative z-10 filter drop-shadow-[0_6px_8px_rgba(0,0,0,0.8)] group-hover:scale-105 transition-transform">
+              {deskObj.emoji}
+            </span>
+            <div className="contact-shadow" style={{ width: "90%", height: "12px" }} />
             {dragging?.category === "desk" && dragPos && (
-              <span className="absolute -bottom-4 left-1/2 -translate-x-1/2 whitespace-nowrap bg-deep border border-primary-gold px-1 py-0 text-[7px] font-mono text-primary-gold font-bold">
+              <span className="absolute -bottom-4 left-1/2 -translate-x-1/2 whitespace-nowrap bg-deep border border-primary-gold px-1 py-0 text-[7px] font-mono text-primary-gold font-bold z-30">
                 {dragPos.x}%, {dragPos.y}%
               </span>
             )}
@@ -543,7 +550,7 @@ export function RoomDecoration() {
         {/* Placed Decor */}
         {decorObj && decorObj.id !== "decor-none" && currentDecor === decorObj.id && (
           <div
-            className="absolute select-none cursor-grab active:cursor-grabbing group"
+            className="absolute select-none cursor-grab active:cursor-grabbing group flex flex-col items-center"
             onMouseDown={(e) => handleDragStart(e, "decor", decorPos.x, decorPos.y)}
             onTouchStart={(e) => handleDragStart(e, "decor", decorPos.x, decorPos.y)}
             onClick={() => {
@@ -553,18 +560,20 @@ export function RoomDecoration() {
             style={{
               left: `${dragging?.category === "decor" && dragPos ? dragPos.x : decorPos.x}%`,
               bottom: `${dragging?.category === "decor" && dragPos ? dragPos.y : decorPos.y}%`,
-              zIndex: 9,
-              fontSize: "36px",
+              zIndex: 12,
+              fontSize: "26px",
               touchAction: "none",
               animation: decorObj.id === "decor-lava" ? "pixelPulse 2s ease-in-out infinite" : "none",
               transition: dragging?.category === "decor" ? "none" : "all 200ms",
-              filter: "drop-shadow(0 4px 6px rgba(0,0,0,0.6))",
             }}
             title={`${decorObj.name} (drag to move)`}
           >
-            {decorObj.emoji}
+            <span className="relative z-10 filter drop-shadow-[0_4px_6px_rgba(0,0,0,0.7)] group-hover:scale-110 transition-transform">
+              {decorObj.emoji}
+            </span>
+            <div className="contact-shadow" style={{ width: "60%", height: "6px" }} />
             {dragging?.category === "decor" && dragPos && (
-              <span className="absolute -bottom-4 left-1/2 -translate-x-1/2 whitespace-nowrap bg-deep border border-primary-gold px-1 py-0 text-[7px] font-mono text-primary-gold font-bold">
+              <span className="absolute -bottom-4 left-1/2 -translate-x-1/2 whitespace-nowrap bg-deep border border-primary-gold px-1 py-0 text-[7px] font-mono text-primary-gold font-bold z-30">
                 {dragPos.x}%, {dragPos.y}%
               </span>
             )}

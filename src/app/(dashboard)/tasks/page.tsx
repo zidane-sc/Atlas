@@ -111,11 +111,7 @@ export default function Page() {
               <Table2 size={10} /> Table
             </button>
           </div>
-        ) : (
-          <div className="ml-auto mr-2">
-            <Button size="sm" onClick={openCreateForm}><Plus size={12} /> New Quest</Button>
-          </div>
-        )}
+        ) : null}
       </div>
 
       <TaskFilterBar

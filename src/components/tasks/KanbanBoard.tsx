@@ -49,19 +49,33 @@ export function KanbanBoard({ tasks }: { tasks: Task[] }) {
             const columnTasks = tasks.filter((t) => t.status === status);
             const colorVar = STATUS_COLOR_VAR[status];
             return (
-              <div key={status} className="flex w-[82vw] sm:w-60 shrink-0 flex-col snap-start">
-                <div className="mb-3 flex items-center gap-2 border-b-2 pb-2" style={{ borderColor: `var(${colorVar})` }}>
-                  <span style={{ color: `var(${colorVar})` }}>{STATUS_SHAPE[status]}</span>
-                  <span className="text-sm tracking-widest" style={{ color: `var(${colorVar})` }}>{STATUS_LABEL[status].toUpperCase()}</span>
-                  <span className="text-sm text-muted-foreground">({columnTasks.length})</span>
+              <div key={status} className="guild-column flex w-[82vw] sm:w-[270px] shrink-0 flex-col snap-start p-2">
+                <div
+                  className="guild-column-header mb-2 flex items-center justify-between p-2 border-b-2"
+                  style={{ borderBottomColor: `var(${colorVar})` }}
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm leading-none" style={{ color: `var(${colorVar})` }}>{STATUS_SHAPE[status]}</span>
+                    <span className="text-xs font-mono font-bold tracking-widest uppercase" style={{ color: `var(${colorVar})` }}>
+                      {STATUS_LABEL[status]}
+                    </span>
+                  </div>
+                  <span
+                    className="font-mono text-xs font-bold px-1.5 py-0.2 border"
+                    style={{ borderColor: `var(${colorVar})`, color: `var(${colorVar})` }}
+                  >
+                    {columnTasks.length}
+                  </span>
                 </div>
                 <Droppable droppableId={status} type="TASK">
                   {(provided, snapshot) => (
                     <div
                       ref={provided.innerRef}
                       {...provided.droppableProps}
-                      className="flex-1 space-y-2 overflow-y-auto border-2 p-1"
-                      style={{ borderColor: snapshot.isDraggingOver ? "var(--color-primary-gold)" : "transparent" }}
+                      className="flex-1 space-y-2 overflow-y-auto min-h-[300px] p-1 transition-colors"
+                      style={{
+                        backgroundColor: snapshot.isDraggingOver ? "rgba(255, 217, 61, 0.05)" : "transparent",
+                      }}
                     >
                       {columnTasks.map((task, index) => (
                         <Draggable key={task.id} draggableId={task.id} index={index}>
@@ -80,7 +94,11 @@ export function KanbanBoard({ tasks }: { tasks: Task[] }) {
                       ))}
                       {provided.placeholder}
                       {columnTasks.length === 0 && (
-                        <EmptyState icon="─" message={STATUS_LABEL[status]} variant="dashed" />
+                        <EmptyState
+                          icon={status === "done" ? "🏆" : status === "in_progress" ? "⚔️" : "📜"}
+                          message={STATUS_LABEL[status]}
+                          variant="dashed"
+                        />
                       )}
                     </div>
                   )}
