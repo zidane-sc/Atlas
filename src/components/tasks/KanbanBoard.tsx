@@ -12,9 +12,10 @@ export function KanbanBoard({ tasks }: { tasks: Task[] }) {
   const { openEditForm, updateTask } = useTasks();
   const { notify } = useNotifications();
 
-  const moveTask = async (task: Task, status: TaskStatus) => {
+  const moveTask = (task: Task, status: TaskStatus) => {
     if (task.status === status) return;
-    const success = await updateTask(task.id, {
+    notify(`${STATUS_LABEL[status]}: "${task.title}"`, "success");
+    void updateTask(task.id, {
       title: task.title,
       description: task.description,
       project: task.project,
@@ -30,9 +31,6 @@ export function KanbanBoard({ tasks }: { tasks: Task[] }) {
       attachments: task.attachments,
       deliverables: task.deliverables,
     });
-    if (success) {
-      notify(`${STATUS_LABEL[status]}: "${task.title}"`, "success");
-    }
   };
 
   const onDragEnd = (result: DropResult) => {
