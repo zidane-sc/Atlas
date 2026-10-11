@@ -2,6 +2,7 @@ export type TaskStatus =
   | "backlog"
   | "todo"
   | "in_progress"
+  | "waiting"
   | "done"
   | "archived";
 
@@ -75,6 +76,8 @@ export interface Task {
   startDate?: string;
   dueDate?: string;
   waitingOn?: string;
+  waitingReason?: string;
+  metadata?: Record<string, any>;
   sprint?: string;
   reporter?: Reporter;
   /** Accumulated Focus Timer time on this task, in seconds. */

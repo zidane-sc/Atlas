@@ -35,6 +35,8 @@ export function mapDbTaskToClient(
     type: dbTask.type as TaskType,
     priority: dbTask.priority as Priority,
     size: (dbTask.size ?? undefined) as TaskSize | undefined,
+    waitingReason: (dbTask as any).waitingReason ?? undefined,
+    metadata: (dbTask as any).metadata ?? undefined,
     timeSpentSeconds: dbTask.timeSpentSeconds ?? 0,
     pinned: dbTask.pinned ?? false,
     startDate: dbTask.startDate ? dbTask.startDate.toISOString().split("T")[0] : undefined,
