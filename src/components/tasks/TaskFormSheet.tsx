@@ -114,7 +114,7 @@ export function TaskFormSheet() {
   return (
     <Sheet open={sheet.open} onOpenChange={(open) => !open && closeForm()}>
       <SheetContent
-        className="w-full inset-0 max-w-full sm:inset-y-0 sm:right-0 sm:left-auto sm:max-w-xl sm:w-[540px] h-full gap-0 border-l-2 border-border p-0 rounded-none overflow-hidden flex flex-col"
+        className="w-full inset-0 max-w-full sm:inset-y-0 sm:right-0 sm:left-auto sm:w-[520px] sm:max-w-[520px] h-full gap-0 border-l-2 border-border p-0 rounded-none overflow-hidden flex flex-col"
       >
         {sheet.open && <TaskFormBody key={sheet.task?.id ?? "create"} mode={sheet.mode} task={sheet.task} />}
       </SheetContent>
@@ -629,10 +629,10 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
           </div>
         </Section>
 
-        <Section title="Relations" shape="◈" defaultOpen={form.relations.length > 0}>
+        <Section title="Relations" shape="◈" defaultOpen={false}>
           <div className="flex flex-col gap-2">
             {form.relations.length === 0 ? (
-              <p className="text-muted-foreground">No relations yet.</p>
+              <p className="text-muted-foreground text-xs italic">No relations yet.</p>
             ) : (
               <ul className="flex flex-col gap-1">
                 {form.relations.map((r) => {
@@ -718,10 +718,10 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
           </div>
         </Section>
 
-        <Section title="Attachments" shape="▶" defaultOpen={form.attachments.length > 0}>
+        <Section title="Attachments" shape="▶" defaultOpen={false}>
           <div className="flex flex-col gap-2">
             {form.attachments.length === 0 ? (
-              <p className="text-muted-foreground">None yet.</p>
+              <p className="text-muted-foreground text-xs italic">No attachments yet.</p>
             ) : (
               <ul className="flex flex-col gap-1">
                 {form.attachments.map((a, i) => (
@@ -819,10 +819,10 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
           </div>
         </Section>
 
-        <Section title="Deliverables" shape="◆" defaultOpen={form.deliverables.length > 0}>
+        <Section title="Deliverables" shape="◆" defaultOpen={false}>
           <div className="flex flex-col gap-2">
             {form.deliverables.length === 0 ? (
-              <p className="text-muted-foreground">None yet.</p>
+              <p className="text-muted-foreground text-xs italic">No deliverables yet.</p>
             ) : (
               <ul className="flex flex-col gap-1">
                 {form.deliverables.map((d, i) => (
@@ -989,7 +989,7 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
               </Section>
             )}
 
-            <Section title="Comments" shape="💬" defaultOpen={Boolean(taskDetail?.comments && taskDetail.comments.length > 0)}>
+            <Section title="Comments" shape="💬" defaultOpen={false}>
               <div className="flex flex-col gap-2">
                 <ul className="flex flex-col gap-2 max-h-48 overflow-y-auto border-b border-border pb-2">
                   {taskDetailLoading ? (
@@ -1012,7 +1012,7 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
               </div>
             </Section>
 
-            <Section title="History" shape="◫" defaultOpen={Boolean(taskDetail?.statusHistory && taskDetail.statusHistory.length > 1)}>
+            <Section title="History" shape="◫" defaultOpen={false}>
               <ul className="flex flex-col gap-1">
                 {taskDetailLoading ? (
                   <li className="text-xs text-muted-foreground italic">Loading history…</li>

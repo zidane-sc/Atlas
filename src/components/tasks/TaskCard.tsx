@@ -70,11 +70,11 @@ function TaskCardComponent({
     >
       {/* Optional Top MCP Banner Header (clean & dedicated) */}
       {isAgentTask && (
-        <div className="flex items-center justify-between px-2 py-0.5 -mx-1 -mt-1 bg-cyan-950/40 border-b border-cyan-500/30 font-mono text-[9px] text-cyan-300">
-          <span className="flex items-center gap-1 font-bold">
+        <div className="flex items-center justify-between px-2.5 py-1 -mx-3 -mt-3 mb-1 bg-cyan-950/70 border-b border-cyan-500/40 font-mono text-[9px] text-cyan-300">
+          <span className="flex items-center gap-1.5 font-bold tracking-wider">
             ⚡ MCP SPAWNED
           </span>
-          <span className="text-[8px] opacity-75">HERMES</span>
+          <span className="text-[8px] opacity-75 font-mono">HERMES</span>
         </div>
       )}
 
