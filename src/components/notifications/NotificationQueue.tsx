@@ -26,10 +26,15 @@ export function NotificationQueue({
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const lastPlayedIdRef = useRef<string | null>(null);
 
-  useEffect(() => {
-    if (notifications.length === 0) return;
+  const notificationsEnabled = typeof settings === 'object' && 'notificationsEnabled' in settings ? settings.notificationsEnabled : true;
+  const visibleNotifications = notificationsEnabled
+    ? notifications
+    : notifications.filter((n) => n.event.type !== 'task:overdue' && n.event.type !== 'task:due-soon');
 
-    const latest = notifications[0];
+  useEffect(() => {
+    if (visibleNotifications.length === 0) return;
+
+    const latest = visibleNotifications[0];
     if (latest.id === lastPlayedIdRef.current) return;
 
     const soundEnabled = typeof settings === 'object' && 'soundEnabled' in settings ? settings.soundEnabled : true;
@@ -46,13 +51,13 @@ export function NotificationQueue({
         // Silent fail
       }
     }
-  }, [notifications, settings]);
+  }, [visibleNotifications, settings]);
 
   return (
     <>
       <audio ref={audioRef} src="/sounds/notification.mp3" />
       <div className="fixed top-4 right-4 z-50 flex flex-col gap-2 max-w-sm pointer-events-none">
-        {notifications.map((notification) => {
+        {visibleNotifications.map((notification) => {
           const { icon, text } = getNotificationMessage(notification.event);
           const isRescheduledEvent = notification.event.type === 'task:rescheduled';
           const showUndoButton = isRescheduledEvent && lastReschedule && onUndo;

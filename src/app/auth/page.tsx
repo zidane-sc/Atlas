@@ -69,7 +69,7 @@ export default async function AuthPage({
           action={async () => {
             "use server";
             try {
-              await signIn("github", { redirectTo: "/dashboard" });
+              await signIn("github", { redirectTo: "/" });
             } catch (err) {
               if (err instanceof AuthError) {
                 redirect(`/auth?error=${err.type}`);
@@ -96,7 +96,7 @@ export default async function AuthPage({
             action={async () => {
               "use server";
               try {
-                await signIn("dev", { redirectTo: "/dashboard" });
+                await signIn("dev", { redirectTo: "/" });
               } catch (err) {
                 if (err instanceof AuthError) {
                   redirect(`/auth?error=${err.type}`);

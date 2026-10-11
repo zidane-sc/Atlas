@@ -147,8 +147,8 @@ export default function Page() {
     setSavingName(false);
   };
 
-  const handleToggle = useCallback((key: string) => {
-    const current = getSetting(key);
+  const handleToggle = useCallback((key: string, defaultValue: boolean = false) => {
+    const current = getSetting(key, defaultValue);
     void updateSetting(key, !current);
   }, [getSetting, updateSetting]);
 
@@ -254,10 +254,10 @@ export default function Page() {
 
       <div className="max-w-2xl flex-1 overflow-y-auto p-6">
         <SectionDivider>Experience</SectionDivider>
-        <Toggle checked={!!getSetting("notifications")} onChange={() => handleToggle("notifications")} label="Notifications" description="Overdue quest alerts" />
-        <Toggle checked={!!getSetting("soundEnabled")} onChange={() => handleToggle("soundEnabled")} label="Sound Effects" description="Subtle chimes on task complete and level-up" />
+        <Toggle checked={getSetting("notifications", true) !== false} onChange={() => handleToggle("notifications", true)} label="Notifications" description="Overdue quest alerts" />
+        <Toggle checked={getSetting("soundEnabled", true) !== false} onChange={() => handleToggle("soundEnabled", true)} label="Sound Effects" description="Subtle chimes on task complete and level-up" />
         <Toggle checked={!!reduceMotion} onChange={setReduceMotion} label="Reduce Motion" description="Shortens all animation durations" />
-        <Toggle checked={!!getSetting("compactView")} onChange={() => handleToggle("compactView")} label="Compact View" description="Tighter spacing in list and table views" />
+        <Toggle checked={!!getSetting("compactView", false)} onChange={() => handleToggle("compactView", false)} label="Compact View" description="Tighter spacing in list and table views" />
 
         <SectionDivider>Pomodoro Timer</SectionDivider>
         <div className="flex items-center justify-between border-b border-border py-3">
@@ -300,7 +300,7 @@ export default function Page() {
           <div className="mb-1 text-sm text-foreground">Default View</div>
           <div className="mb-2 text-sm text-muted-foreground">Screen shown on app open</div>
           <select
-            value={getSetting("defaultView") as string}
+            value={(getSetting("defaultView", "dashboard") as string) || "dashboard"}
             onChange={(e) => void updateSetting("defaultView", e.target.value)}
             className="border-2 border-border bg-secondary px-2 py-1 text-sm text-foreground"
           >

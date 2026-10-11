@@ -210,7 +210,7 @@ export function TasksProvider({
   const lastSyncTimeRef = useRef<Record<string, number>>({});
   const { notify, emit } = useNotifications();
   const { projects } = useProjects();
-  const { soundEnabled, focusMinutes } = useSettings();
+  const { soundEnabled, focusMinutes, notificationsEnabled } = useSettings();
 
   useEffect(() => {
     if (justCompletedAt == null) return;
@@ -222,6 +222,7 @@ export function TasksProvider({
   useEffect(() => {
     if (dueCheckRanRef.current) return;
     dueCheckRanRef.current = true;
+    if (!notificationsEnabled) return;
     const today = getTodayDate();
     // Once per calendar day per browser — a to-do app shouldn't re-nag about the same
     // overdue quest on every navigation within the same day.
@@ -229,7 +230,7 @@ export function TasksProvider({
     if (lastCheck === today) return;
     window.localStorage.setItem("atlas:lastDueCheck", today);
     checkAndEmitDueDateNotifications(tasks, today);
-  }, [tasks]);
+  }, [tasks, notificationsEnabled]);
 
   // Real-time multi-device sync via SSE
   useEffect(() => {

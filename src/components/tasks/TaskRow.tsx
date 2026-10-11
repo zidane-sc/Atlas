@@ -11,8 +11,9 @@ export function TaskRow({ task, onSelect }: { task: Task; onSelect: (task: Task)
   return (
     <button
       type="button"
+      data-task-row
       onClick={() => onSelect(task)}
-      className="flex w-full items-center gap-3 border-b border-border px-4 py-2 text-left transition-colors hover:bg-secondary"
+      className="task-row flex w-full items-center gap-3 border-b border-border px-4 py-2 text-left transition-colors hover:bg-secondary"
     >
       <PriorityMark priority={task.priority} withLabel />
       <StatusBadge status={task.status} />

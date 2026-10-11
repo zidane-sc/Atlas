@@ -1,25 +1,31 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { useSettings } from "@/components/providers/SettingsProvider";
 
 export function DefaultViewRedirect() {
   const router = useRouter();
   const pathname = usePathname();
-  const { settings } = useSettings();
+  const { defaultView } = useSettings();
+  const redirectedRef = useRef(false);
 
   useEffect(() => {
-    if (pathname !== "/") return;
+    if (redirectedRef.current) return;
+    if (pathname !== "/dashboard") return;
 
-    const defaultViewSetting = settings.find((s) => s.key === "defaultView");
-    const defaultView = (defaultViewSetting?.value as string) || "dashboard";
-
-    if (defaultView !== "dashboard") {
-      // Kanban is the default tab shown at /tasks itself, not its own route.
-      router.push(defaultView === "kanban" ? "/tasks" : `/tasks/${defaultView}`);
+    // Direct landing on /dashboard: redirect once per session if user configured another default view
+    if (typeof window !== "undefined") {
+      const visited = sessionStorage.getItem("atlas:session_started");
+      if (!visited) {
+        sessionStorage.setItem("atlas:session_started", "true");
+        if (defaultView && defaultView !== "dashboard") {
+          redirectedRef.current = true;
+          router.replace(defaultView === "kanban" ? "/tasks" : `/tasks/${defaultView}`);
+        }
+      }
     }
-  }, [pathname, settings, router]);
+  }, [pathname, defaultView, router]);
 
   return null;
 }

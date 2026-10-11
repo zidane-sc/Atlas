@@ -11,6 +11,9 @@ interface SettingsContextValue {
   soundEnabled: boolean;
   focusMinutes: number;
   breakMinutes: number;
+  notificationsEnabled: boolean;
+  compactView: boolean;
+  defaultView: string;
 }
 
 const SettingsContext = createContext<SettingsContextValue | null>(null);
@@ -34,10 +37,17 @@ export function SettingsProvider({
   const soundEnabled = getSettingValue("soundEnabled") !== false;
   const focusMinutes = Number(getSettingValue("focusMinutes")) || 25;
   const breakMinutes = Number(getSettingValue("breakMinutes")) || 5;
+  const notificationsEnabled = getSettingValue("notifications") !== false;
+  const compactView = !!getSettingValue("compactView");
+  const defaultView = (getSettingValue("defaultView") as string) || "dashboard";
 
   useEffect(() => {
     document.documentElement.classList.toggle("reduce-motion", reduceMotion);
   }, [reduceMotion]);
+
+  useEffect(() => {
+    document.documentElement.classList.toggle("compact-view", compactView);
+  }, [compactView]);
 
   const updateSetting = useCallback(async (key: string, value: unknown) => {
     // Optimistic update
@@ -71,8 +81,22 @@ export function SettingsProvider({
       soundEnabled,
       focusMinutes,
       breakMinutes,
+      notificationsEnabled,
+      compactView,
+      defaultView,
     }),
-    [settings, updateSetting, reduceMotion, setReduceMotion, soundEnabled, focusMinutes, breakMinutes]
+    [
+      settings,
+      updateSetting,
+      reduceMotion,
+      setReduceMotion,
+      soundEnabled,
+      focusMinutes,
+      breakMinutes,
+      notificationsEnabled,
+      compactView,
+      defaultView,
+    ]
   );
 
   return <SettingsContext.Provider value={value}>{children}</SettingsContext.Provider>;

@@ -27,6 +27,22 @@
   transition-duration: 0.01ms !important;
 }
 
+/* Settings → Compact View — tighter spacing in list and table views */
+.compact-view .task-row,
+.compact-view button[data-task-row] {
+  padding-top: 0.25rem !important;
+  padding-bottom: 0.25rem !important;
+  gap: 0.5rem !important;
+}
+
+.compact-view table th,
+.compact-view table td {
+  padding-top: 0.25rem !important;
+  padding-bottom: 0.25rem !important;
+  padding-left: 0.5rem !important;
+  padding-right: 0.5rem !important;
+}
+
 /* Hard 2px border, no radius, "pressed" state on click — docs/03-design.md §5 */
 .pixel-panel {
   border-width: 2px;

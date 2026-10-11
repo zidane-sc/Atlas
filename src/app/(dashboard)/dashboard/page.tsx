@@ -15,8 +15,7 @@ import { formatDueDate, isDueToday, isOverdue } from "@/lib/task-utils";
 import { MOCK_NOW, TYPE_ICON, todaysDailyQuest } from "@/lib/mock-data";
 
 export default function Page() {
-  const { settings } = useSettings();
-  const compactView = settings.find((s) => s.key === "compactView")?.value ?? false;
+  const { compactView } = useSettings();
   const { tasks, allTimeTasks, characterSheet, activityLogs, lastQuestClaimedAt, claimDailyQuest } = useTasks();
   // const { sprints } = useSprints(); // Sprints removed
   const sheet = characterSheet;
