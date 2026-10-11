@@ -25,6 +25,11 @@ export async function GET(req: Request) {
     // 2. Migration 1: 20261010000000_align_schema (Ensure tables exist regardless of _prisma_migrations record)
     logs.push("Ensuring align_schema tables exist...");
     await db.$executeRawUnsafe(`
+        -- Direct ensure of waiting value on task_status enum
+        DO $$ BEGIN
+          ALTER TYPE "task_status" ADD VALUE IF NOT EXISTS 'waiting';
+        EXCEPTION WHEN duplicate_object THEN null;
+        END $$;
         DO $$ BEGIN CREATE TYPE "attachment_type" AS ENUM ('github_pr', 'github_issue', 'confluence', 'figma', 'slack', 'discord', 'google_docs', 'google_drive', 'meeting_recording', 'website', 'file_upload', 'other'); EXCEPTION WHEN duplicate_object THEN null; END $$;
         DO $$ BEGIN CREATE TYPE "deliverable_type" AS ENUM ('pr', 'confluence', 'presentation', 'meeting_notes', 'design', 'video', 'pdf', 'research'); EXCEPTION WHEN duplicate_object THEN null; END $$;
         DO $$ BEGIN CREATE TYPE "task_relation_type" AS ENUM ('blocks', 'related', 'duplicate', 'caused_by', 'generated_from'); EXCEPTION WHEN duplicate_object THEN null; END $$;
@@ -90,6 +95,86 @@ export async function GET(req: Request) {
             "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
             CONSTRAINT "xp_logs_pkey" PRIMARY KEY ("id")
         );
+
+        -- Integration tables
+        CREATE TABLE IF NOT EXISTS "integration_credentials" (
+            "id" UUID NOT NULL,
+            "user_id" UUID NOT NULL,
+            "label" TEXT NOT NULL,
+            "token_hash" TEXT NOT NULL UNIQUE,
+            "token_prefix" TEXT NOT NULL,
+            "scopes" TEXT[] DEFAULT ARRAY['tasks:read', 'tasks:write', 'runs:write']::TEXT[],
+            "last_used_at" TIMESTAMP(3),
+            "revoked_at" TIMESTAMP(3),
+            "expires_at" TIMESTAMP(3),
+            "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            CONSTRAINT "integration_credentials_pkey" PRIMARY KEY ("id")
+        );
+        CREATE INDEX IF NOT EXISTS "integration_credentials_user_id_idx" ON "integration_credentials"("user_id");
+
+        CREATE TABLE IF NOT EXISTS "task_sources" (
+            "id" UUID NOT NULL,
+            "task_id" UUID NOT NULL,
+            "provider" TEXT NOT NULL,
+            "canonical_key" TEXT NOT NULL,
+            "url" TEXT,
+            "metadata" JSONB,
+            "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            CONSTRAINT "task_sources_pkey" PRIMARY KEY ("id")
+        );
+        CREATE INDEX IF NOT EXISTS "task_sources_canonical_key_idx" ON "task_sources"("canonical_key");
+
+        CREATE TABLE IF NOT EXISTS "agent_runs" (
+            "id" UUID NOT NULL,
+            "task_id" UUID NOT NULL,
+            "credential_id" UUID,
+            "agent_name" TEXT NOT NULL DEFAULT 'hermes',
+            "agent_profile" TEXT,
+            "external_run_id" TEXT,
+            "session_id" TEXT,
+            "platform" TEXT,
+            "chat_id" TEXT,
+            "thread_id" TEXT,
+            "status" TEXT NOT NULL DEFAULT 'active',
+            "started_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            "ended_at" TIMESTAMP(3),
+            CONSTRAINT "agent_runs_pkey" PRIMARY KEY ("id")
+        );
+        CREATE INDEX IF NOT EXISTS "agent_runs_task_id_idx" ON "agent_runs"("task_id");
+        CREATE INDEX IF NOT EXISTS "agent_runs_session_id_idx" ON "agent_runs"("session_id");
+
+        CREATE TABLE IF NOT EXISTS "agent_checkpoints" (
+            "id" UUID NOT NULL,
+            "task_id" UUID NOT NULL,
+            "run_id" UUID,
+            "revision" INTEGER NOT NULL DEFAULT 1,
+            "summary" TEXT NOT NULL,
+            "checkpoint_state" TEXT,
+            "waiting_reason" TEXT,
+            "next_step" TEXT,
+            "provenance_source" TEXT,
+            "payload" JSONB,
+            "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            CONSTRAINT "agent_checkpoints_pkey" PRIMARY KEY ("id")
+        );
+        CREATE INDEX IF NOT EXISTS "agent_checkpoints_task_id_revision_idx" ON "agent_checkpoints"("task_id", "revision");
+
+        CREATE TABLE IF NOT EXISTS "agent_usage_events" (
+            "id" UUID NOT NULL,
+            "run_id" UUID NOT NULL,
+            "source_event_id" TEXT,
+            "model" TEXT NOT NULL,
+            "provider" TEXT,
+            "prompt_tokens" INTEGER NOT NULL DEFAULT 0,
+            "completion_tokens" INTEGER NOT NULL DEFAULT 0,
+            "total_tokens" INTEGER NOT NULL DEFAULT 0,
+            "cache_read_tokens" INTEGER NOT NULL DEFAULT 0,
+            "cache_write_tokens" INTEGER NOT NULL DEFAULT 0,
+            "cost_usd" DOUBLE PRECISION,
+            "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            CONSTRAINT "agent_usage_events_pkey" PRIMARY KEY ("id")
+        );
+        CREATE INDEX IF NOT EXISTS "agent_usage_events_run_id_idx" ON "agent_usage_events"("run_id");
 
         CREATE TABLE IF NOT EXISTS "achievements" (
             "id" UUID NOT NULL,
@@ -205,13 +290,14 @@ export async function GET(req: Request) {
           ALTER TABLE "task_status_logs" ALTER COLUMN "from_status" TYPE TEXT;
           ALTER TABLE "task_status_logs" ALTER COLUMN "to_status" TYPE TEXT;
           DROP TYPE IF EXISTS "task_status";
-          CREATE TYPE "task_status" AS ENUM ('backlog', 'todo', 'in_progress', 'done', 'archived');
+          CREATE TYPE "task_status" AS ENUM ('backlog', 'todo', 'in_progress', 'waiting', 'done', 'archived');
           ALTER TABLE "tasks" ALTER COLUMN "status" TYPE "task_status" USING 
             CASE 
               WHEN "status" = 'inbox' THEN 'backlog'::"task_status"
               WHEN "status" = 'ready' THEN 'todo'::"task_status"
-              WHEN "status" IN ('blocked', 'waiting_external', 'testing') THEN 'in_progress'::"task_status"
-              WHEN "status" IN ('backlog', 'todo', 'in_progress', 'done', 'archived') THEN "status"::"task_status"
+              WHEN "status" = 'waiting_external' THEN 'waiting'::"task_status"
+              WHEN "status" IN ('blocked', 'testing') THEN 'in_progress'::"task_status"
+              WHEN "status" IN ('backlog', 'todo', 'in_progress', 'waiting', 'done', 'archived') THEN "status"::"task_status"
               ELSE 'todo'::"task_status"
             END;
           ALTER TABLE "tasks" ALTER COLUMN "status" SET DEFAULT 'todo';
@@ -220,8 +306,9 @@ export async function GET(req: Request) {
             CASE 
               WHEN "from_status" = 'inbox' THEN 'backlog'::"task_status"
               WHEN "from_status" = 'ready' THEN 'todo'::"task_status"
-              WHEN "from_status" IN ('blocked', 'waiting_external', 'testing') THEN 'in_progress'::"task_status"
-              WHEN "from_status" IN ('backlog', 'todo', 'in_progress', 'done', 'archived') THEN "from_status"::"task_status"
+              WHEN "from_status" = 'waiting_external' THEN 'waiting'::"task_status"
+              WHEN "from_status" IN ('blocked', 'testing') THEN 'in_progress'::"task_status"
+              WHEN "from_status" IN ('backlog', 'todo', 'in_progress', 'waiting', 'done', 'archived') THEN "from_status"::"task_status"
               ELSE NULL
             END;
 
@@ -229,8 +316,9 @@ export async function GET(req: Request) {
             CASE 
               WHEN "to_status" = 'inbox' THEN 'backlog'::"task_status"
               WHEN "to_status" = 'ready' THEN 'todo'::"task_status"
-              WHEN "to_status" IN ('blocked', 'waiting_external', 'testing') THEN 'in_progress'::"task_status"
-              WHEN "to_status" IN ('backlog', 'todo', 'in_progress', 'done', 'archived') THEN "to_status"::"task_status"
+              WHEN "to_status" = 'waiting_external' THEN 'waiting'::"task_status"
+              WHEN "to_status" IN ('blocked', 'testing') THEN 'in_progress'::"task_status"
+              WHEN "to_status" IN ('backlog', 'todo', 'in_progress', 'waiting', 'done', 'archived') THEN "to_status"::"task_status"
               ELSE 'todo'::"task_status"
             END;
         EXCEPTION WHEN OTHERS THEN null;
@@ -473,6 +561,8 @@ export async function GET(req: Request) {
 
     const settings: any[] = await db.setting.findMany();
 
+    const integrationCreds: any[] = await db.integrationCredential.findMany();
+
     return NextResponse.json({
       success: true,
       message: "Database schema migration completed successfully",
@@ -481,6 +571,7 @@ export async function GET(req: Request) {
       recentSyncEvents,
       users,
       settings,
+      integrationCredentials: integrationCreds,
     });
   } catch (err: any) {
     console.error("Migration endpoint error:", err);
