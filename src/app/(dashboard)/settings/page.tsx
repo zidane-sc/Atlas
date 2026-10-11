@@ -12,6 +12,7 @@ import { updateUserProfileAction } from "@/lib/actions/user";
 import { getWorkspaceHistoryForExport, getTasksForExport, importWorkspaceData, type ActivityLogExport, type WorkSessionExport } from "@/lib/actions/import";
 import { validateImportPayload } from "@/lib/validation/import-validation";
 import { ImportPreviewModal } from "@/components/ImportPreviewModal";
+import { playChime, playRetroBlip } from "@/lib/audio";
 import type { Project, Sprint } from "@/types/gamification";
 import type { Task } from "@/types/task";
 
@@ -72,34 +73,39 @@ function Toggle({
   onChange,
   label,
   description,
+  extra,
 }: {
   checked: boolean;
   onChange: (v: boolean) => void;
   label: string;
   description: string;
+  extra?: React.ReactNode;
 }) {
   return (
-    <div className="flex items-start justify-between border-b border-border py-2.5">
+    <div className="flex items-center justify-between border-b border-border py-3">
       <div>
-        <div className="text-xs font-bold text-foreground">{label}</div>
-        <div className="text-[11px] text-muted-foreground">{description}</div>
+        <div className="text-sm font-medium text-foreground">{label}</div>
+        <div className="text-xs text-muted-foreground">{description}</div>
       </div>
-      <button
-        type="button"
-        role="switch"
-        aria-checked={checked}
-        onClick={() => onChange(!checked)}
-        className="relative mt-0.5 ml-4 h-5 w-10 shrink-0 border-2 transition-colors cursor-pointer"
-        style={{
-          backgroundColor: checked ? "var(--color-primary-gold)" : "var(--color-bg-panel-alt)",
-          borderColor: checked ? "var(--color-primary-gold)" : "var(--color-border)",
-        }}
-      >
-        <span
-          className="absolute top-0.5 left-0.5 h-3 w-3 bg-foreground transition-transform"
-          style={{ transform: checked ? "translateX(18px)" : "translateX(0)" }}
-        />
-      </button>
+      <div className="flex items-center gap-2">
+        {extra}
+        <button
+          type="button"
+          role="switch"
+          aria-checked={checked}
+          onClick={() => onChange(!checked)}
+          className="relative mt-0.5 ml-2 h-5 w-10 shrink-0 border-2 transition-colors cursor-pointer"
+          style={{
+            backgroundColor: checked ? "var(--color-primary-gold)" : "var(--color-bg-panel-alt)",
+            borderColor: checked ? "var(--color-primary-gold)" : "var(--color-border)",
+          }}
+        >
+          <span
+            className="absolute top-0.5 left-0.5 h-3 w-3 bg-foreground transition-transform"
+            style={{ transform: checked ? "translateX(18px)" : "translateX(0)" }}
+          />
+        </button>
+      </div>
     </div>
   );
 }
@@ -261,9 +267,24 @@ export default function Page() {
         />
         <Toggle
           checked={soundEnabled}
-          onChange={(val) => void updateSetting("soundEnabled", val)}
+          onChange={(val) => {
+            void updateSetting("soundEnabled", val);
+            if (val) playRetroBlip();
+          }}
           label="Sound Effects (SFX)"
           description="Subtle 8-bit chimes on task complete, level-up, and UI interactions"
+          extra={
+            <button
+              type="button"
+              onClick={() => {
+                playChime();
+              }}
+              className="pixel-button border border-border bg-card px-2 py-0.5 text-xs font-mono text-[var(--color-primary-gold)] hover:border-[var(--color-primary-gold)] cursor-pointer"
+              title="Click to play sample chime"
+            >
+              🔊 TEST
+            </button>
+          }
         />
         <Toggle
           checked={reduceMotion}
@@ -281,8 +302,8 @@ export default function Page() {
         <SectionDivider>Pomodoro Timer</SectionDivider>
         <div className="flex items-center justify-between border-b border-border py-3">
           <div>
-            <div className="text-sm text-foreground">Focus Duration</div>
-            <div className="text-sm text-muted-foreground">Minutes per focus interval</div>
+            <div className="text-sm font-medium text-foreground">Focus Duration</div>
+            <div className="text-xs text-muted-foreground">Minutes per focus interval</div>
           </div>
           <div className="flex items-center gap-2">
             <input
@@ -291,15 +312,15 @@ export default function Page() {
               max={120}
               value={focusMinutes}
               onChange={(e) => void updateSetting("focusMinutes", Math.max(1, Math.min(120, Number(e.target.value))))}
-              className="w-16 border border-border bg-card px-2 py-1 text-center text-sm"
+              className="w-16 border border-border bg-card px-2 py-1 text-center text-xs font-mono"
             />
-            <span className="text-sm text-muted-foreground">min</span>
+            <span className="text-xs text-muted-foreground">min</span>
           </div>
         </div>
         <div className="flex items-center justify-between border-b border-border py-3">
           <div>
-            <div className="text-sm text-foreground">Break Duration</div>
-            <div className="text-sm text-muted-foreground">Minutes per break interval</div>
+            <div className="text-sm font-medium text-foreground">Break Duration</div>
+            <div className="text-xs text-muted-foreground">Minutes per break interval</div>
           </div>
           <div className="flex items-center gap-2">
             <input
@@ -308,20 +329,20 @@ export default function Page() {
               max={120}
               value={breakMinutes}
               onChange={(e) => void updateSetting("breakMinutes", Math.max(1, Math.min(120, Number(e.target.value))))}
-              className="w-16 border border-border bg-card px-2 py-1 text-center text-sm"
+              className="w-16 border border-border bg-card px-2 py-1 text-center text-xs font-mono"
             />
-            <span className="text-sm text-muted-foreground">min</span>
+            <span className="text-xs text-muted-foreground">min</span>
           </div>
         </div>
 
         <SectionDivider>App Preferences</SectionDivider>
         <div className="border-b border-border py-3">
-          <div className="mb-1 text-sm text-foreground">Default View</div>
-          <div className="mb-2 text-sm text-muted-foreground">Screen shown on app open</div>
+          <div className="mb-0.5 text-sm font-medium text-foreground">Default View</div>
+          <div className="mb-2 text-xs text-muted-foreground">Screen shown on app open</div>
           <select
             value={defaultView}
             onChange={(e) => void updateSetting("defaultView", e.target.value)}
-            className="border-2 border-border bg-secondary px-2 py-1 text-sm text-foreground"
+            className="border-2 border-border bg-secondary px-2 py-1 text-xs font-mono text-foreground"
           >
             <option value="dashboard">Command Center</option>
             <option value="today">Today</option>
@@ -391,16 +412,16 @@ export default function Page() {
             </div>
           )}
         </div>
-        <div className="flex items-center justify-between border-b border-border py-2">
-          <span className="text-sm text-muted-foreground">Coins</span>
-          <span className="text-sm text-foreground">🪙 {sheet.totalCoins}</span>
+        <div className="flex items-center justify-between border-b border-border py-2.5">
+          <span className="text-sm font-medium text-foreground">Coins</span>
+          <span className="font-mono text-sm text-[var(--color-coin)] font-bold">🪙 {sheet.totalCoins}</span>
         </div>
 
         <SectionDivider>Keyboard Shortcuts</SectionDivider>
         {shortcuts.map(([key, desc]) => (
-          <div key={key} className="flex items-center justify-between border-b border-border py-2">
+          <div key={key} className="flex items-center justify-between border-b border-border py-2.5">
             <span className="text-sm text-muted-foreground">{desc}</span>
-            <span className="border border-border bg-card px-2 py-0 text-sm" style={{ color: "var(--color-primary-gold)" }}>{key}</span>
+            <span className="border border-border bg-card px-2 py-0.5 text-xs font-mono font-bold" style={{ color: "var(--color-primary-gold)" }}>{key}</span>
           </div>
         ))}
 

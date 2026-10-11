@@ -1,29 +1,6 @@
 // Web Audio API 8-bit sound synthesizers (Zero-dependency, browser native, auto-unlocked)
 
 let sharedAudioContext: AudioContext | null = null;
-let isUnlocked = false;
-
-function setupAudioUnlock() {
-  if (typeof window === "undefined" || isUnlocked) return;
-  const unlock = () => {
-    try {
-      if (sharedAudioContext && sharedAudioContext.state === "suspended") {
-        sharedAudioContext.resume().catch(() => {});
-      }
-      isUnlocked = true;
-    } catch {}
-    window.removeEventListener("click", unlock);
-    window.removeEventListener("keydown", unlock);
-    window.removeEventListener("touchstart", unlock);
-  };
-  window.addEventListener("click", unlock, { once: true, passive: true });
-  window.addEventListener("keydown", unlock, { once: true, passive: true });
-  window.addEventListener("touchstart", unlock, { once: true, passive: true });
-}
-
-if (typeof window !== "undefined") {
-  setupAudioUnlock();
-}
 
 export function getAudioContext(): AudioContext | null {
   if (typeof window === "undefined") return null;
@@ -35,20 +12,43 @@ export function getAudioContext(): AudioContext | null {
       if (!AudioContextClass) return null;
       sharedAudioContext = new AudioContextClass();
     }
-    if (sharedAudioContext.state === "suspended") {
-      sharedAudioContext.resume().catch(() => {});
-    }
     return sharedAudioContext;
   } catch {
     return null;
   }
 }
 
+// Active wake-up on any user gesture (pointerdown, touchstart, keydown)
+if (typeof window !== "undefined") {
+  const wakeAudio = () => {
+    try {
+      const ctx = getAudioContext();
+      if (ctx && ctx.state === "suspended") {
+        ctx.resume().catch(() => {});
+      }
+    } catch {}
+  };
+  window.addEventListener("pointerdown", wakeAudio, { passive: true });
+  window.addEventListener("touchstart", wakeAudio, { passive: true });
+  window.addEventListener("keydown", wakeAudio, { passive: true });
+}
+
+function runWithContext(fn: (ctx: AudioContext) => void) {
+  const ctx = getAudioContext();
+  if (!ctx) return;
+  if (ctx.state === "suspended") {
+    ctx
+      .resume()
+      .then(() => fn(ctx))
+      .catch(() => {});
+  } else {
+    fn(ctx);
+  }
+}
+
 /** 8-bit Triad chime on quest complete / focus session finish (E5 -> G5 -> C6) */
 export function playChime() {
-  try {
-    const ctx = getAudioContext();
-    if (!ctx) return;
+  runWithContext((ctx) => {
     const now = ctx.currentTime;
     const notes = [659.25, 783.99, 1046.5]; // E5, G5, C6
     notes.forEach((freq, idx) => {
@@ -59,23 +59,21 @@ export function playChime() {
       osc.frequency.setValueAtTime(freq, now + idx * 0.08);
 
       gain.gain.setValueAtTime(0, now + idx * 0.08);
-      gain.gain.linearRampToValueAtTime(0.18, now + idx * 0.08 + 0.03);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.08 + 0.32);
+      gain.gain.linearRampToValueAtTime(0.2, now + idx * 0.08 + 0.03);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.08 + 0.35);
 
       osc.connect(gain);
       gain.connect(ctx.destination);
 
       osc.start(now + idx * 0.08);
-      osc.stop(now + idx * 0.08 + 0.35);
+      osc.stop(now + idx * 0.08 + 0.38);
     });
-  } catch {}
+  });
 }
 
 /** 8-bit Coin pickup sound (B5 -> E6 arpeggio) */
 export function playRetroCoin() {
-  try {
-    const ctx = getAudioContext();
-    if (!ctx) return;
+  runWithContext((ctx) => {
     const now = ctx.currentTime;
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
@@ -85,21 +83,19 @@ export function playRetroCoin() {
     osc.frequency.setValueAtTime(1318.51, now + 0.08); // E6
 
     gain.gain.setValueAtTime(0, now);
-    gain.gain.linearRampToValueAtTime(0.2, now + 0.02);
+    gain.gain.linearRampToValueAtTime(0.25, now + 0.02);
     gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
 
     osc.connect(gain);
     gain.connect(ctx.destination);
     osc.start(now);
-    osc.stop(now + 0.35);
-  } catch {}
+    osc.stop(now + 0.36);
+  });
 }
 
 /** Heavy mechanical snap/thud when placing or dropping furniture */
 export function playRetroEquip() {
-  try {
-    const ctx = getAudioContext();
-    if (!ctx) return;
+  runWithContext((ctx) => {
     const now = ctx.currentTime;
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
@@ -108,21 +104,19 @@ export function playRetroEquip() {
     osc.frequency.setValueAtTime(320, now);
     osc.frequency.exponentialRampToValueAtTime(90, now + 0.12);
 
-    gain.gain.setValueAtTime(0.25, now);
+    gain.gain.setValueAtTime(0.3, now);
     gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
 
     osc.connect(gain);
     gain.connect(ctx.destination);
     osc.start(now);
-    osc.stop(now + 0.13);
-  } catch {}
+    osc.stop(now + 0.14);
+  });
 }
 
 /** High cheerful blip for UI interactions and notifications */
 export function playRetroBlip() {
-  try {
-    const ctx = getAudioContext();
-    if (!ctx) return;
+  runWithContext((ctx) => {
     const now = ctx.currentTime;
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
@@ -130,21 +124,19 @@ export function playRetroBlip() {
     osc.type = "square";
     osc.frequency.setValueAtTime(880, now);
 
-    gain.gain.setValueAtTime(0.08, now);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+    gain.gain.setValueAtTime(0.12, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.09);
 
     osc.connect(gain);
     gain.connect(ctx.destination);
     osc.start(now);
-    osc.stop(now + 0.08);
-  } catch {}
+    osc.stop(now + 0.09);
+  });
 }
 
 /** Magical sparkle arpeggio for decor clicks and achievements */
 export function playRetroSparkle() {
-  try {
-    const ctx = getAudioContext();
-    if (!ctx) return;
+  runWithContext((ctx) => {
     const now = ctx.currentTime;
     const notes = [523.25, 659.25, 783.99, 1046.5]; // C5, E5, G5, C6
 
@@ -155,13 +147,13 @@ export function playRetroSparkle() {
       osc.frequency.setValueAtTime(freq, now + idx * 0.05);
 
       gain.gain.setValueAtTime(0, now + idx * 0.05);
-      gain.gain.linearRampToValueAtTime(0.12, now + idx * 0.05 + 0.02);
+      gain.gain.linearRampToValueAtTime(0.15, now + idx * 0.05 + 0.02);
       gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.05 + 0.22);
 
       osc.connect(gain);
       gain.connect(ctx.destination);
       osc.start(now + idx * 0.05);
-      osc.stop(now + idx * 0.05 + 0.23);
+      osc.stop(now + idx * 0.05 + 0.25);
     });
-  } catch {}
+  });
 }
