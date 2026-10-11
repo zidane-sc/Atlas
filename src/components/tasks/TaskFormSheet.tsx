@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useMemo, useRef } from "react";
 import { Check, ChevronDown, Copy, Trash2, Info, Pin, Bot, Cpu } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { DatePicker } from "@/components/ui/DatePicker";
 import { BattleTimer } from "@/components/gamification/BattleTimer";
 import {
@@ -57,15 +58,24 @@ import type {
 } from "@/types/task";
 
 function Section({ title, shape, defaultOpen = true, children }: { title: string; shape: string; defaultOpen?: boolean; children: React.ReactNode }) {
+  const [open, setOpen] = useState(defaultOpen);
   return (
-    <div className="border-2 border-border bg-card/60">
-      <div className="flex w-full items-center justify-between px-3 py-2 border-b border-border bg-[var(--color-bg-panel-alt)] text-left text-xs font-bold font-mono tracking-wider text-foreground">
+    <div className="border-2 border-border bg-card/60 overflow-hidden">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="flex w-full items-center justify-between px-3 py-2 border-b border-border bg-[var(--color-bg-panel-alt)] text-left text-xs font-bold font-mono tracking-wider text-foreground hover:bg-[var(--color-bg-panel)] transition-colors cursor-pointer select-none"
+      >
         <span className="flex items-center gap-2">
           <span style={{ color: "var(--color-primary-gold)" }}>{shape}</span>
           <span className="uppercase">{title}</span>
         </span>
-      </div>
-      <div className="p-3 text-xs">{children}</div>
+        <ChevronDown
+          size={14}
+          className={cn("transition-transform duration-200 text-muted-foreground", open && "rotate-180")}
+        />
+      </button>
+      {open && <div className="p-3 text-xs">{children}</div>}
     </div>
   );
 }

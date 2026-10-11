@@ -68,21 +68,23 @@ function TaskCardComponent({
       }}
       className="quest-card flex w-full cursor-grab flex-col gap-2 p-3 text-left select-none animate-in fade-in zoom-in-95"
     >
-      {/* Top row: Code + Type + AI Label + Priority + Status Move */}
+      {/* Optional Top MCP Banner Header (clean & dedicated) */}
+      {isAgentTask && (
+        <div className="flex items-center justify-between px-2 py-0.5 -mx-1 -mt-1 bg-cyan-950/40 border-b border-cyan-500/30 font-mono text-[9px] text-cyan-300">
+          <span className="flex items-center gap-1 font-bold">
+            ⚡ MCP SPAWNED
+          </span>
+          <span className="text-[8px] opacity-75">HERMES</span>
+        </div>
+      )}
+
+      {/* Primary Top Row: Code + Type + Priority + Status Move */}
       <div className="flex items-center justify-between gap-2 border-b border-border/30 pb-1.5">
         <div className="flex items-center gap-1.5 min-w-0">
           <span aria-hidden className="text-sm shrink-0 leading-none">{TYPE_ICON[task.type]}</span>
           <span className="text-xs font-mono font-bold tracking-tight text-[var(--color-primary-gold)]">
             {task.code}
           </span>
-          {isAgentTask && (
-            <span
-              className="px-1.5 py-0 text-[9px] font-mono font-bold border border-cyan-500/50 bg-cyan-950/60 text-cyan-300"
-              title="Spawned via Atlas MCP Server"
-            >
-              ⚡ MCP
-            </span>
-          )}
         </div>
 
         <div className="flex items-center gap-1.5 shrink-0">
