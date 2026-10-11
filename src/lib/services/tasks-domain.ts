@@ -61,35 +61,35 @@ export async function domainCreateTask(
             dueDate: dueDate ? new Date(dueDate) : undefined,
             waitingReason: waitingReason || undefined,
             metadata: metadata || undefined,
-            tags: rest.tags?.map((name: string) => ({
-              create: {
+            tags: rest.tags && rest.tags.length > 0 ? {
+              create: rest.tags.map((name: string) => ({
                 tag: {
                   connectOrCreate: {
                     where: { name },
                     create: { name },
                   },
                 },
-              },
-            })) as any,
+              })),
+            } : undefined,
             relations: (rest.relations ?? []).length > 0 ? {
               create: (rest.relations ?? []).map((r) => ({
                 relationType: r.relationType as any,
                 relatedTask: { connect: { id: r.taskId } },
               })),
             } : undefined,
-            attachments: {
+            attachments: (rest.attachments ?? []).length > 0 ? {
               create: (rest.attachments ?? []).map((a) => ({
                 type: a.type as any,
                 url: a.url,
                 label: a.label,
               })),
-            },
-            deliverables: {
+            } : undefined,
+            deliverables: (rest.deliverables ?? []).length > 0 ? {
               create: (rest.deliverables ?? []).map((d) => ({
                 type: d.type as any,
                 urlOrContent: d.urlOrContent ?? "",
               })),
-            },
+            } : undefined,
           },
         });
 
