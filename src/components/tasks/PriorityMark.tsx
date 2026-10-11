@@ -23,7 +23,7 @@ export function PriorityMark({ priority, withLabel = false }: { priority: Priori
       }
     >
       <span>{PRIORITY_SHAPE_GLYPH[PRIORITY_SHAPE[priority]]}</span>
-      {withLabel && PRIORITY_LABEL[priority]}
+      {withLabel && <span className="hidden sm:inline">{PRIORITY_LABEL[priority]}</span>}
     </span>
   );
 }

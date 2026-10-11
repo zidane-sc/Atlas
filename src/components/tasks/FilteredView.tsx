@@ -98,11 +98,13 @@ export function FilteredView({
             <div className="text-xs">Clear skies, adventurer.</div>
           </div>
         ) : viewMode === "list" || compactView ? (
-          <div className="p-3 sm:p-4 max-w-5xl">
-            <TaskListView tasks={sortedTasks} variant="row" />
+          <div className="p-3 sm:p-4 max-w-4xl">
+            <div className="border-2 border-border bg-card">
+              <TaskListView tasks={sortedTasks} variant="row" />
+            </div>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2.5 sm:gap-3 p-3 sm:p-4 max-w-6xl auto-rows-max">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 sm:gap-3 p-3 sm:p-4 max-w-5xl auto-rows-max">
             {sortedTasks.map((t) => (
               <SmartViewTaskCard key={t.id} task={t} onSelect={openEditForm} />
             ))}

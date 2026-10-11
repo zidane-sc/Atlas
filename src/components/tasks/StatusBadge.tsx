@@ -9,7 +9,7 @@ export function StatusBadge({ status, withLabel = true }: { status: TaskStatus; 
       style={{ color: `var(${STATUS_COLOR_VAR[status]})` }}
     >
       <span>{STATUS_SHAPE[status]}</span>
-      {withLabel && STATUS_LABEL[status]}
+      {withLabel && <span className="hidden sm:inline">{STATUS_LABEL[status]}</span>}
     </span>
   );
 }
