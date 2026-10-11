@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { SessionProvider } from "next-auth/react";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { MobileTopBar } from "@/components/layout/MobileTopBar";
+import { MobileBottomNav } from "@/components/layout/MobileBottomNav";
 import { DefaultViewRedirect } from "@/components/layout/DefaultViewRedirect";
 import { CommandPalette } from "@/components/layout/CommandPalette";
 import { TaskFormSheet } from "@/components/tasks/TaskFormSheet";
@@ -168,7 +169,8 @@ export default async function DashboardLayout({
                   <Sidebar />
                   <div className="flex flex-1 flex-col overflow-hidden">
                     <MobileTopBar />
-                    <div className="flex-1 overflow-y-auto">{children}</div>
+                    <div className="flex-1 overflow-y-auto pb-16 lg:pb-0">{children}</div>
+                    <MobileBottomNav />
                   </div>
                 </div>
               </SidebarProvider>

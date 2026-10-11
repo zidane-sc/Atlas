@@ -46,47 +46,60 @@ export default function Page() {
   return (
     <main className="flex h-full flex-col gap-3.5 overflow-y-auto p-4 sm:p-5">
       {/* Hero panel — compact high-density banner */}
-      <div className="border-2 border-primary bg-card p-3.5 sm:p-4">
-        <div className="flex flex-wrap items-center gap-4 sm:gap-6">
-          {/* Level badge */}
-          <div className="flex items-center gap-3 pr-4 border-r-2 border-border">
-            <div className="flex flex-col items-center">
-              <span className="text-[10px] tracking-widest text-muted-foreground font-mono">LEVEL</span>
+      <div className="border-2 border-primary bg-card p-3 sm:p-4">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-6">
+          {/* Top row on mobile / Left group on desktop */}
+          <div className="flex items-center justify-between sm:justify-start gap-3 sm:pr-4 sm:border-r-2 border-border">
+            <div className="flex items-center gap-3">
+              <div className="flex flex-col items-center">
+                <span className="text-[9px] tracking-widest text-muted-foreground font-mono">LEVEL</span>
+                <span
+                  style={{
+                    fontFamily: "var(--font-press-start), monospace",
+                    fontSize: "22px",
+                    color: "var(--color-xp-gold)",
+                    textShadow: "0 0 10px rgba(255,217,61,0.4)",
+                  }}
+                >
+                  {sheet.globalLevel}
+                </span>
+              </div>
               <span
-                style={{
-                  fontFamily: "var(--font-press-start), monospace",
-                  fontSize: "24px",
-                  color: "var(--color-xp-gold)",
-                  textShadow: "0 0 12px rgba(255,217,61,0.4)",
-                }}
+                className="border px-1.5 py-0.5 text-[9px] font-mono tracking-wider"
+                style={{ borderColor: "var(--color-primary-gold)", color: "var(--color-primary-gold)" }}
               >
-                {sheet.globalLevel}
+                {classTitle.toUpperCase()}
               </span>
             </div>
-            <span
-              className="border px-1.5 py-0.5 text-[10px] font-mono tracking-wider"
-              style={{ borderColor: "var(--color-primary-gold)", color: "var(--color-primary-gold)" }}
-            >
-              {classTitle.toUpperCase()}
-            </span>
+
+            {/* Streak & Coins visible on right side on mobile */}
+            <div className="flex sm:hidden items-center gap-3">
+              <StreakCampfire days={streakDays} />
+              <div className="flex items-center gap-1 font-mono text-xs">
+                <span aria-hidden>🪙</span>
+                <span style={{ fontFamily: "var(--font-press-start), monospace", fontSize: "11px", color: "var(--color-coin)" }}>
+                  {sheet.totalCoins}
+                </span>
+              </div>
+            </div>
           </div>
 
           {/* XP Progress bar */}
-          <div className="flex min-w-[200px] flex-1 flex-col justify-center">
-            <div className="mb-1.5 flex justify-between text-xs text-muted-foreground font-mono">
+          <div className="flex flex-1 flex-col justify-center min-w-0">
+            <div className="mb-1 flex justify-between text-[11px] text-muted-foreground font-mono">
               <span>XP PROGRESS</span>
               <span style={{ color: "var(--color-xp-gold)" }}>
                 {sheet.xpIntoLevel.toLocaleString()} / {sheet.xpForNextLevel.toLocaleString()} ({xpPercentage}%)
               </span>
             </div>
             <PixBar value={sheet.xpIntoLevel} max={sheet.xpForNextLevel} colorVar="--color-xp-gold" blocks={20} showLabel={false} />
-            <div className="mt-1 text-[11px] text-muted-foreground font-mono">
+            <div className="mt-0.5 text-[10px] text-muted-foreground font-mono truncate">
               {(sheet.xpForNextLevel - sheet.xpIntoLevel).toLocaleString()} XP to Lv.{sheet.globalLevel + 1}
             </div>
           </div>
 
-          {/* Streak & Coins */}
-          <div className="flex items-center gap-4 pl-4 border-l-2 border-border">
+          {/* Desktop Streak & Coins */}
+          <div className="hidden sm:flex items-center gap-4 pl-4 border-l-2 border-border shrink-0">
             <div className="flex flex-col items-center">
               <StreakCampfire days={streakDays} />
             </div>

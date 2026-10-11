@@ -46,12 +46,12 @@ export function KanbanBoard({ tasks }: { tasks: Task[] }) {
   return (
     <div className="h-full overflow-x-auto">
       <DragDropContext onDragEnd={onDragEnd}>
-        <div className="flex h-full min-w-max gap-3 p-4">
+        <div className="flex h-full min-w-max gap-3 p-3 sm:p-4 snap-x snap-mandatory">
           {KANBAN_COLUMNS.map((status) => {
             const columnTasks = tasks.filter((t) => t.status === status);
             const colorVar = STATUS_COLOR_VAR[status];
             return (
-              <div key={status} className="flex w-60 shrink-0 flex-col">
+              <div key={status} className="flex w-[82vw] sm:w-60 shrink-0 flex-col snap-start">
                 <div className="mb-3 flex items-center gap-2 border-b-2 pb-2" style={{ borderColor: `var(${colorVar})` }}>
                   <span style={{ color: `var(${colorVar})` }}>{STATUS_SHAPE[status]}</span>
                   <span className="text-sm tracking-widest" style={{ color: `var(${colorVar})` }}>{STATUS_LABEL[status].toUpperCase()}</span>

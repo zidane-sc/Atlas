@@ -3,7 +3,7 @@
 import { useMemo, useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Moon, PanelLeftIcon, Plus, Search } from "lucide-react";
+import { Moon, PanelLeftIcon, Plus, Search, X } from "lucide-react";
 import { Companion } from "@/components/gamification/Companion";
 import { SaveAndQuitOverlay } from "@/components/gamification/SaveAndQuitOverlay";
 import { XpBar } from "@/components/gamification/XpBar";
@@ -54,7 +54,7 @@ function NavLink({ href, label, icon: Icon, count, badgeColorVar, collapsed }: N
         prefetch={true}
         onClick={() => setNavigatingTo(href)}
         className={cn(
-          "flex w-full items-center gap-2 px-3 py-1.5 text-xs transition-all",
+          "flex w-full items-center gap-2.5 px-3 py-1.5 text-xs transition-all",
           collapsed ? "lg:justify-center lg:px-0 lg:py-2" : "hover:translate-x-0.5"
         )}
         style={{
@@ -64,10 +64,15 @@ function NavLink({ href, label, icon: Icon, count, badgeColorVar, collapsed }: N
         }}
       >
         <div className="relative flex items-center justify-center shrink-0">
-          <Icon size={collapsed ? 16 : 13} />
-          {collapsed && count !== undefined && count > 0 && (
+          <span className={cn(collapsed && "lg:scale-125", "flex items-center justify-center")}>
+            <Icon size={14} />
+          </span>
+          {count !== undefined && count > 0 && (
             <span
-              className="absolute -top-1.5 -right-2 flex h-3.5 min-w-[14px] items-center justify-center px-0.5 text-[9px] font-bold font-mono"
+              className={cn(
+                "hidden font-bold font-mono",
+                collapsed && "lg:flex absolute -top-1.5 -right-2 h-3.5 min-w-[14px] items-center justify-center px-0.5 text-[9px]"
+              )}
               style={{
                 backgroundColor: badgeColorVar ? `var(${badgeColorVar})` : "var(--color-primary-gold)",
                 color: "#000",
@@ -77,10 +82,10 @@ function NavLink({ href, label, icon: Icon, count, badgeColorVar, collapsed }: N
             </span>
           )}
         </div>
-        {!collapsed && <span className="flex-1 truncate">{label}</span>}
-        {!collapsed && count !== undefined && count > 0 && (
+        <span className={cn("flex-1 truncate", collapsed && "lg:hidden")}>{label}</span>
+        {count !== undefined && count > 0 && (
           <span
-            className="px-1 text-[11px] font-mono"
+            className={cn("px-1 text-[11px] font-mono", collapsed && "lg:hidden")}
             style={{
               backgroundColor: "var(--color-bg-panel-alt)",
               border: "1px solid var(--color-border)",
@@ -92,9 +97,9 @@ function NavLink({ href, label, icon: Icon, count, badgeColorVar, collapsed }: N
         )}
       </Link>
 
-      {/* Floating Pixel Tooltip for Collapsed State */}
+      {/* Floating Pixel Tooltip for Desktop Collapsed State */}
       {collapsed && (
-        <div className="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-2 hidden z-50 whitespace-nowrap border-2 border-border bg-[var(--color-bg-panel)] px-2.5 py-1 text-xs text-foreground shadow-[3px_3px_0_rgba(0,0,0,0.8)] group-hover:flex items-center gap-2">
+        <div className="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-2 hidden z-50 whitespace-nowrap border-2 border-border bg-[var(--color-bg-panel)] px-2.5 py-1 text-xs text-foreground shadow-[3px_3px_0_rgba(0,0,0,0.8)] lg:group-hover:flex items-center gap-2">
           <span className="font-bold">{label}</span>
           {count !== undefined && count > 0 && (
             <span
@@ -160,53 +165,77 @@ export function Sidebar() {
     <>
       {mobileOpen && (
         <div
-          className="fixed inset-0 z-30 bg-black/50 lg:hidden"
+          className="fixed inset-0 z-40 bg-black/60 backdrop-blur-xs lg:hidden"
           onClick={() => setMobileOpen(false)}
           aria-hidden="true"
         />
       )}
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-40 flex h-full shrink-0 flex-col overflow-y-auto border-r-2 border-border transition-all duration-200 lg:static lg:translate-x-0",
-          mobileOpen ? "translate-x-0" : "-translate-x-full",
-          collapsed ? "w-64 lg:w-16" : "w-64 lg:w-56"
+          "fixed inset-y-0 left-0 z-50 flex h-full shrink-0 flex-col overflow-y-auto border-r-2 border-border transition-all duration-200 lg:static lg:translate-x-0",
+          mobileOpen ? "translate-x-0 w-72" : "-translate-x-full",
+          collapsed ? "lg:w-16" : "lg:w-56"
         )}
         style={{ backgroundColor: "var(--color-bg-panel-alt)", overflowX: "visible" }}
       >
         {/* Header */}
         <div className="flex h-12 items-center justify-between px-3 border-b border-border">
-          {collapsed ? (
-            <div className="flex w-full items-center justify-center">
-              <button
-                type="button"
-                onClick={() => setCollapsed(false)}
-                className="flex items-center justify-center p-1 text-[var(--color-primary-gold)] hover:scale-110 transition-transform cursor-pointer"
-                title="Expand sidebar (Click to expand)"
-              >
-                <span style={{ fontFamily: "var(--font-press-start), monospace", fontSize: "14px" }}>⚔</span>
-              </button>
-            </div>
-          ) : (
-            <>
+          {/* Mobile Header: Logo + Close Drawer Button */}
+          <div className="flex items-center justify-between w-full lg:hidden">
+            <div className="flex items-center gap-2">
+              <span style={{ fontFamily: "var(--font-press-start), monospace", fontSize: "12px", color: "var(--color-primary-gold)" }}>⚔</span>
               <div>
                 <div style={{ fontFamily: "var(--font-press-start), monospace", fontSize: "11px", color: "var(--color-primary-gold)" }}>
-                  ⚔ ATLAS
+                  ATLAS
                 </div>
-                <div className="text-[10px] text-muted-foreground mt-0.5">Your Second Brain</div>
+                <div className="text-[10px] text-muted-foreground">Your Second Brain</div>
               </div>
-              <button
-                type="button"
-                onClick={() => setCollapsed(true)}
-                aria-label="Collapse sidebar"
-                className="hidden shrink-0 items-center justify-center p-1 text-muted-foreground hover:text-foreground lg:flex cursor-pointer"
-              >
-                <PanelLeftIcon size={14} />
-              </button>
-            </>
-          )}
+            </div>
+            <button
+              type="button"
+              onClick={() => setMobileOpen(false)}
+              className="p-1 text-muted-foreground hover:text-foreground border border-border"
+              aria-label="Close menu"
+            >
+              <X size={16} />
+            </button>
+          </div>
+
+          {/* Desktop Header */}
+          <div className="hidden lg:flex items-center justify-between w-full">
+            {collapsed ? (
+              <div className="flex w-full items-center justify-center">
+                <button
+                  type="button"
+                  onClick={() => setCollapsed(false)}
+                  className="flex items-center justify-center p-1 text-[var(--color-primary-gold)] hover:scale-110 transition-transform cursor-pointer"
+                  title="Expand sidebar"
+                >
+                  <span style={{ fontFamily: "var(--font-press-start), monospace", fontSize: "14px" }}>⚔</span>
+                </button>
+              </div>
+            ) : (
+              <>
+                <div>
+                  <div style={{ fontFamily: "var(--font-press-start), monospace", fontSize: "11px", color: "var(--color-primary-gold)" }}>
+                    ⚔ ATLAS
+                  </div>
+                  <div className="text-[10px] text-muted-foreground mt-0.5">Your Second Brain</div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setCollapsed(true)}
+                  aria-label="Collapse sidebar"
+                  className="shrink-0 items-center justify-center p-1 text-muted-foreground hover:text-foreground flex cursor-pointer"
+                >
+                  <PanelLeftIcon size={14} />
+                </button>
+              </>
+            )}
+          </div>
         </div>
 
-        {/* Collapsed mini status telemetry */}
+        {/* Collapsed mini status telemetry (desktop only) */}
         {collapsed && (
           <div className="hidden lg:flex flex-col items-center gap-1.5 py-2.5 border-b border-border text-center">
             <span
@@ -224,46 +253,58 @@ export function Sidebar() {
           </div>
         )}
 
-        {/* Expanded XP bar and stats */}
-        {!collapsed && (
-          <div className="flex flex-col gap-1.5 px-3 py-2.5 border-b border-border">
-            <XpBar level={sheet.globalLevel} xpIntoLevel={sheet.xpIntoLevel} xpForNextLevel={sheet.xpForNextLevel} compact />
-            <div className="flex items-center gap-3 text-xs">
-              <span
-                title={todayCompletedCount === 0 ? "Complete a quest today to keep your streak!" : "Streak active!"}
-                style={{
-                  color: todayCompletedCount === 0 ? "var(--color-dim)" : "var(--color-streak-flame)",
-                  cursor: "help",
-                }}
-              >
-                <span style={{ filter: todayCompletedCount === 0 ? "grayscale(1) opacity(0.5)" : "none", display: "inline-block" }}>🔥</span> {streakDays}d
-              </span>
-              <span style={{ color: "var(--color-coin)" }}>🪙 {sheet.totalCoins}</span>
-            </div>
-            {milestone && (
-              <div className="mt-1 pt-1.5 border-t border-border">
-                <div className="mb-1 flex justify-between text-[11px]" style={{ color: "var(--color-dim)" }}>
-                  <span style={{ color: "var(--color-text-muted)" }}>Next: {milestone.label}</span>
-                  <span style={{ color: "var(--color-streak-flame)" }}>{milestone.daysLeft}d</span>
-                </div>
-                <div className="flex gap-[2px]">
-                  {Array.from({ length: milestone.target }).map((_, i) => (
-                    <div
-                      key={i}
-                      className="h-1 flex-1"
-                      style={{ backgroundColor: i < streakDays ? "var(--color-streak-flame)" : "var(--color-border)" }}
-                    />
-                  ))}
-                </div>
-              </div>
-            )}
+        {/* Expanded XP bar and stats (always on mobile, hidden only on collapsed desktop) */}
+        <div className={cn("flex flex-col gap-1.5 px-3 py-2.5 border-b border-border", collapsed && "lg:hidden")}>
+          <XpBar level={sheet.globalLevel} xpIntoLevel={sheet.xpIntoLevel} xpForNextLevel={sheet.xpForNextLevel} compact />
+          <div className="flex items-center gap-3 text-xs">
+            <span
+              title={todayCompletedCount === 0 ? "Complete a quest today to keep your streak!" : "Streak active!"}
+              style={{
+                color: todayCompletedCount === 0 ? "var(--color-dim)" : "var(--color-streak-flame)",
+                cursor: "help",
+              }}
+            >
+              <span style={{ filter: todayCompletedCount === 0 ? "grayscale(1) opacity(0.5)" : "none", display: "inline-block" }}>🔥</span> {streakDays}d
+            </span>
+            <span style={{ color: "var(--color-coin)" }}>🪙 {sheet.totalCoins}</span>
           </div>
-        )}
+          {milestone && (
+            <div className="mt-1 pt-1.5 border-t border-border">
+              <div className="mb-1 flex justify-between text-[11px]" style={{ color: "var(--color-dim)" }}>
+                <span style={{ color: "var(--color-text-muted)" }}>Next: {milestone.label}</span>
+                <span style={{ color: "var(--color-streak-flame)" }}>{milestone.daysLeft}d</span>
+              </div>
+              <div className="flex gap-[2px]">
+                {Array.from({ length: milestone.target }).map((_, i) => (
+                  <div
+                    key={i}
+                    className="h-1 flex-1"
+                    style={{ backgroundColor: i < streakDays ? "var(--color-streak-flame)" : "var(--color-border)" }}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
 
         {/* Search */}
         <div className="px-2 py-1.5 border-b border-border">
-          {collapsed ? (
-            <div className="relative group flex justify-center">
+          <button
+            type="button"
+            onClick={() => setCommandPaletteOpen(true)}
+            className={cn("w-full items-center gap-2 px-2 py-1 text-xs transition-colors cursor-pointer flex", collapsed && "lg:hidden")}
+            style={{
+              backgroundColor: "var(--color-bg-panel)",
+              border: "1px solid var(--color-border)",
+              color: "var(--color-text-muted)",
+            }}
+          >
+            <Search size={11} />
+            <span>Search... Ctrl+K</span>
+          </button>
+
+          {collapsed && (
+            <div className="hidden lg:flex relative group justify-center">
               <button
                 type="button"
                 onClick={() => setCommandPaletteOpen(true)}
@@ -272,32 +313,10 @@ export function Sidebar() {
               >
                 <Search size={14} />
               </button>
-              <div className="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-2 hidden z-50 whitespace-nowrap border-2 border-border bg-[var(--color-bg-panel)] px-2 py-1 text-xs text-foreground shadow-[3px_3px_0_rgba(0,0,0,0.8)] group-hover:block">
+              <div className="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-2 hidden z-50 whitespace-nowrap border-2 border-border bg-[var(--color-bg-panel)] px-2 py-1 text-xs text-foreground shadow-[3px_3px_0_rgba(0,0,0,0.8)] lg:group-hover:block">
                 Search (Ctrl+K)
               </div>
             </div>
-          ) : (
-            <button
-              type="button"
-              onClick={() => setCommandPaletteOpen(true)}
-              className="flex w-full items-center gap-2 px-2 py-1 text-xs transition-colors cursor-pointer"
-              style={{
-                backgroundColor: "var(--color-bg-panel)",
-                border: "1px solid var(--color-border)",
-                color: "var(--color-text-muted)",
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.borderColor = "var(--color-primary-gold)";
-                e.currentTarget.style.color = "var(--color-text)";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.borderColor = "var(--color-border)";
-                e.currentTarget.style.color = "var(--color-text-muted)";
-              }}
-            >
-              <Search size={11} />
-              <span>Search... Ctrl+K</span>
-            </button>
           )}
         </div>
 
@@ -321,11 +340,13 @@ export function Sidebar() {
                 borderLeft: tasksActive ? "3px solid var(--color-primary-gold)" : "3px solid transparent",
               }}
             >
-              <NAV_TASKS.icon size={collapsed ? 16 : 13} />
-              {!collapsed && <span className="flex-1 truncate">{NAV_TASKS.label}</span>}
+              <span className={cn(collapsed && "lg:scale-125", "flex items-center justify-center")}>
+                <NAV_TASKS.icon size={14} />
+              </span>
+              <span className={cn("flex-1 truncate", collapsed && "lg:hidden")}>{NAV_TASKS.label}</span>
             </Link>
             {collapsed && (
-              <div className="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-2 hidden z-50 whitespace-nowrap border-2 border-border bg-[var(--color-bg-panel)] px-2 py-1 text-xs text-foreground shadow-[3px_3px_0_rgba(0,0,0,0.8)] group-hover:block">
+              <div className="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-2 hidden z-50 whitespace-nowrap border-2 border-border bg-[var(--color-bg-panel)] px-2 py-1 text-xs text-foreground shadow-[3px_3px_0_rgba(0,0,0,0.8)] lg:group-hover:block">
                 {NAV_TASKS.label}
               </div>
             )}
@@ -346,36 +367,34 @@ export function Sidebar() {
           ))}
         </nav>
 
-        {/* Pip Companion */}
-        {!collapsed && (
-          <div>
-            <Companion
-              level={sheet.globalLevel}
-              todayCompleted={todayCompletedCount}
-              justCompleted={justCompleted}
-              pinnedTasks={pinnedTasks}
-              onOpenTask={(task) => openEditForm(task)}
-              onUnpinTask={(taskId) => togglePin(taskId, false)}
-            />
-          </div>
-        )}
+        {/* Pip Companion - visible on mobile drawer, hidden on collapsed desktop */}
+        <div className={cn(collapsed && "lg:hidden")}>
+          <Companion
+            level={sheet.globalLevel}
+            todayCompleted={todayCompletedCount}
+            justCompleted={justCompleted}
+            pinnedTasks={pinnedTasks}
+            onOpenTask={(task) => openEditForm(task)}
+            onUnpinTask={(taskId) => togglePin(taskId, false)}
+          />
+        </div>
 
         {/* Footer actions */}
-        <div className={cn("p-2 border-t border-border flex flex-col gap-1.5", collapsed && "items-center px-1.5")}>
+        <div className={cn("p-2 border-t border-border flex flex-col gap-1.5", collapsed && "lg:items-center lg:px-1.5")}>
           <div className="relative group w-full flex justify-center">
             <button
               type="button"
               onClick={openCreateForm}
               className={cn(
-                "pixel-button flex items-center justify-center gap-1.5 border-2 border-primary bg-primary text-xs font-bold text-primary-foreground cursor-pointer",
-                collapsed ? "h-9 w-9 p-0" : "w-full px-3 py-1.5"
+                "pixel-button flex items-center justify-center gap-1.5 border-2 border-primary bg-primary text-xs font-bold text-primary-foreground cursor-pointer w-full py-2",
+                collapsed ? "lg:h-9 lg:w-9 lg:p-0" : "px-3 py-1.5"
               )}
             >
-              <Plus size={collapsed ? 16 : 13} />
-              {!collapsed && <span>New Quest</span>}
+              <Plus size={14} className={cn(collapsed && "lg:size-4")} />
+              <span className={cn(collapsed && "lg:hidden")}>New Quest</span>
             </button>
             {collapsed && (
-              <div className="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-2 hidden z-50 whitespace-nowrap border-2 border-border bg-[var(--color-bg-panel)] px-2 py-1 text-xs text-foreground shadow-[3px_3px_0_rgba(0,0,0,0.8)] group-hover:block">
+              <div className="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-2 hidden z-50 whitespace-nowrap border-2 border-border bg-[var(--color-bg-panel)] px-2 py-1 text-xs text-foreground shadow-[3px_3px_0_rgba(0,0,0,0.8)] lg:group-hover:block">
                 New Quest (Ctrl+N)
               </div>
             )}
@@ -386,15 +405,15 @@ export function Sidebar() {
               type="button"
               onClick={() => setShowQuit(true)}
               className={cn(
-                "pixel-button flex items-center justify-center gap-1.5 border-2 border-border bg-transparent text-xs text-muted-foreground hover:text-foreground hover:border-[var(--color-primary-gold)] transition-colors cursor-pointer",
-                collapsed ? "h-9 w-9 p-0" : "w-full px-3 py-1.5"
+                "pixel-button flex items-center justify-center gap-1.5 border-2 border-border bg-transparent text-xs text-muted-foreground hover:text-foreground hover:border-[var(--color-primary-gold)] transition-colors cursor-pointer w-full py-2",
+                collapsed ? "lg:h-9 lg:w-9 lg:p-0" : "px-3 py-1.5"
               )}
             >
-              <Moon size={collapsed ? 15 : 12} />
-              {!collapsed && <span>Save &amp; Quit</span>}
+              <Moon size={14} className={cn(collapsed && "lg:size-4")} />
+              <span className={cn(collapsed && "lg:hidden")}>Save &amp; Quit</span>
             </button>
             {collapsed && (
-              <div className="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-2 hidden z-50 whitespace-nowrap border-2 border-border bg-[var(--color-bg-panel)] px-2 py-1 text-xs text-foreground shadow-[3px_3px_0_rgba(0,0,0,0.8)] group-hover:block">
+              <div className="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-2 hidden z-50 whitespace-nowrap border-2 border-border bg-[var(--color-bg-panel)] px-2 py-1 text-xs text-foreground shadow-[3px_3px_0_rgba(0,0,0,0.8)] lg:group-hover:block">
                 Save &amp; Quit
               </div>
             )}
