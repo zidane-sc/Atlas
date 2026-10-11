@@ -57,6 +57,7 @@ export async function domainCreateTask(
             ...rest,
             code: taskCode,
             ownerId,
+            reporter: (rest.reporter as any) ?? "self",
             startDate: startDate ? new Date(startDate) : undefined,
             dueDate: dueDate ? new Date(dueDate) : undefined,
             waitingReason: waitingReason || undefined,
@@ -176,6 +177,8 @@ export async function domainUpdateTask(
         where: { id, ownerId },
         data: {
           ...rest,
+          projectId: rest.projectId === null ? null : rest.projectId || undefined,
+          reporter: (rest.reporter as any) ?? undefined,
           status,
           pinned,
           completedAt,

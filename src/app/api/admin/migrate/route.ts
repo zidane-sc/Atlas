@@ -368,9 +368,10 @@ export async function GET(req: Request) {
           ALTER TABLE "tasks" ALTER COLUMN "reporter" DROP DEFAULT;
           ALTER TABLE "tasks" ALTER COLUMN "reporter" TYPE TEXT;
           DROP TYPE IF EXISTS "task_reporter";
-          CREATE TYPE "task_reporter" AS ENUM ('self', 'other');
+          CREATE TYPE "task_reporter" AS ENUM ('self', 'other', 'agent');
           ALTER TABLE "tasks" ALTER COLUMN "reporter" TYPE "task_reporter" USING 
             CASE 
+              WHEN "reporter" = 'agent' THEN 'agent'::"task_reporter"
               WHEN "reporter" IN ('qa', 'manager', 'pm', 'client', 'lecturer', 'friend', 'other') THEN 'other'::"task_reporter"
               ELSE 'self'::"task_reporter"
             END;

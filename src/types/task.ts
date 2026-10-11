@@ -18,7 +18,7 @@ export type Priority = "high" | "medium" | "low";
 
 export type TaskSize = "xs" | "s" | "m" | "l" | "xl";
 
-export type Reporter = "self" | "other";
+export type Reporter = "self" | "other" | "agent";
 
 export type RelationType =
   | "blocks"

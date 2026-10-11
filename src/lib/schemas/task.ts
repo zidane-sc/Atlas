@@ -20,7 +20,7 @@ const SIZE_VALUES = ["xs", "s", "m", "l", "xl"] as const satisfies readonly Task
  */
 export const RELATION_TYPES = ["blocks", "relates_to", "duplicates"] as const;
 /** Reporter options — docs/01-product.md §8.8. */
-export const REPORTER_OPTIONS = ["self", "other"] as const satisfies readonly Reporter[];
+export const REPORTER_OPTIONS = ["self", "other", "agent"] as const satisfies readonly Reporter[];
 export const ATTACHMENT_TYPES = [
   "github_pr",
   "github_issue",

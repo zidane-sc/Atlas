@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo, useRef } from "react";
-import { Check, ChevronDown, Copy, Trash2, Info, Pin } from "lucide-react";
+import { Check, ChevronDown, Copy, Trash2, Info, Pin, Bot, Cpu } from "lucide-react";
 import { DatePicker } from "@/components/ui/DatePicker";
 import { BattleTimer } from "@/components/gamification/BattleTimer";
 import {
@@ -22,7 +22,7 @@ import { useTasks } from "@/components/providers/TasksProvider";
 import { useSettings } from "@/components/providers/SettingsProvider";
 import { useNotifications } from "@/hooks/useNotifications";
 import { calcTaskCoins, calcTaskXP } from "@/lib/gamification";
-import { getTaskDetails } from "@/lib/actions/tasks";
+import { getTaskDetails, type TaskAgentDetails } from "@/lib/actions/tasks";
 import type { TaskComment, TaskStatusLogEntry } from "@/types/task";
 import { PriorityMark } from "./PriorityMark";
 import { StatusBadge } from "./StatusBadge";
@@ -105,7 +105,7 @@ export function TaskFormSheet() {
   return (
     <Sheet open={sheet.open} onOpenChange={(open) => !open && closeForm()}>
       <SheetContent
-        className="w-full max-w-full sm:max-w-lg sm:w-[520px] gap-0 overflow-y-auto border-l-2 border-border"
+        className="w-full max-w-full sm:max-w-xl sm:w-[540px] h-full sm:h-auto gap-0 overflow-y-auto border-l-2 border-border p-0 rounded-none"
       >
         {sheet.open && <TaskFormBody key={sheet.task?.id ?? "create"} mode={sheet.mode} task={sheet.task} />}
       </SheetContent>
@@ -178,7 +178,7 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
   // Full status history + comments are no longer part of the bulk task fetch (performance —
   // docs/05-backlog.md §8 finding #16), so fetch them on-demand here, the only place either
   // is displayed.
-  const [taskDetail, setTaskDetail] = useState<{ statusHistory: TaskStatusLogEntry[]; comments: TaskComment[] } | null>(null);
+  const [taskDetail, setTaskDetail] = useState<{ statusHistory: TaskStatusLogEntry[]; comments: TaskComment[]; agent?: TaskAgentDetails } | null>(null);
   const [taskDetailLoading, setTaskDetailLoading] = useState(mode === "edit" && !!task);
 
   const refreshTaskDetail = async () => {
@@ -329,16 +329,21 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
   return (
     <form onSubmit={onSubmit} className="flex h-full flex-col">
       <SheetHeader
-        className="flex-row items-center justify-between gap-2 space-y-0 border-b border-border py-3"
+        className="flex-row items-center justify-between gap-2 space-y-0 border-b border-border py-3 px-4"
         style={{ backgroundColor: "var(--color-bg-panel-alt)" }}
       >
         <div className="flex items-center gap-2">
-          <SheetTitle className="font-display" style={{ fontSize: "9px", color: "var(--color-primary-gold)" }}>
+          <SheetTitle className="font-display" style={{ fontSize: "11px", color: "var(--color-primary-gold)" }}>
             {mode === "edit" ? "◈ QUEST DETAIL" : "+ NEW QUEST"}
           </SheetTitle>
           {mode === "edit" && currentTask && (
             <span className="text-xs font-mono font-bold" style={{ color: "var(--color-primary-gold)", minWidth: "50px" }}>
               {currentTask.code}
+            </span>
+          )}
+          {task && (task.reporter === "agent" || !!(task as any).metadata?.createdByAgent) && (
+            <span className="px-1.5 py-0.5 text-[9px] font-mono font-bold border border-cyan-500/50 bg-cyan-950/60 text-cyan-300 flex items-center gap-1">
+              <Bot size={11} /> AI SPAWNED
             </span>
           )}
         </div>
@@ -384,9 +389,9 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
         <span className="text-sm">{TYPE_ICON[form.type]}</span>
       </div>
 
-      {mode === "edit" && task && (
+      {mode === "edit" && task && liveTask && (
         <BattleTimer
-          task={liveTask ?? task}
+          task={liveTask}
           isTiming={isTiming}
           totalSeconds={totalSeconds}
           onStart={() => startTimer(task.id)}
@@ -848,6 +853,92 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
 
         {mode === "edit" && task && (
           <>
+            {/* AI Agent Telemetry & Checkpoints */}
+            {Boolean(taskDetail?.agent && ((taskDetail.agent.runs?.length ?? 0) > 0 || (taskDetail.agent.checkpoints?.length ?? 0) > 0)) && (
+              <Section title="AI Agent Memory & Runs" shape="🤖">
+                <div className="flex flex-col gap-3 p-2.5 bg-primary/5 border-2 border-[var(--color-primary-gold)]/40 text-xs">
+                  {/* Latest Checkpoint */}
+                  {(taskDetail?.agent?.checkpoints?.length ?? 0) > 0 && taskDetail?.agent?.checkpoints?.[0] && (
+                    <div>
+                      <div className="font-mono font-bold text-[10px] text-[var(--color-primary-gold)] uppercase mb-1 flex items-center gap-1.5">
+                        <Bot size={12} /> Latest Checkpoint (Rev #{taskDetail.agent.checkpoints[0].revision})
+                      </div>
+                      <p className="bg-background/80 p-2 border border-border text-foreground font-mono leading-relaxed">
+                        {taskDetail.agent.checkpoints[0].summary}
+                      </p>
+                      {taskDetail.agent.checkpoints[0].waitingReason && (
+                        <div className="mt-1 text-[11px] font-mono text-amber-400">
+                          ⏳ Waiting on: {taskDetail.agent.checkpoints[0].waitingReason}
+                        </div>
+                      )}
+                      {taskDetail.agent.checkpoints[0].nextStep && (
+                        <div className="mt-0.5 text-[11px] font-mono text-muted-foreground">
+                          ▸ Next step: {taskDetail.agent.checkpoints[0].nextStep}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Multi-Model & Token Breakdown */}
+                  {Boolean(taskDetail?.agent?.runs?.some((r) => r.usageEvents && r.usageEvents.length > 0)) && (
+                    <div className="border-t border-border/40 pt-2">
+                      <div className="font-mono font-bold text-[10px] text-muted-foreground uppercase mb-1.5 flex items-center gap-1">
+                        <Cpu size={12} /> Models & Token Consumption:
+                      </div>
+                      <div className="space-y-1.5">
+                        {(() => {
+                          const modelMap: Record<string, { prompt: number; completion: number; total: number; cost: number }> = {};
+                          for (const r of taskDetail?.agent?.runs ?? []) {
+                            for (const u of r.usageEvents ?? []) {
+                              const key = `${u.model} (${u.provider || "9Router"})`;
+                              if (!modelMap[key]) modelMap[key] = { prompt: 0, completion: 0, total: 0, cost: 0 };
+                              modelMap[key].prompt += u.promptTokens;
+                              modelMap[key].completion += u.completionTokens;
+                              modelMap[key].total += u.totalTokens;
+                              modelMap[key].cost += u.costUsd || 0;
+                            }
+                          }
+                          const grandTotal = Object.values(modelMap).reduce((acc, cur) => acc + cur.total, 0);
+                          const totalCost = Object.values(modelMap).reduce((acc, cur) => acc + cur.cost, 0);
+
+                          return (
+                            <>
+                              {Object.entries(modelMap).map(([mName, data]) => (
+                                <div key={mName} className="p-1.5 bg-background/60 border border-border font-mono text-[11px]">
+                                  <div className="font-bold text-[var(--color-primary-gold)] truncate">{mName}</div>
+                                  <div className="text-muted-foreground flex justify-between mt-0.5">
+                                    <span>{data.prompt.toLocaleString()} prompt · {data.completion.toLocaleString()} comp</span>
+                                    <span>{data.total.toLocaleString()} tokens {data.cost > 0 && `(~$${data.cost.toFixed(3)})`}</span>
+                                  </div>
+                                </div>
+                              ))}
+                              <div className="flex justify-between font-mono font-bold text-[11px] text-foreground pt-1">
+                                <span>Total Burn:</span>
+                                <span>⚡ {grandTotal.toLocaleString()} tokens {totalCost > 0 && `(~$${totalCost.toFixed(3)})`}</span>
+                              </div>
+                            </>
+                          );
+                        })()}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Active/Recent Runs */}
+                  <div className="border-t border-border/40 pt-2 text-[10px] font-mono text-muted-foreground">
+                    <div className="font-bold uppercase mb-0.5">Agent Sessions:</div>
+                    {(taskDetail?.agent?.runs ?? []).slice(0, 3).map((r) => (
+                      <div key={r.id} className="flex justify-between py-0.5">
+                        <span>{r.agentName} ({r.platform || "telegram"}:{r.threadId || "main"})</span>
+                        <span className={r.status === "active" ? "text-green-400 font-bold" : ""}>
+                          {r.status.toUpperCase()}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </Section>
+            )}
+
             <Section title="Comments" shape="💬">
               <div className="flex flex-col gap-2">
                 <ul className="flex flex-col gap-2 max-h-48 overflow-y-auto border-b border-border pb-2">

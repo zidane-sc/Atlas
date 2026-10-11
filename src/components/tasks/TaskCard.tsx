@@ -28,6 +28,7 @@ function TaskCardComponent({
 }) {
   const overdue = isOverdue(task.dueDate, MOCK_NOW) && task.status !== "done";
   const dragging = isDragging;
+  const isAgentTask = task.reporter === "agent" || !!(task as any).metadata?.createdByAgent;
 
   return (
     // Not a <button> — a nested keyboard-operable status <select> requires div[role=button]
@@ -47,9 +48,18 @@ function TaskCardComponent({
         }
       }}
       style={{
-        borderColor: dragging ? "var(--color-primary-gold)" : `var(${STATUS_COLOR_VAR[task.status]})`,
-        backgroundColor: dragging ? "var(--color-bg-panel)" : "var(--color-bg-panel-alt)",
+        borderColor: dragging
+          ? "var(--color-primary-gold)"
+          : isAgentTask
+            ? "rgba(16, 224, 224, 0.6)"
+            : `var(${STATUS_COLOR_VAR[task.status]})`,
+        backgroundColor: dragging
+          ? "var(--color-bg-panel)"
+          : isAgentTask
+            ? "rgba(16, 224, 224, 0.04)"
+            : "var(--color-bg-panel-alt)",
         opacity: dragging ? 0.75 : 1,
+        boxShadow: isAgentTask ? "0 0 10px rgba(16, 224, 224, 0.15), 3px 3px 0 0 rgba(0,0,0,0.8)" : undefined,
         ...draggableProps?.style,
       }}
       className="quest-card flex w-full cursor-grab flex-col gap-1.5 p-2.5 text-left select-none animate-in fade-in zoom-in-95"
@@ -58,6 +68,14 @@ function TaskCardComponent({
         <div className="flex items-center gap-1.5 min-w-0">
           <span aria-hidden className="text-sm shrink-0 leading-none">{TYPE_ICON[task.type]}</span>
           <span className="text-xs font-mono font-bold tracking-tight text-[var(--color-primary-gold)] truncate">{task.code}</span>
+          {isAgentTask && (
+            <span
+              className="px-1 py-0 text-[9px] font-mono font-bold border border-cyan-500/40 bg-cyan-950/40 text-cyan-300"
+              title="Spawned by Hermes Agent"
+            >
+              🤖 AI
+            </span>
+          )}
           {task.project && (
             <span className="hidden sm:inline-block max-w-[90px] truncate text-[9px] font-mono text-muted-foreground border border-border px-1 py-0 bg-secondary/40">
               {task.project}
@@ -101,8 +119,10 @@ function TaskCardComponent({
           SIZE: {task.size.toUpperCase()}
         </div>
       )}
-      {task.status === "in_progress" && task.waitingOn && (
-        <div className="text-[10px] font-mono text-[var(--color-status-blocked)]">✕ {task.waitingOn}</div>
+      {task.status === "in_progress" && (task.waitingOn || task.waitingReason) && (
+        <div className="text-[10px] font-mono text-amber-400 bg-amber-950/30 border border-amber-500/30 px-1 py-0.5 truncate">
+          ⏸️ {task.waitingReason || task.waitingOn}
+        </div>
       )}
     </div>
   );

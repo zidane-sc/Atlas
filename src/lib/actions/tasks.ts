@@ -375,9 +375,41 @@ export async function stopFocusTimerAction(): Promise<
  * no longer includes either, for performance (docs/05-backlog.md §8 finding #16). Called when
  * TaskFormSheet opens an existing task, since that's the only place either is displayed.
  */
+export interface TaskAgentDetails {
+  runs: {
+    id: string;
+    agentName: string;
+    sessionId: string | null;
+    platform: string | null;
+    threadId: string | null;
+    status: string;
+    startedAt: string;
+    endedAt: string | null;
+    usageEvents: {
+      id: string;
+      model: string;
+      provider: string | null;
+      promptTokens: number;
+      completionTokens: number;
+      totalTokens: number;
+      costUsd: number | null;
+      createdAt: string;
+    }[];
+  }[];
+  checkpoints: {
+    id: string;
+    revision: number;
+    summary: string;
+    checkpointState: string | null;
+    waitingReason: string | null;
+    nextStep: string | null;
+    createdAt: string;
+  }[];
+}
+
 export async function getTaskDetails(
   taskId: string
-): Promise<ActionResult<{ statusHistory: TaskStatusLogEntry[]; comments: TaskComment[] }>> {
+): Promise<ActionResult<{ statusHistory: TaskStatusLogEntry[]; comments: TaskComment[]; agent?: TaskAgentDetails }>> {
   const session = await auth();
   if (!session?.user?.email) {
     return { success: false, error: { code: "UNAUTHORIZED", message: "Sign in required." } };
@@ -397,6 +429,46 @@ export async function getTaskDetails(
           content: true,
           createdAt: true,
           author: { select: { name: true, email: true } },
+        },
+      },
+      agentRuns: {
+        orderBy: { startedAt: "desc" },
+        take: 10,
+        select: {
+          id: true,
+          agentName: true,
+          sessionId: true,
+          platform: true,
+          threadId: true,
+          status: true,
+          startedAt: true,
+          endedAt: true,
+          usageEvents: {
+            orderBy: { createdAt: "asc" },
+            select: {
+              id: true,
+              model: true,
+              provider: true,
+              promptTokens: true,
+              completionTokens: true,
+              totalTokens: true,
+              costUsd: true,
+              createdAt: true,
+            },
+          },
+        },
+      },
+      checkpoints: {
+        orderBy: { revision: "desc" },
+        take: 10,
+        select: {
+          id: true,
+          revision: true,
+          summary: true,
+          checkpointState: true,
+          waitingReason: true,
+          nextStep: true,
+          createdAt: true,
         },
       },
     },
@@ -420,6 +492,21 @@ export async function getTaskDetails(
         content: c.content,
         createdAt: c.createdAt.toISOString(),
       })),
+      agent: {
+        runs: (task.agentRuns || []).map((r) => ({
+          ...r,
+          startedAt: r.startedAt.toISOString(),
+          endedAt: r.endedAt ? r.endedAt.toISOString() : null,
+          usageEvents: (r.usageEvents || []).map((u) => ({
+            ...u,
+            createdAt: u.createdAt.toISOString(),
+          })),
+        })),
+        checkpoints: (task.checkpoints || []).map((cp) => ({
+          ...cp,
+          createdAt: cp.createdAt.toISOString(),
+        })),
+      },
     },
   };
 }

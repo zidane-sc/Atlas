@@ -180,15 +180,17 @@ async function createAtlasMcpServer(userId: string, credentialId: string) {
   server.registerTool(
     "atlas_create_task",
     {
-      description: "Create a new task in Atlas, optionally binding it to a canonical external source (e.g. PR URL).",
+      description: "Create a new task in Atlas, optionally binding it to a project, description, size, and canonical external source (e.g. PR URL).",
       inputSchema: {
-        title: z.string().min(1),
-        description: z.string().optional(),
+        title: z.string().min(1).describe("Concise task/quest title"),
+        description: z.string().optional().describe("Context, PR description, or reproduction steps"),
+        projectName: z.string().optional().describe("Name of project to assign (e.g. Dealls, Personal)"),
         status: z.enum(["backlog", "todo", "in_progress", "done"]).default("in_progress"),
         priority: z.enum(["high", "medium", "low"]).default("medium"),
         type: z.enum(["coding", "research", "design", "documentation", "bug", "meeting", "admin"]).default("coding"),
-        size: z.enum(["xs", "s", "m", "l", "xl"]).optional(),
-        waitingReason: z.string().optional(),
+        size: z.enum(["xs", "s", "m", "l", "xl"]).optional().describe("Estimated task size"),
+        waitingReason: z.string().optional().describe("If idling, why (e.g. Waiting for PR review)"),
+        metadata: z.record(z.string(), z.any()).optional().describe("Extra structured info (models, prUrl, etc.)"),
         source: z
           .object({
             provider: z.string().default("github_pr"),
@@ -198,16 +200,32 @@ async function createAtlasMcpServer(userId: string, credentialId: string) {
           .optional(),
       },
     },
-    async ({ title, description, status, priority, type, size, waitingReason, source }) => {
+    async ({ title, description, projectName, status, priority, type, size, waitingReason, metadata, source }) => {
       try {
+        let projectId: string | undefined;
+        if (projectName) {
+          const p = await db.project.findFirst({
+            where: { ownerId: userId, name: { equals: projectName.trim(), mode: "insensitive" } },
+            select: { id: true },
+          });
+          if (p) projectId = p.id;
+        }
+
         const createRes = await domainCreateTask(userId, {
           title,
           description,
+          projectId,
           status,
           priority,
           type,
           size,
+          reporter: "agent",
           waitingReason,
+          metadata: {
+            ...metadata,
+            createdByAgent: true,
+            createdAtAgent: new Date().toISOString(),
+          },
         });
 
         if (!createRes.success) {
@@ -228,12 +246,13 @@ async function createAtlasMcpServer(userId: string, credentialId: string) {
         }
 
         return jsonSuccess({
-          message: "Task created successfully",
+          message: "Task created successfully by AI Agent",
           task: {
             id: task.id,
             code: task.code,
             title: task.title,
             status: task.status,
+            reporter: task.reporter,
           },
         });
       } catch (err: any) {
