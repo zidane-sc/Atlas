@@ -356,6 +356,17 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
     ? Math.max(0, breakMinutes * 60 - liveSeconds)
     : (liveTask?.timeSpentSeconds ?? 0) + (isTiming ? liveSeconds : 0);
 
+  const isAgentTask = Boolean(
+    task && (
+      task.reporter === "agent" ||
+      (task as any)?.metadata?.agentReporter === "agent" ||
+      !!(task as any)?.metadata?.createdByAgent ||
+      !!(task as any)?.waitingReason ||
+      ((taskDetail?.agent?.runs?.length ?? 0) > 0) ||
+      ((taskDetail?.agent?.checkpoints?.length ?? 0) > 0)
+    )
+  );
+
   return (
     <form onSubmit={onSubmit} className="flex flex-col">
       <SheetHeader
@@ -371,7 +382,7 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
               {currentTask.code}
             </span>
           )}
-          {task && (task.reporter === "agent" || (task as any)?.metadata?.agentReporter === "agent" || !!(task as any).metadata?.createdByAgent || !!(task as any).waitingReason) && (
+          {isAgentTask && (
             <span className="px-1.5 py-0.5 text-[9px] font-mono font-bold border border-cyan-500/50 bg-cyan-950/60 text-cyan-300 flex items-center gap-1">
               <Bot size={11} /> MCP SPAWNED
             </span>
@@ -887,133 +898,138 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
         {mode === "edit" && task && (
           <>
             {/* MCP Agent Telemetry & Checkpoints */}
-            {Boolean(
-              (taskDetail?.agent && ((taskDetail.agent.runs?.length ?? 0) > 0 || (taskDetail.agent.checkpoints?.length ?? 0) > 0)) ||
-              (task as any)?.waitingReason
-            ) && (
+            {isAgentTask && (
               <Section title="MCP Agent Memory & Runs" shape="⚡" defaultOpen={true}>
                 <div className="flex flex-col gap-3 p-2.5 bg-primary/5 border-2 border-cyan-500/40 text-xs shadow-[2px_2px_0_rgba(16,224,224,0.15)] max-w-full overflow-hidden">
-                  {/* Latest Checkpoint or Waiting Reason */}
-                  {((taskDetail?.agent?.checkpoints?.length ?? 0) > 0 && taskDetail?.agent?.checkpoints?.[0]) ? (
-                    <div className="min-w-0">
-                      <div className="font-mono font-bold text-[10px] text-cyan-400 uppercase mb-1 flex items-center gap-1.5">
-                        <Bot size={12} className="shrink-0" /> Latest Checkpoint (Rev #{taskDetail.agent.checkpoints[0].revision})
-                      </div>
-                      <p className="bg-background/80 p-2 border border-border text-foreground font-mono leading-relaxed break-words whitespace-pre-wrap">
-                        {taskDetail.agent.checkpoints[0].summary}
-                      </p>
-                      {taskDetail.agent.checkpoints[0].waitingReason && (
-                        <div className="mt-1 text-[11px] font-mono text-amber-400 bg-amber-950/20 p-1 border border-amber-500/30 break-words">
-                          ⏸️ Idling Reason: {taskDetail.agent.checkpoints[0].waitingReason}
-                        </div>
-                      )}
-                      {taskDetail.agent.checkpoints[0].nextStep && (
-                        <div className="mt-0.5 text-[11px] font-mono text-muted-foreground break-words">
-                          ▸ Next step: {taskDetail.agent.checkpoints[0].nextStep}
-                        </div>
-                      )}
+                  {taskDetailLoading && !taskDetail ? (
+                    <div className="text-xs text-muted-foreground italic p-2 flex items-center gap-2">
+                      <span className="text-sm">⚔️</span> Loading agent runs & checkpoints…
                     </div>
-                  ) : (task as any)?.waitingReason ? (
-                    <div className="min-w-0">
-                      <div className="font-mono font-bold text-[10px] text-cyan-400 uppercase mb-1 flex items-center gap-1.5">
-                        <Bot size={12} className="shrink-0" /> MCP Status Note
-                      </div>
-                      <div className="text-[11px] font-mono text-amber-400 bg-amber-950/20 p-1.5 border border-amber-500/30 break-words">
-                        ⏸️ Idling Reason: {(task as any).waitingReason}
-                      </div>
-                    </div>
-                  ) : null}
-
-                  {/* Multi-Model & Token Breakdown */}
-                  {Boolean(taskDetail?.agent?.runs?.some((r) => r.usageEvents && r.usageEvents.length > 0)) && (
-                    <div className="border-t border-border/40 pt-2 min-w-0">
-                      <div className="font-mono font-bold text-[10px] text-muted-foreground uppercase mb-1.5 flex items-center gap-1">
-                        <Cpu size={12} className="shrink-0" /> Models & Token Consumption:
-                      </div>
-                      <div className="space-y-1.5">
-                        {(() => {
-                          const modelMap: Record<string, { prompt: number; completion: number; total: number; cost: number }> = {};
-                          for (const r of taskDetail?.agent?.runs ?? []) {
-                            for (const u of r.usageEvents ?? []) {
-                              const key = `${u.model} (${u.provider || "9Router"})`;
-                              if (!modelMap[key]) modelMap[key] = { prompt: 0, completion: 0, total: 0, cost: 0 };
-                              modelMap[key].prompt += u.promptTokens;
-                              modelMap[key].completion += u.completionTokens;
-                              modelMap[key].total += u.totalTokens;
-                              modelMap[key].cost += u.costUsd || 0;
-                            }
-                          }
-                          const grandTotal = Object.values(modelMap).reduce((acc, cur) => acc + cur.total, 0);
-                          const totalCost = Object.values(modelMap).reduce((acc, cur) => acc + cur.cost, 0);
-
-                          return (
-                            <>
-                              {Object.entries(modelMap).map(([mName, data]) => (
-                                <div key={mName} className="p-1.5 bg-background/60 border border-border font-mono text-[11px] min-w-0 overflow-hidden">
-                                  <div className="font-bold text-[var(--color-primary-gold)] truncate" title={mName}>{mName}</div>
-                                  <div className="text-muted-foreground flex flex-wrap justify-between gap-1 mt-0.5">
-                                    <span>{data.prompt.toLocaleString()} prompt · {data.completion.toLocaleString()} comp</span>
-                                    <span>{data.total.toLocaleString()} tokens {data.cost > 0 && `(~$${data.cost.toFixed(3)})`}</span>
-                                  </div>
-                                </div>
-                              ))}
-                              <div className="flex flex-wrap justify-between gap-1 font-mono font-bold text-[11px] text-foreground pt-1 border-t border-border/30">
-                                <span>Total Burn:</span>
-                                <span>⚡ {grandTotal.toLocaleString()} tokens {totalCost > 0 && `(~$${totalCost.toFixed(3)})`}</span>
-                              </div>
-                            </>
-                          );
-                        })()}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Active/Recent Runs & Session Context */}
-                  <div className="border-t border-border/40 pt-2 text-[10px] font-mono text-muted-foreground min-w-0">
-                    <div className="font-bold uppercase mb-1 flex items-center justify-between">
-                      <span>Hermes Sessions & Runs:</span>
-                      <span className="text-[9px] font-normal opacity-70">L2 Pointer</span>
-                    </div>
-                    {((taskDetail?.agent?.runs?.length ?? 0) === 0) ? (
-                      <div className="p-1.5 bg-background/50 border border-border text-muted-foreground italic">
-                        No active/completed agent session registered for this quest yet.
-                      </div>
-                    ) : (
-                      <div className="space-y-1.5">
-                        {taskDetail?.agent?.runs?.slice(0, 5).map((r) => (
-                          <div key={r.id} className="p-1.5 bg-background/50 border border-border flex flex-col gap-1">
-                            <div className="flex items-center justify-between gap-1">
-                              <span className="font-bold text-foreground truncate max-w-[240px]" title={r.sessionTitle || r.agentName}>
-                                {r.sessionTitle ? `💬 ${r.sessionTitle}` : `👤 ${r.agentName}`}
-                              </span>
-                              <span className={r.status === "active" ? "text-green-400 font-bold px-1 bg-green-950/40 border border-green-500/30 text-[9px]" : "px-1 bg-muted/40 border border-border text-[9px]"}>
-                                {r.status.toUpperCase()}
-                              </span>
-                            </div>
-
-                            {/* Session ID pointer */}
-                            {r.sessionId && (
-                              <div className="flex items-center justify-between text-[10px] bg-secondary/40 px-1.5 py-0.5 border border-border/60">
-                                <span className="text-muted-foreground shrink-0">Session ID:</span>
-                                <span className="text-[var(--color-primary-gold)] font-bold select-all font-mono" title={r.sessionId}>
-                                  🔑 {r.sessionId}
-                                </span>
-                              </div>
-                            )}
-
-                            {/* Platform, Group & Thread / Topic details */}
-                            <div className="flex items-center justify-between text-[9px] text-muted-foreground gap-2">
-                              <span className="truncate max-w-[280px]" title={`${r.chatName || r.chatId || r.platform || "telegram"}${r.threadName ? ` > #${r.threadName}` : r.threadId ? ` (#${r.threadId})` : ""}`}>
-                                📍 {r.chatName ? r.chatName : r.chatId ? `Group ${r.chatId}` : r.platform || "telegram"}
-                                {r.threadName ? ` > #${r.threadName}` : r.threadId ? ` (#${r.threadId})` : ""}
-                              </span>
-                              <span className="shrink-0">{new Date(r.startedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                            </div>
+                  ) : (
+                    <>
+                      {/* Latest Checkpoint or Waiting Reason */}
+                      {((taskDetail?.agent?.checkpoints?.length ?? 0) > 0 && taskDetail?.agent?.checkpoints?.[0]) ? (
+                        <div className="min-w-0">
+                          <div className="font-mono font-bold text-[10px] text-cyan-400 uppercase mb-1 flex items-center gap-1.5">
+                            <Bot size={12} className="shrink-0" /> Latest Checkpoint (Rev #{taskDetail.agent.checkpoints[0].revision})
                           </div>
-                        ))}
+                          <p className="bg-background/80 p-2 border border-border text-foreground font-mono leading-relaxed break-words whitespace-pre-wrap">
+                            {taskDetail.agent.checkpoints[0].summary}
+                          </p>
+                          {taskDetail.agent.checkpoints[0].waitingReason && (
+                            <div className="mt-1 text-[11px] font-mono text-amber-400 bg-amber-950/20 p-1 border border-amber-500/30 break-words">
+                              ⏸️ Idling Reason: {taskDetail.agent.checkpoints[0].waitingReason}
+                            </div>
+                          )}
+                          {taskDetail.agent.checkpoints[0].nextStep && (
+                            <div className="mt-0.5 text-[11px] font-mono text-muted-foreground break-words">
+                              ▸ Next step: {taskDetail.agent.checkpoints[0].nextStep}
+                            </div>
+                          )}
+                        </div>
+                      ) : (task as any)?.waitingReason ? (
+                        <div className="min-w-0">
+                          <div className="font-mono font-bold text-[10px] text-cyan-400 uppercase mb-1 flex items-center gap-1.5">
+                            <Bot size={12} className="shrink-0" /> MCP Status Note
+                          </div>
+                          <div className="text-[11px] font-mono text-amber-400 bg-amber-950/20 p-1.5 border border-amber-500/30 break-words">
+                            ⏸️ Idling Reason: {(task as any).waitingReason}
+                          </div>
+                        </div>
+                      ) : null}
+
+                      {/* Multi-Model & Token Breakdown */}
+                      {Boolean(taskDetail?.agent?.runs?.some((r) => r.usageEvents && r.usageEvents.length > 0)) && (
+                        <div className="border-t border-border/40 pt-2 min-w-0">
+                          <div className="font-mono font-bold text-[10px] text-muted-foreground uppercase mb-1.5 flex items-center gap-1">
+                            <Cpu size={12} className="shrink-0" /> Models & Token Consumption:
+                          </div>
+                          <div className="space-y-1.5">
+                            {(() => {
+                              const modelMap: Record<string, { prompt: number; completion: number; total: number; cost: number }> = {};
+                              for (const r of taskDetail?.agent?.runs ?? []) {
+                                for (const u of r.usageEvents ?? []) {
+                                  const key = `${u.model} (${u.provider || "9Router"})`;
+                                  if (!modelMap[key]) modelMap[key] = { prompt: 0, completion: 0, total: 0, cost: 0 };
+                                  modelMap[key].prompt += u.promptTokens;
+                                  modelMap[key].completion += u.completionTokens;
+                                  modelMap[key].total += u.totalTokens;
+                                  modelMap[key].cost += u.costUsd || 0;
+                                }
+                              }
+                              const grandTotal = Object.values(modelMap).reduce((acc, cur) => acc + cur.total, 0);
+                              const totalCost = Object.values(modelMap).reduce((acc, cur) => acc + cur.cost, 0);
+
+                              return (
+                                <>
+                                  {Object.entries(modelMap).map(([mName, data]) => (
+                                    <div key={mName} className="p-1.5 bg-background/60 border border-border font-mono text-[11px] min-w-0 overflow-hidden">
+                                      <div className="font-bold text-[var(--color-primary-gold)] truncate" title={mName}>{mName}</div>
+                                      <div className="text-muted-foreground flex flex-wrap justify-between gap-1 mt-0.5">
+                                        <span>{data.prompt.toLocaleString()} prompt · {data.completion.toLocaleString()} comp</span>
+                                        <span>{data.total.toLocaleString()} tokens {data.cost > 0 && `(~$${data.cost.toFixed(3)})`}</span>
+                                      </div>
+                                    </div>
+                                  ))}
+                                  <div className="flex flex-wrap justify-between gap-1 font-mono font-bold text-[11px] text-foreground pt-1 border-t border-border/30">
+                                    <span>Total Burn:</span>
+                                    <span>⚡ {grandTotal.toLocaleString()} tokens {totalCost > 0 && `(~$${totalCost.toFixed(3)})`}</span>
+                                  </div>
+                                </>
+                              );
+                            })()}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Active/Recent Runs & Session Context */}
+                      <div className="border-t border-border/40 pt-2 text-[10px] font-mono text-muted-foreground min-w-0">
+                        <div className="font-bold uppercase mb-1 flex items-center justify-between">
+                          <span>Hermes Sessions & Runs:</span>
+                          <span className="text-[9px] font-normal opacity-70">L2 Pointer</span>
+                        </div>
+                        {((taskDetail?.agent?.runs?.length ?? 0) === 0) ? (
+                          <div className="p-1.5 bg-background/50 border border-border text-muted-foreground italic">
+                            No active/completed agent session registered for this quest yet.
+                          </div>
+                        ) : (
+                          <div className="space-y-1.5">
+                            {taskDetail?.agent?.runs?.slice(0, 5).map((r) => (
+                              <div key={r.id} className="p-1.5 bg-background/50 border border-border flex flex-col gap-1">
+                                <div className="flex items-center justify-between gap-1">
+                                  <span className="font-bold text-foreground truncate max-w-[240px]" title={r.sessionTitle || r.agentName}>
+                                    {r.sessionTitle ? `💬 ${r.sessionTitle}` : `👤 ${r.agentName}`}
+                                  </span>
+                                  <span className={r.status === "active" ? "text-green-400 font-bold px-1 bg-green-950/40 border border-green-500/30 text-[9px]" : "px-1 bg-muted/40 border border-border text-[9px]"}>
+                                    {r.status.toUpperCase()}
+                                  </span>
+                                </div>
+
+                                {/* Session ID pointer */}
+                                {r.sessionId && (
+                                  <div className="flex items-center justify-between text-[10px] bg-secondary/40 px-1.5 py-0.5 border border-border/60">
+                                    <span className="text-muted-foreground shrink-0">Session ID:</span>
+                                    <span className="text-[var(--color-primary-gold)] font-bold select-all font-mono" title={r.sessionId}>
+                                      🔑 {r.sessionId}
+                                    </span>
+                                  </div>
+                                )}
+
+                                {/* Platform, Group & Thread / Topic details */}
+                                <div className="flex items-center justify-between text-[9px] text-muted-foreground gap-2">
+                                  <span className="truncate max-w-[280px]" title={`${r.chatName || r.chatId || r.platform || "telegram"}${r.threadName ? ` > #${r.threadName}` : r.threadId ? ` (#${r.threadId})` : ""}`}>
+                                    📍 {r.chatName ? r.chatName : r.chatId ? `Group ${r.chatId}` : r.platform || "telegram"}
+                                    {r.threadName ? ` > #${r.threadName}` : r.threadId ? ` (#${r.threadId})` : ""}
+                                  </span>
+                                  <span className="shrink-0">{new Date(r.startedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
                       </div>
-                    )}
-                  </div>
+                    </>
+                  )}
                 </div>
               </Section>
             )}
