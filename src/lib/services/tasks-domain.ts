@@ -95,6 +95,12 @@ export async function domainCreateTask(
               })),
             } : undefined,
           },
+          include: {
+            tags: { select: { tag: { select: { name: true } } } },
+            relations: { select: { relationType: true, relatedTask: { select: { id: true, title: true } } } },
+            attachments: true,
+            deliverables: true,
+          },
         });
 
         await tx.taskStatusLog.create({
@@ -115,7 +121,7 @@ export async function domainCreateTask(
         return created;
       });
 
-      broadcastSyncEvent(ownerId, "task:created", { id: task.id, title: task.title });
+      await broadcastSyncEvent(ownerId, "task:created", { task, id: task.id, title: task.title });
 
       let sheetData: CharacterSheetData | undefined;
       if (rest.status === "done") {
@@ -223,6 +229,12 @@ export async function domainUpdateTask(
             })),
           } : undefined,
         },
+        include: {
+          tags: { select: { tag: { select: { name: true } } } },
+          relations: { select: { relationType: true, relatedTask: { select: { id: true, title: true } } } },
+          attachments: true,
+          deliverables: true,
+        },
       });
 
       const changes: Record<string, { from: any; to: any }> = {};
@@ -275,7 +287,13 @@ export async function domainUpdateTask(
       }
     }
 
-    broadcastSyncEvent(ownerId, "task:updated", { id: task.id, title: task.title, status: task.status });
+    await broadcastSyncEvent(ownerId, "task:updated", {
+      task,
+      id: task.id,
+      title: task.title,
+      status: task.status,
+      waitingReason: task.waitingReason,
+    });
 
     return { success: true, data: { task, sheetData } };
   } catch (err: any) {

@@ -199,6 +199,7 @@ async function createAtlasMcpServer(userId: string, credentialId: string) {
         size: z.enum(["xs", "s", "m", "l", "xl"]).optional().describe("Estimated task size"),
         waitingReason: z.string().optional().describe("If idling, why (e.g. Waiting for PR review)"),
         metadata: z.record(z.string(), z.any()).optional().describe("Extra structured info (models, prUrl, etc.)"),
+        tags: z.array(z.string()).optional().describe("Tags / labels for the quest, e.g. ['security', 'auth', 'pr-421']"),
         attachments: z
           .array(
             z.object({
@@ -227,7 +228,7 @@ async function createAtlasMcpServer(userId: string, credentialId: string) {
           .optional(),
       },
     },
-    async ({ title, description, projectName, status, priority, type, size, waitingReason, metadata, attachments, deliverables, source }) => {
+    async ({ title, description, projectName, status, priority, type, size, waitingReason, metadata, tags, attachments, deliverables, source }) => {
       try {
         let projectId: string | undefined;
         if (projectName) {
@@ -248,6 +249,7 @@ async function createAtlasMcpServer(userId: string, credentialId: string) {
           size,
           reporter: "other",
           waitingReason,
+          tags,
           attachments,
           deliverables,
           metadata: {
@@ -397,21 +399,43 @@ async function createAtlasMcpServer(userId: string, credentialId: string) {
           },
         });
 
-        if (comment) {
-          await db.comment.create({
-            data: {
-              taskId,
-              authorId: userId,
-              content: `🤖 [AI Agent]: ${comment}`,
-            },
-          });
-        }
+        // Always auto-post a comment under the task with findings/progress
+        const commentContent = comment
+          ? `⚡ [MCP]: ${comment}`
+          : `⚡ [MCP Checkpoint Rev #${nextRevision}]: ${summary}${waitingReason ? ` (Idling: ${waitingReason})` : ""}`;
 
-        // Sync back to task status
+        await db.comment.create({
+          data: {
+            taskId,
+            authorId: userId,
+            content: commentContent,
+          },
+        });
+
+        // Sync back to task status or broadcast updated task via SSE
         if (checkpointState === "waiting_external") {
           await domainUpdateTask(userId, taskId, {
             waitingReason: waitingReason || summary,
           });
+        } else {
+          const currentTask = await db.task.findUnique({
+            where: { id: taskId },
+            include: {
+              tags: { select: { tag: { select: { name: true } } } },
+              relations: { select: { relationType: true, relatedTask: { select: { id: true, title: true } } } },
+              attachments: true,
+              deliverables: true,
+            },
+          });
+          if (currentTask) {
+            await broadcastSyncEvent(userId, "task:updated", {
+              task: currentTask,
+              id: taskId,
+              title: currentTask.title,
+              status: currentTask.status,
+              waitingReason: currentTask.waitingReason,
+            });
+          }
         }
 
         return jsonSuccess({
@@ -450,7 +474,7 @@ async function createAtlasMcpServer(userId: string, credentialId: string) {
       try {
         const run = await db.agentRun.findFirst({
           where: { id: runId, task: { ownerId: userId } },
-          select: { id: true, taskId: true },
+          select: { id: true, taskId: true, agentName: true },
         });
 
         if (!run) return jsonError("Agent run not found", "NOT_FOUND");
@@ -480,6 +504,17 @@ async function createAtlasMcpServer(userId: string, credentialId: string) {
         if (taskCompleted) {
           await domainUpdateTask(userId, run.taskId, { status: "done" });
         }
+
+        // Auto-post a brief finish comment to the task
+        await db.comment.create({
+          data: {
+            taskId: run.taskId,
+            authorId: userId,
+            content: taskCompleted
+              ? `🏁 [MCP Run Finished]: Quest marked DONE by ${run.agentName}.${usage?.totalTokens ? ` Burned ${usage.totalTokens.toLocaleString()} tokens.` : ""}`
+              : `🏁 [MCP Run Concluded]: Run by ${run.agentName} ended (${status}).${usage?.totalTokens ? ` Burned ${usage.totalTokens.toLocaleString()} tokens.` : ""}`,
+          },
+        });
 
         return jsonSuccess({
           message: "Run finished successfully",

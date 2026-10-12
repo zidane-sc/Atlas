@@ -19,6 +19,18 @@ export type DbTaskWithLogs = Partial<DbTask> & {
   comments?: (DbComment & { author: DbUser })[];
 };
 
+function toIso(val: unknown): string | undefined {
+  if (!val) return undefined;
+  if (val instanceof Date) return val.toISOString();
+  if (typeof val === "string") return val;
+  try {
+    const d = new Date(val as any);
+    return isNaN(d.getTime()) ? undefined : d.toISOString();
+  } catch {
+    return undefined;
+  }
+}
+
 export function mapDbTaskToClient(
   dbTask: DbTaskWithLogs,
   dbProjects?: (Partial<DbProject> & { id: string; name: string })[],
@@ -39,33 +51,33 @@ export function mapDbTaskToClient(
     metadata: (dbTask as any).metadata ?? undefined,
     timeSpentSeconds: dbTask.timeSpentSeconds ?? 0,
     pinned: dbTask.pinned ?? false,
-    startDate: dbTask.startDate ? dbTask.startDate.toISOString().split("T")[0] : undefined,
-    dueDate: dbTask.dueDate ? dbTask.dueDate.toISOString().split("T")[0] : undefined,
-    completedAt: dbTask.completedAt ? dbTask.completedAt.toISOString() : undefined,
-    createdAt: dbTask.createdAt.toISOString(),
+    startDate: toIso(dbTask.startDate)?.split("T")[0],
+    dueDate: toIso(dbTask.dueDate)?.split("T")[0],
+    completedAt: toIso(dbTask.completedAt),
+    createdAt: toIso(dbTask.createdAt) || new Date().toISOString(),
     reporter: (dbTask.reporter as Reporter) || "self",
-    tags: dbTask.tags?.map((t) => t.tag.name) ?? [],
-    relations: dbTask.relations?.map((r) => ({
+    tags: dbTask.tags?.map((t: any) => (typeof t === "string" ? t : (t.tag?.name || t.name || ""))).filter(Boolean) ?? [],
+    relations: dbTask.relations?.map((r: any) => ({
       relationType: r.relationType as any,
-      taskId: r.relatedTask.id,
-      title: r.relatedTask.title,
+      taskId: r.relatedTask?.id || r.taskId,
+      title: r.relatedTask?.title || r.title || "",
     })) ?? [],
-    attachments: dbTask.attachments?.map((a) => ({
+    attachments: dbTask.attachments?.map((a: any) => ({
       type: a.type as any,
       label: a.label ?? "",
       url: a.url,
     })) ?? [],
-    deliverables: dbTask.deliverables?.map((d) => ({
+    deliverables: dbTask.deliverables?.map((d: any) => ({
       type: d.type as any,
-      label: "",
+      label: d.label ?? "",
       urlOrContent: d.urlOrContent,
     })) ?? [],
     statusHistory: (() => {
       const history = dbTask.statusHistory && dbTask.statusHistory.length > 0
-        ? dbTask.statusHistory.map((h) => ({
+        ? dbTask.statusHistory.map((h: any) => ({
             fromStatus: h.fromStatus as TaskStatus | null,
             toStatus: h.toStatus as TaskStatus,
-            changedAt: h.changedAt.toISOString(),
+            changedAt: toIso(h.changedAt) || new Date().toISOString(),
           }))
         : [];
 
@@ -74,23 +86,23 @@ export function mapDbTaskToClient(
         history.push({
           fromStatus: null,
           toStatus: "done" as TaskStatus,
-          changedAt: (dbTask.completedAt || dbTask.createdAt).toISOString(),
+          changedAt: toIso(dbTask.completedAt) || toIso(dbTask.createdAt) || new Date().toISOString(),
         });
       } else if (history.length === 0) {
         history.push({
           fromStatus: null,
           toStatus: dbTask.status as TaskStatus,
-          changedAt: dbTask.createdAt.toISOString(),
+          changedAt: toIso(dbTask.createdAt) || new Date().toISOString(),
         });
       }
       return history;
     })(),
     comments: dbTask.comments
-      ? dbTask.comments.map((c) => ({
+      ? dbTask.comments.map((c: any) => ({
           id: c.id,
           content: c.content,
-          authorName: c.author.name || c.author.email,
-          createdAt: c.createdAt.toISOString(),
+          authorName: c.author?.name || c.author?.email || "User",
+          createdAt: toIso(c.createdAt) || new Date().toISOString(),
         }))
       : [],
   };
@@ -195,6 +207,8 @@ export function tasksReducer(tasks: Task[], action: TasksAction): Task[] {
       return [action.task, ...tasks];
     }
     case "sync": {
+      const exists = tasks.some((t) => t.id === action.task.id);
+      if (!exists) return [action.task, ...tasks];
       return tasks.map((t) => (t.id === action.task.id ? action.task : t));
     }
     case "addTime": {
