@@ -494,7 +494,7 @@ export default function Page() {
           <div className="p-3 border border-border bg-card mb-4 flex flex-col gap-2">
             <div className="flex items-center justify-between">
               <span className="text-xs font-mono font-bold text-[var(--color-primary-gold)]">ENDPOINT:</span>
-              <span className="text-xs font-mono select-all text-muted-foreground">https://atlas-zidane-scs-projects.vercel.app/api/mcp</span>
+              <span className="text-xs font-mono select-all text-muted-foreground">https://atlas-rpg.fly.dev/api/mcp</span>
             </div>
             <div className="flex items-center justify-between border-t border-border/40 pt-2">
               <span className="text-xs font-mono font-bold text-[var(--color-primary-gold)]">TRANSPORT:</span>
@@ -618,14 +618,14 @@ export default function Page() {
                   title: "Claude Code CLI",
                   subtitle: "Hubungkan Atlas ke Claude Code dalam 1 baris perintah terminal:",
                   fileLabel: "Jalankan di Terminal:",
-                  snippet: `claude mcp add atlas https://atlas-zidane-scs-projects.vercel.app/api/mcp -H "Authorization: Bearer ${tokenValue}"`,
+                  snippet: `claude mcp add atlas https://atlas-rpg.fly.dev/api/mcp -H "Authorization: Bearer ${tokenValue}"`,
                   note: "Claude Code otomatis membaca aturan SOP dari deskripsi tool Atlas: auto-create quest di awal (Turn 1), logging temuan di comments, dan update status ke done saat tuntas.",
                 },
                 "hermes": {
                   title: "Hermes Agent",
                   subtitle: "Konfigurasi untuk Hermes Agent (Telegram / Self-Hosted daemon):",
                   fileLabel: "Tambahkan ke ~/.hermes/config.yaml:",
-                  snippet: `mcp_servers:\n  atlas:\n    url: "https://atlas-zidane-scs-projects.vercel.app/api/mcp"\n    headers:\n      Authorization: "Bearer ${tokenValue}"`,
+                  snippet: `mcp_servers:\n  atlas:\n    url: "https://atlas-rpg.fly.dev/api/mcp"\n    headers:\n      Authorization: "Bearer ${tokenValue}"`,
                   note: "Simpan token di ~/.hermes/.env sebagai ATLAS_MCP_TOKEN, lalu kirim perintah /reload-mcp di chat Telegram.",
                 },
                 "cursor": {
@@ -635,7 +635,7 @@ export default function Page() {
                   snippet: JSON.stringify({
                     mcpServers: {
                       atlas: {
-                        url: "https://atlas-zidane-scs-projects.vercel.app/api/mcp",
+                        url: "https://atlas-rpg.fly.dev/api/mcp",
                         headers: {
                           Authorization: `Bearer ${tokenValue}`,
                         },
@@ -651,7 +651,7 @@ export default function Page() {
                   snippet: JSON.stringify({
                     mcpServers: {
                       atlas: {
-                        url: "https://atlas-zidane-scs-projects.vercel.app/api/mcp",
+                        url: "https://atlas-rpg.fly.dev/api/mcp",
                         headers: {
                           Authorization: `Bearer ${tokenValue}`,
                         },
@@ -667,7 +667,7 @@ export default function Page() {
                   snippet: JSON.stringify({
                     mcpServers: {
                       atlas: {
-                        serverUrl: "https://atlas-zidane-scs-projects.vercel.app/api/mcp",
+                        serverUrl: "https://atlas-rpg.fly.dev/api/mcp",
                         headers: {
                           Authorization: `Bearer ${tokenValue}`,
                         },
