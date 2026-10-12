@@ -422,131 +422,135 @@ export async function getTaskDetails(
   comments: TaskComment[];
   agent?: TaskAgentDetails;
 }>> {
-  const session = await auth();
-  if (!session?.user?.email) {
-    return { success: false, error: { code: "UNAUTHORIZED", message: "Sign in required." } };
-  }
+  try {
+    const session = await auth();
+    if (!session?.user?.email) {
+      return { success: false, error: { code: "UNAUTHORIZED", message: "Sign in required." } };
+    }
 
-  const task = await db.task.findFirst({
-    where: { id: taskId, owner: { email: session.user.email } },
-    select: {
-      tags: { select: { tag: { select: { name: true } } } },
-      relations: { select: { relationType: true, relatedTask: { select: { id: true, title: true } } } },
-      attachments: true,
-      deliverables: true,
-      statusHistory: {
-        orderBy: { changedAt: "asc" },
-        select: { fromStatus: true, toStatus: true, changedAt: true },
-      },
-      comments: {
-        orderBy: { createdAt: "asc" },
-        select: {
-          id: true,
-          content: true,
-          createdAt: true,
-          author: { select: { name: true, email: true } },
+    const task = await db.task.findFirst({
+      where: { id: taskId, owner: { email: session.user.email } },
+      select: {
+        tags: { select: { tag: { select: { name: true } } } },
+        relations: { select: { relationType: true, relatedTask: { select: { id: true, title: true } } } },
+        attachments: true,
+        deliverables: true,
+        statusHistory: {
+          orderBy: { changedAt: "asc" },
+          select: { fromStatus: true, toStatus: true, changedAt: true },
         },
-      },
-      agentRuns: {
-        orderBy: { startedAt: "desc" },
-        take: 10,
-        select: {
-          id: true,
-          agentName: true,
-          sessionId: true,
-          sessionTitle: true,
-          platform: true,
-          chatId: true,
-          chatName: true,
-          threadId: true,
-          threadName: true,
-          status: true,
-          startedAt: true,
-          endedAt: true,
-          usageEvents: {
-            orderBy: { createdAt: "asc" },
-            select: {
-              id: true,
-              model: true,
-              provider: true,
-              promptTokens: true,
-              completionTokens: true,
-              totalTokens: true,
-              costUsd: true,
-              createdAt: true,
+        comments: {
+          orderBy: { createdAt: "asc" },
+          select: {
+            id: true,
+            content: true,
+            createdAt: true,
+            author: { select: { name: true, email: true } },
+          },
+        },
+        agentRuns: {
+          orderBy: { startedAt: "desc" },
+          take: 10,
+          select: {
+            id: true,
+            agentName: true,
+            sessionId: true,
+            sessionTitle: true,
+            platform: true,
+            chatId: true,
+            chatName: true,
+            threadId: true,
+            threadName: true,
+            status: true,
+            startedAt: true,
+            endedAt: true,
+            usageEvents: {
+              orderBy: { createdAt: "asc" },
+              select: {
+                id: true,
+                model: true,
+                provider: true,
+                promptTokens: true,
+                completionTokens: true,
+                totalTokens: true,
+                costUsd: true,
+                createdAt: true,
+              },
             },
           },
         },
-      },
-      checkpoints: {
-        orderBy: { revision: "desc" },
-        take: 10,
-        select: {
-          id: true,
-          revision: true,
-          summary: true,
-          checkpointState: true,
-          waitingReason: true,
-          nextStep: true,
-          createdAt: true,
+        checkpoints: {
+          orderBy: { revision: "desc" },
+          take: 10,
+          select: {
+            id: true,
+            revision: true,
+            summary: true,
+            checkpointState: true,
+            waitingReason: true,
+            nextStep: true,
+            createdAt: true,
+          },
         },
       },
-    },
-  });
+    });
 
-  if (!task) {
-    return { success: false, error: { code: "NOT_FOUND", message: "Task not found." } };
-  }
+    if (!task) {
+      return { success: false, error: { code: "NOT_FOUND", message: "Task not found." } };
+    }
 
-  return {
-    success: true,
-    data: {
-      tags: task.tags?.map((t: any) => t.tag?.name || t).filter(Boolean) ?? [],
-      relations: task.relations?.map((r: any) => ({
-        relationType: r.relationType,
-        taskId: r.relatedTask?.id,
-        title: r.relatedTask?.title,
-      })) ?? [],
-      attachments: task.attachments?.map((a: any) => ({
-        id: a.id,
-        type: a.type,
-        label: a.label ?? "",
-        url: a.url,
-      })) ?? [],
-      deliverables: task.deliverables?.map((d: any) => ({
-        id: d.id,
-        type: d.type,
-        label: d.label ?? "",
-        urlOrContent: d.urlOrContent,
-      })) ?? [],
-      statusHistory: task.statusHistory.map((h) => ({
-        fromStatus: h.fromStatus as TaskStatus | null,
-        toStatus: h.toStatus as TaskStatus,
-        changedAt: h.changedAt.toISOString(),
-      })),
-      comments: task.comments.map((c) => ({
-        id: c.id,
-        authorName: c.author.name || c.author.email,
-        content: c.content,
-        createdAt: c.createdAt.toISOString(),
-      })),
-      agent: {
-        runs: (task.agentRuns || []).map((r) => ({
-          ...r,
-          startedAt: r.startedAt.toISOString(),
-          endedAt: r.endedAt ? r.endedAt.toISOString() : null,
-          usageEvents: (r.usageEvents || []).map((u) => ({
-            ...u,
-            createdAt: u.createdAt.toISOString(),
+    return {
+      success: true,
+      data: {
+        tags: task.tags?.map((t: any) => t.tag?.name || t).filter(Boolean) ?? [],
+        relations: task.relations?.map((r: any) => ({
+          relationType: r.relationType,
+          taskId: r.relatedTask?.id,
+          title: r.relatedTask?.title,
+        })) ?? [],
+        attachments: task.attachments?.map((a: any) => ({
+          id: a.id,
+          type: a.type,
+          label: a.label ?? "",
+          url: a.url,
+        })) ?? [],
+        deliverables: task.deliverables?.map((d: any) => ({
+          id: d.id,
+          type: d.type,
+          label: d.label ?? "",
+          urlOrContent: d.urlOrContent,
+        })) ?? [],
+        statusHistory: task.statusHistory.map((h) => ({
+          fromStatus: h.fromStatus as TaskStatus | null,
+          toStatus: h.toStatus as TaskStatus,
+          changedAt: h.changedAt instanceof Date ? h.changedAt.toISOString() : String(h.changedAt),
+        })),
+        comments: task.comments.map((c) => ({
+          id: c.id,
+          authorName: c.author?.name || c.author?.email || "User",
+          content: c.content,
+          createdAt: c.createdAt instanceof Date ? c.createdAt.toISOString() : String(c.createdAt),
+        })),
+        agent: {
+          runs: (task.agentRuns || []).map((r) => ({
+            ...r,
+            startedAt: r.startedAt instanceof Date ? r.startedAt.toISOString() : String(r.startedAt),
+            endedAt: r.endedAt ? (r.endedAt instanceof Date ? r.endedAt.toISOString() : String(r.endedAt)) : null,
+            usageEvents: (r.usageEvents || []).map((u) => ({
+              ...u,
+              createdAt: u.createdAt instanceof Date ? u.createdAt.toISOString() : String(u.createdAt),
+            })),
           })),
-        })),
-        checkpoints: (task.checkpoints || []).map((cp) => ({
-          ...cp,
-          createdAt: cp.createdAt.toISOString(),
-        })),
+          checkpoints: (task.checkpoints || []).map((cp) => ({
+            ...cp,
+            createdAt: cp.createdAt instanceof Date ? cp.createdAt.toISOString() : String(cp.createdAt),
+          })),
+        },
       },
-    },
-  };
+    };
+  } catch (err: any) {
+    return { success: false, error: { code: "INTERNAL", message: err?.message || "Failed to load task details." } };
+  }
 }
 
 export async function resetAllTasksAction(): Promise<ActionResult<Partial<CharacterSheetData>>> {

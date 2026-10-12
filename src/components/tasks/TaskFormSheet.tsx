@@ -191,11 +191,13 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
 
   const refreshTaskDetail = async () => {
     if (!task) return;
-    const result = await getTaskDetails(task.id);
-    if (result.success) {
-      setTaskDetail(result.data);
-    } else {
-      notify(result.error?.message ?? "Failed to load task history/comments.", "error");
+    try {
+      const result = await getTaskDetails(task.id);
+      if (result.success) {
+        setTaskDetail(result.data);
+      }
+    } catch (err) {
+      console.warn("Failed to refresh task details:", err);
     }
   };
 
@@ -204,9 +206,9 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
     let cancelled = false;
     setTaskDetailLoading(true);
     (async () => {
-      const result = await getTaskDetails(task.id);
-      if (!cancelled) {
-        if (result.success) {
+      try {
+        const result = await getTaskDetails(task.id);
+        if (!cancelled && result.success) {
           setTaskDetail(result.data);
           // Sync live attachments/deliverables/relations into form state if present
           if (result.data.attachments && result.data.attachments.length > 0) {
@@ -219,7 +221,12 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
             setForm((prev) => ({ ...prev, relations: result.data.relations }));
           }
         }
-        setTaskDetailLoading(false);
+      } catch (err) {
+        console.warn("Failed to load task details:", err);
+      } finally {
+        if (!cancelled) {
+          setTaskDetailLoading(false);
+        }
       }
     })();
     return () => {
