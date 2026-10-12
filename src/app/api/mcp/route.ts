@@ -240,10 +240,53 @@ async function createAtlasMcpServer(userId: string, credentialId: string) {
       try {
         let projectId: string | undefined;
         if (projectName) {
-          const p = await db.project.findFirst({
-            where: { ownerId: userId, name: { equals: projectName.trim(), mode: "insensitive" } },
-            select: { id: true },
+          const trimmedProject = projectName.trim();
+          let p = await db.project.findFirst({
+            where: { ownerId: userId, name: { equals: trimmedProject, mode: "insensitive" } },
+            select: { id: true, code: true, name: true },
           });
+
+          // If project does not exist yet, auto-create it on the fly so tasks are never orphaned
+          if (!p && trimmedProject) {
+            try {
+              const cleanAlpha = trimmedProject.replace(/[^a-zA-Z0-9]/g, "").toUpperCase();
+              let baseCode = cleanAlpha.slice(0, 3);
+              if (baseCode.length < 2) baseCode = (cleanAlpha + "PRJ").slice(0, 3);
+
+              let candidateCode = baseCode;
+              let suffix = 1;
+              while (await db.project.findUnique({ where: { code: candidateCode } })) {
+                candidateCode = `${baseCode.slice(0, 2)}${suffix}`;
+                suffix++;
+                if (suffix > 9) {
+                  candidateCode = `P${Math.floor(100 + Math.random() * 900)}`;
+                  break;
+                }
+              }
+
+              p = await db.project.create({
+                data: {
+                  name: trimmedProject,
+                  code: candidateCode,
+                  category: "work",
+                  colorVar: "--color-primary-gold",
+                  emoji: "📁",
+                  status: "active",
+                  ownerId: userId,
+                },
+                select: { id: true, code: true, name: true },
+              });
+
+              await broadcastSyncEvent(userId, "sync:reload", { autoCreatedProject: p });
+            } catch {
+              // Fallback if concurrent project creation collision occurs
+              p = await db.project.findFirst({
+                where: { ownerId: userId, name: { equals: trimmedProject, mode: "insensitive" } },
+                select: { id: true, code: true, name: true },
+              });
+            }
+          }
+
           if (p) projectId = p.id;
         }
 
@@ -592,13 +635,14 @@ async function createAtlasMcpServer(userId: string, credentialId: string) {
         status: z.enum(["backlog", "todo", "in_progress", "done", "archived"]).optional(),
         title: z.string().optional(),
         description: z.string().optional(),
+        projectName: z.string().optional().describe("Assign or move to project by name (auto-created if not exists)"),
         priority: z.enum(["high", "medium", "low"]).optional(),
         size: z.enum(["xs", "s", "m", "l", "xl"]).optional(),
         waitingReason: z.string().nullable().optional(),
         tags: z.array(z.string()).optional().describe("Updated or replacement tags"),
       },
     },
-    async ({ taskId, code, status, title, description, priority, size, waitingReason, tags }) => {
+    async ({ taskId, code, status, title, description, projectName, priority, size, waitingReason, tags }) => {
       try {
         let resolvedTaskId = taskId;
         if (!resolvedTaskId && code) {
@@ -621,6 +665,42 @@ async function createAtlasMcpServer(userId: string, credentialId: string) {
         if (size !== undefined) updateData.size = size;
         if (waitingReason !== undefined) updateData.waitingReason = waitingReason;
         if (tags !== undefined) updateData.tags = tags;
+
+        if (projectName) {
+          const trimmedProject = projectName.trim();
+          let p = await db.project.findFirst({
+            where: { ownerId: userId, name: { equals: trimmedProject, mode: "insensitive" } },
+            select: { id: true },
+          });
+          if (!p && trimmedProject) {
+            try {
+              const cleanAlpha = trimmedProject.replace(/[^a-zA-Z0-9]/g, "").toUpperCase();
+              let baseCode = cleanAlpha.slice(0, 3);
+              if (baseCode.length < 2) baseCode = (cleanAlpha + "PRJ").slice(0, 3);
+              let candidateCode = baseCode;
+              let suffix = 1;
+              while (await db.project.findUnique({ where: { code: candidateCode } })) {
+                candidateCode = `${baseCode.slice(0, 2)}${suffix}`;
+                suffix++;
+                if (suffix > 9) break;
+              }
+              p = await db.project.create({
+                data: {
+                  name: trimmedProject,
+                  code: candidateCode,
+                  category: "work",
+                  colorVar: "--color-primary-gold",
+                  emoji: "📁",
+                  status: "active",
+                  ownerId: userId,
+                },
+                select: { id: true },
+              });
+              await broadcastSyncEvent(userId, "sync:reload", { autoCreatedProject: p });
+            } catch {}
+          }
+          if (p) updateData.projectId = p.id;
+        }
 
         const updateRes = await domainUpdateTask(userId, resolvedTaskId, updateData);
         if (!updateRes.success) {
