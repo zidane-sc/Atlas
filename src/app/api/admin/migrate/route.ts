@@ -21,6 +21,7 @@ export async function GET(req: Request) {
     );
     const appliedNames = new Set(appliedRows.map((r) => r.migration_name));
     logs.push(`Currently applied: ${Array.from(appliedNames).join(", ")}`);
+    logs.push(`ENV_DB: ${process.env.DATABASE_URL}`);
 
     // Ensure task_reporter enum has 'agent' value
     await db.$executeRawUnsafe(`
