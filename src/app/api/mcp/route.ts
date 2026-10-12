@@ -22,11 +22,21 @@ function jsonError(message: string, code: string = "ERROR") {
   };
 }
 
-async function createAtlasMcpServer(userId: string, credentialId: string) {
+async function createAtlasMcpServer(userId: string, credentialId: string, scopes: string[] = ["all"]) {
   const server = new McpServer({
     name: "atlas-mcp",
     version: "1.0.0",
   });
+
+  function checkPermission(required: "tasks:read" | "tasks:write" | "runs:write" | "comments:write") {
+    if (scopes.includes("all") || scopes.includes("*")) return null;
+    if (required === "comments:write" && scopes.includes("tasks:write")) return null;
+    if (scopes.includes(required)) return null;
+    return jsonError(
+      `Permission denied: Token '${credentialId.slice(0, 8)}' lacks required scope '${required}'. Granted scopes: [${scopes.join(", ")}].`,
+      "FORBIDDEN"
+    );
+  }
 
   // 1. atlas_find_tasks
   server.registerTool(
@@ -46,6 +56,9 @@ async function createAtlasMcpServer(userId: string, credentialId: string) {
       },
     },
     async ({ query, status, projectName, tag, isIdling, dueToday, overdue, sourceKey, limit }) => {
+      const perm = checkPermission("tasks:read");
+      if (perm) return perm;
+
       try {
         const whereClause: any = {
           ownerId: userId,
@@ -166,6 +179,9 @@ async function createAtlasMcpServer(userId: string, credentialId: string) {
       },
     },
     async ({ status, limit }) => {
+      const perm = checkPermission("tasks:read");
+      if (perm) return perm;
+
       try {
         const whereClause: any = {
           ownerId: userId,
@@ -225,6 +241,9 @@ async function createAtlasMcpServer(userId: string, credentialId: string) {
       },
     },
     async ({ taskId, code }) => {
+      const perm = checkPermission("tasks:read");
+      if (perm) return perm;
+
       try {
         if (!taskId && !code) {
           return jsonError("Either taskId or code must be provided", "VALIDATION_ERROR");
@@ -330,6 +349,7 @@ async function createAtlasMcpServer(userId: string, credentialId: string) {
         description: z.string().optional().describe("Context, PR description, or reproduction steps"),
         projectName: z.string().optional().describe("Name of project to assign (e.g. Dealls, Personal)"),
         createProjectIfNotExists: z.boolean().default(false).describe("Set true ONLY if user explicitly asked or confirmed creating a new project in Atlas when projectName does not exist."),
+        idempotencyKey: z.string().optional().describe("Unique idempotency key (UUID, commit hash, or client request ID) to safely retry task creation without producing duplicates."),
         status: z.enum(["backlog", "todo", "in_progress", "done"]).default("in_progress"),
         priority: z.enum(["high", "medium", "low"]).default("medium"),
         type: z.enum(["coding", "research", "design", "documentation", "bug", "meeting", "admin"]).default("coding"),
@@ -373,8 +393,60 @@ async function createAtlasMcpServer(userId: string, credentialId: string) {
           .optional(),
       },
     },
-    async ({ title, description, projectName, createProjectIfNotExists, status, priority, type, size, waitingReason, metadata, tags, sessionId, sessionTitle, agentName, platform, chatId, chatName, threadId, threadName, attachments, deliverables, source }) => {
+    async ({ title, description, projectName, createProjectIfNotExists, idempotencyKey, status, priority, type, size, waitingReason, metadata, tags, sessionId, sessionTitle, agentName, platform, chatId, chatName, threadId, threadName, attachments, deliverables, source }) => {
+      const perm = checkPermission("tasks:write");
+      if (perm) return perm;
+
       try {
+        // 1. Idempotency Key deduplication
+        if (idempotencyKey) {
+          const existingTasks = await db.task.findMany({
+            where: { ownerId: userId, deletedAt: null },
+            take: 50,
+            select: { id: true, code: true, title: true, status: true, reporter: true, metadata: true },
+          });
+          const match = existingTasks.find(
+            (t) => (t.metadata as any)?.idempotencyKey === idempotencyKey
+          );
+          if (match) {
+            return jsonSuccess({
+              message: "Task already exists (idempotent match via idempotencyKey)",
+              idempotent: true,
+              task: {
+                id: match.id,
+                code: match.code,
+                title: match.title,
+                status: match.status,
+                reporter: match.reporter,
+              },
+            });
+          }
+        }
+
+        // 2. Canonical Source deduplication for active tasks (e.g. same PR URL)
+        if (source?.canonicalKey) {
+          const existingSource = await db.taskSource.findFirst({
+            where: {
+              canonicalKey: source.canonicalKey,
+              task: {
+                ownerId: userId,
+                deletedAt: null,
+                status: { in: ["in_progress", "todo", "backlog"] },
+              },
+            },
+            include: {
+              task: { select: { id: true, code: true, title: true, status: true, reporter: true } },
+            },
+          });
+          if (existingSource && existingSource.task) {
+            return jsonSuccess({
+              message: "Active task already exists for this canonical source (avoiding duplicate quest)",
+              idempotent: true,
+              task: existingSource.task,
+            });
+          }
+        }
+
         let projectId: string | undefined;
         if (projectName) {
           const trimmedProject = projectName.trim();
@@ -467,6 +539,7 @@ async function createAtlasMcpServer(userId: string, credentialId: string) {
           deliverables,
           metadata: {
             ...metadata,
+            ...(idempotencyKey ? { idempotencyKey } : {}),
             agentReporter: "agent",
             createdByAgent: true,
             createdAtAgent: new Date().toISOString(),
@@ -543,6 +616,9 @@ async function createAtlasMcpServer(userId: string, credentialId: string) {
       },
     },
     async ({ taskId, agentName, sessionId, sessionTitle, platform, chatId, chatName, threadId, threadName, externalRunId }) => {
+      const perm = checkPermission("runs:write");
+      if (perm) return perm;
+
       try {
         const task = await db.task.findFirst({
           where: { id: taskId, ownerId: userId, deletedAt: null },
@@ -601,6 +677,9 @@ async function createAtlasMcpServer(userId: string, credentialId: string) {
       },
     },
     async ({ taskId, runId, summary, checkpointState, waitingReason, nextStep, provenanceSource, comment }) => {
+      const perm = checkPermission("runs:write");
+      if (perm) return perm;
+
       try {
         const task = await db.task.findFirst({
           where: { id: taskId, ownerId: userId, deletedAt: null },
@@ -718,6 +797,9 @@ async function createAtlasMcpServer(userId: string, credentialId: string) {
       },
     },
     async ({ taskId, code, content }) => {
+      const perm = checkPermission("comments:write");
+      if (perm) return perm;
+
       try {
         let resolvedTaskId = taskId;
         if (!resolvedTaskId && code) {
@@ -787,6 +869,9 @@ async function createAtlasMcpServer(userId: string, credentialId: string) {
       },
     },
     async ({ taskId, code, status, title, description, projectName, createProjectIfNotExists, priority, size, waitingReason, tags }) => {
+      const perm = checkPermission("tasks:write");
+      if (perm) return perm;
+
       try {
         let resolvedTaskId = taskId;
         if (!resolvedTaskId && code) {
@@ -895,6 +980,9 @@ async function createAtlasMcpServer(userId: string, credentialId: string) {
       },
     },
     async ({ runId, status, taskCompleted, usage }) => {
+      const perm = checkPermission("runs:write");
+      if (perm) return perm;
+
       try {
         const run = await db.agentRun.findFirst({
           where: { id: runId, task: { ownerId: userId } },
@@ -966,7 +1054,7 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const server = await createAtlasMcpServer(cred.userId, cred.credentialId);
+    const server = await createAtlasMcpServer(cred.userId, cred.credentialId, cred.scopes);
     const transport = new WebStandardStreamableHTTPServerTransport({
       enableJsonResponse: true,
     });

@@ -142,6 +142,8 @@ export default function Page() {
   // MCP Integrations State
   const [credentials, setCredentials] = useState<CredentialSummary[]>([]);
   const [newKeyLabel, setNewKeyLabel] = useState("");
+  const [keyScopePreset, setKeyScopePreset] = useState<"all" | "read-write" | "read-only">("all");
+  const [keyExpiryDays, setKeyExpiryDays] = useState<number | null>(null);
   const [generatedKey, setGeneratedKey] = useState<string | null>(null);
   const [creatingKey, setCreatingKey] = useState(false);
   const [copiedKey, setCopiedKey] = useState(false);
@@ -157,7 +159,11 @@ export default function Page() {
   const handleGenerateKey = async () => {
     setCreatingKey(true);
     try {
-      const res = await createCredentialAction(newKeyLabel);
+      let scopes = ["all"];
+      if (keyScopePreset === "read-write") scopes = ["tasks:read", "tasks:write", "runs:write", "comments:write"];
+      if (keyScopePreset === "read-only") scopes = ["tasks:read"];
+
+      const res = await createCredentialAction(newKeyLabel, scopes, keyExpiryDays);
       if (res?.success) {
         setGeneratedKey(res.data.plainToken);
         setCredentials((prev) => [res.data.credential, ...prev]);
@@ -524,22 +530,53 @@ export default function Page() {
             </div>
           )}
 
-          <div className="flex items-center gap-2 mb-4">
-            <input
-              type="text"
-              value={newKeyLabel}
-              onChange={(e) => setNewKeyLabel(e.target.value)}
-              placeholder="Label token (contoh: Claude Code / Cursor)"
-              className="px-2.5 py-1 text-xs font-mono border border-border bg-card flex-1 outline-none focus:border-[var(--color-primary-gold)]"
-            />
-            <button
-              type="button"
-              disabled={creatingKey}
-              onClick={handleGenerateKey}
-              className="pixel-button border border-[var(--color-primary-gold)] bg-[var(--color-primary-gold)] px-3 py-1 text-xs font-bold text-black cursor-pointer disabled:opacity-50"
-            >
-              {creatingKey ? "CREATING..." : "+ GENERATE KEY"}
-            </button>
+          <div className="flex flex-col gap-2 mb-4 p-2.5 border border-border bg-card/40">
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                value={newKeyLabel}
+                onChange={(e) => setNewKeyLabel(e.target.value)}
+                placeholder="Label token (contoh: Claude Code / Cursor)"
+                className="px-2.5 py-1 text-xs font-mono border border-border bg-card flex-1 outline-none focus:border-[var(--color-primary-gold)]"
+              />
+              <button
+                type="button"
+                disabled={creatingKey}
+                onClick={handleGenerateKey}
+                className="pixel-button border border-[var(--color-primary-gold)] bg-[var(--color-primary-gold)] px-3 py-1 text-xs font-bold text-black cursor-pointer disabled:opacity-50"
+              >
+                {creatingKey ? "CREATING..." : "+ GENERATE KEY"}
+              </button>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-3 text-[11px] font-mono text-muted-foreground pt-1 border-t border-border/40">
+              <div className="flex items-center gap-1.5">
+                <span>Scope:</span>
+                <select
+                  value={keyScopePreset}
+                  onChange={(e) => setKeyScopePreset(e.target.value as any)}
+                  className="bg-secondary/70 border border-border px-1.5 py-0.5 text-[11px] font-mono text-foreground outline-none cursor-pointer"
+                >
+                  <option value="all">Full Access (All Permissions)</option>
+                  <option value="read-write">Read & Write (Tasks, Runs, Comments)</option>
+                  <option value="read-only">Read-Only (Tasks Query Only)</option>
+                </select>
+              </div>
+
+              <div className="flex items-center gap-1.5">
+                <span>Expires in:</span>
+                <select
+                  value={keyExpiryDays === null ? "never" : String(keyExpiryDays)}
+                  onChange={(e) => setKeyExpiryDays(e.target.value === "never" ? null : Number(e.target.value))}
+                  className="bg-secondary/70 border border-border px-1.5 py-0.5 text-[11px] font-mono text-foreground outline-none cursor-pointer"
+                >
+                  <option value="never">Never (Permanent)</option>
+                  <option value="30">30 Days</option>
+                  <option value="90">90 Days</option>
+                  <option value="7">7 Days</option>
+                </select>
+              </div>
+            </div>
           </div>
 
           {/* Interactive Agent Setup Guides & Tutorials */}
@@ -689,9 +726,15 @@ export default function Page() {
                       <span className="text-[10px] font-mono px-1 py-0 border border-border bg-secondary text-muted-foreground">
                         {cred.tokenPrefix}...
                       </span>
+                      <span className={`text-[9px] font-mono px-1 py-0 border ${cred.scopes.includes("all") ? "border-amber-500/40 text-amber-400 bg-amber-950/20" : "border-cyan-500/40 text-cyan-400 bg-cyan-950/20"}`}>
+                        {cred.scopes.includes("all") ? "ALL" : cred.scopes.includes("tasks:write") ? "READ-WRITE" : "READ-ONLY"}
+                      </span>
                     </div>
-                    <div className="text-[10px] text-muted-foreground font-mono mt-0.5">
-                      Last seen: {cred.lastUsedAt ? new Date(cred.lastUsedAt).toLocaleDateString() : "Never"}
+                    <div className="text-[10px] text-muted-foreground font-mono mt-0.5 flex items-center gap-3">
+                      <span>Last seen: {cred.lastUsedAt ? new Date(cred.lastUsedAt).toLocaleDateString() : "Never"}</span>
+                      {cred.expiresAt && (
+                        <span className="text-amber-400/90 font-medium">Expires: {new Date(cred.expiresAt).toLocaleDateString()}</span>
+                      )}
                     </div>
                   </div>
                   <button

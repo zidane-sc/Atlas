@@ -11,6 +11,7 @@ export interface CredentialSummary {
   tokenPrefix: string;
   scopes: string[];
   lastUsedAt: string | null;
+  expiresAt: string | null;
   createdAt: string;
 }
 
@@ -36,6 +37,7 @@ export async function listCredentialsAction(): Promise<ActionResult<CredentialSu
         tokenPrefix: true,
         scopes: true,
         lastUsedAt: true,
+        expiresAt: true,
         createdAt: true,
       },
     });
@@ -45,6 +47,7 @@ export async function listCredentialsAction(): Promise<ActionResult<CredentialSu
       data: creds.map((c) => ({
         ...c,
         lastUsedAt: c.lastUsedAt ? c.lastUsedAt.toISOString() : null,
+        expiresAt: c.expiresAt ? c.expiresAt.toISOString() : null,
         createdAt: c.createdAt.toISOString(),
       })),
     };
@@ -55,7 +58,9 @@ export async function listCredentialsAction(): Promise<ActionResult<CredentialSu
 }
 
 export async function createCredentialAction(
-  label: string = "Hermes Agent"
+  label: string = "Hermes Agent",
+  scopes: string[] = ["all"],
+  expiresInDays?: number | null
 ): Promise<ActionResult<{ credential: CredentialSummary; plainToken: string }>> {
   const session = await auth();
   if (!session?.user?.email) {
@@ -69,6 +74,7 @@ export async function createCredentialAction(
   if (!user) return { success: false, error: { code: "NOT_FOUND", message: "User not found." } };
 
   const { token, prefix, hash } = generatePat(label);
+  const expiresAt = expiresInDays ? new Date(Date.now() + expiresInDays * 24 * 60 * 60 * 1000) : null;
 
   const created = await db.integrationCredential.create({
     data: {
@@ -76,7 +82,8 @@ export async function createCredentialAction(
       label: label.trim() || "Hermes Agent",
       tokenPrefix: prefix,
       tokenHash: hash,
-      scopes: ["tasks:read", "tasks:write", "runs:write"],
+      scopes: scopes && scopes.length > 0 ? scopes : ["all"],
+      expiresAt,
     },
   });
 
@@ -89,6 +96,7 @@ export async function createCredentialAction(
         tokenPrefix: created.tokenPrefix,
         scopes: created.scopes,
         lastUsedAt: null,
+        expiresAt: created.expiresAt ? created.expiresAt.toISOString() : null,
         createdAt: created.createdAt.toISOString(),
       },
       plainToken: token,
