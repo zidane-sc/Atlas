@@ -193,6 +193,7 @@ async function createAtlasMcpServer(userId: string, credentialId: string) {
         title: z.string().min(1).describe("Concise task/quest title"),
         description: z.string().optional().describe("Context, PR description, or reproduction steps"),
         projectName: z.string().optional().describe("Name of project to assign (e.g. Dealls, Personal)"),
+        createProjectIfNotExists: z.boolean().default(false).describe("Set true ONLY if user explicitly asked or confirmed creating a new project in Atlas when projectName does not exist."),
         status: z.enum(["backlog", "todo", "in_progress", "done"]).default("in_progress"),
         priority: z.enum(["high", "medium", "low"]).default("medium"),
         type: z.enum(["coding", "research", "design", "documentation", "bug", "meeting", "admin"]).default("coding"),
@@ -236,7 +237,7 @@ async function createAtlasMcpServer(userId: string, credentialId: string) {
           .optional(),
       },
     },
-    async ({ title, description, projectName, status, priority, type, size, waitingReason, metadata, tags, sessionId, sessionTitle, agentName, platform, chatId, chatName, threadId, threadName, attachments, deliverables, source }) => {
+    async ({ title, description, projectName, createProjectIfNotExists, status, priority, type, size, waitingReason, metadata, tags, sessionId, sessionTitle, agentName, platform, chatId, chatName, threadId, threadName, attachments, deliverables, source }) => {
       try {
         let projectId: string | undefined;
         if (projectName) {
@@ -246,8 +247,15 @@ async function createAtlasMcpServer(userId: string, credentialId: string) {
             select: { id: true, code: true, name: true },
           });
 
-          // If project does not exist yet, auto-create it on the fly so tasks are never orphaned
+          // If project does not exist yet
           if (!p && trimmedProject) {
+            if (!createProjectIfNotExists) {
+              return jsonError(
+                `Project '${trimmedProject}' does not exist in Atlas. Ask the user: 'Project ${trimmedProject} belum ada di Atlas bro, mau gua buatin project baru atau kosongin (null) aja?' - If user confirms creating, call atlas_create_task with createProjectIfNotExists=true. If user prefers null, call without projectName.`,
+                "PROJECT_NOT_FOUND"
+              );
+            }
+
             try {
               const cleanAlpha = trimmedProject.replace(/[^a-zA-Z0-9]/g, "").toUpperCase();
               let baseCode = cleanAlpha.slice(0, 3);
@@ -279,7 +287,6 @@ async function createAtlasMcpServer(userId: string, credentialId: string) {
 
               await broadcastSyncEvent(userId, "sync:reload", { autoCreatedProject: p });
             } catch {
-              // Fallback if concurrent project creation collision occurs
               p = await db.project.findFirst({
                 where: { ownerId: userId, name: { equals: trimmedProject, mode: "insensitive" } },
                 select: { id: true, code: true, name: true },
@@ -635,14 +642,15 @@ async function createAtlasMcpServer(userId: string, credentialId: string) {
         status: z.enum(["backlog", "todo", "in_progress", "done", "archived"]).optional(),
         title: z.string().optional(),
         description: z.string().optional(),
-        projectName: z.string().optional().describe("Assign or move to project by name (auto-created if not exists)"),
+        projectName: z.string().optional().describe("Assign or move to project by name"),
+        createProjectIfNotExists: z.boolean().default(false).describe("Set true if user confirmed creating new project if projectName does not exist."),
         priority: z.enum(["high", "medium", "low"]).optional(),
         size: z.enum(["xs", "s", "m", "l", "xl"]).optional(),
         waitingReason: z.string().nullable().optional(),
         tags: z.array(z.string()).optional().describe("Updated or replacement tags"),
       },
     },
-    async ({ taskId, code, status, title, description, projectName, priority, size, waitingReason, tags }) => {
+    async ({ taskId, code, status, title, description, projectName, createProjectIfNotExists, priority, size, waitingReason, tags }) => {
       try {
         let resolvedTaskId = taskId;
         if (!resolvedTaskId && code) {
@@ -673,6 +681,12 @@ async function createAtlasMcpServer(userId: string, credentialId: string) {
             select: { id: true },
           });
           if (!p && trimmedProject) {
+            if (!createProjectIfNotExists) {
+              return jsonError(
+                `Project '${trimmedProject}' does not exist in Atlas. Ask the user if they want to create it, or update task with createProjectIfNotExists=true.`,
+                "PROJECT_NOT_FOUND"
+              );
+            }
             try {
               const cleanAlpha = trimmedProject.replace(/[^a-zA-Z0-9]/g, "").toUpperCase();
               let baseCode = cleanAlpha.slice(0, 3);

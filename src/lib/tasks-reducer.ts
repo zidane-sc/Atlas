@@ -42,7 +42,7 @@ export function mapDbTaskToClient(
     code: dbTask.code || `TEMP-${dbTask.id.slice(0, 8)}`,
     title: dbTask.title || "",
     description: dbTask.description ?? undefined,
-    project: project ? project.name : "Atlas",
+    project: project ? project.name : "",
     status: dbTask.status as TaskStatus,
     type: dbTask.type as TaskType,
     priority: dbTask.priority as Priority,
