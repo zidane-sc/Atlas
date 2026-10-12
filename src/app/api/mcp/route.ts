@@ -142,7 +142,9 @@ async function createAtlasMcpServer(userId: string, credentialId: string) {
                 sessionId: true,
                 platform: true,
                 chatId: true,
+                chatName: true,
                 threadId: true,
+                threadName: true,
                 status: true,
                 startedAt: true,
                 endedAt: true,
@@ -298,12 +300,14 @@ async function createAtlasMcpServer(userId: string, credentialId: string) {
         agentName: z.string().default("hermes"),
         sessionId: z.string().optional().describe("Hermes session_id"),
         platform: z.string().optional().describe("e.g. telegram"),
-        chatId: z.string().optional(),
-        threadId: z.string().optional(),
+        chatId: z.string().optional().describe("e.g. -1003905247788"),
+        chatName: z.string().optional().describe("e.g. SC R&D / Solo Projects"),
+        threadId: z.string().optional().describe("e.g. 2303"),
+        threadName: z.string().optional().describe("e.g. Solo Projects or topic title"),
         externalRunId: z.string().optional(),
       },
     },
-    async ({ taskId, agentName, sessionId, platform, chatId, threadId, externalRunId }) => {
+    async ({ taskId, agentName, sessionId, platform, chatId, chatName, threadId, threadName, externalRunId }) => {
       try {
         const task = await db.task.findFirst({
           where: { id: taskId, ownerId: userId, deletedAt: null },
@@ -320,7 +324,9 @@ async function createAtlasMcpServer(userId: string, credentialId: string) {
             sessionId,
             platform,
             chatId,
+            chatName,
             threadId,
+            threadName,
             externalRunId,
             status: "active",
           },

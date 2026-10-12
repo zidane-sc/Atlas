@@ -438,7 +438,9 @@ model AgentRun {
   sessionId     String?                @map("session_id") // Hermes session_id
   platform      String?                // telegram, cli, etc.
   chatId        String?                @map("chat_id")
+  chatName      String?                @map("chat_name") // e.g. 'SC R&D / Solo Projects'
   threadId      String?                @map("thread_id")
+  threadName    String?                @map("thread_name") // e.g. 'Atlas - RPG Task Manager'
   status        String                 @default("active") // active, completed, failed
   startedAt     DateTime               @default(now()) @map("started_at")
   endedAt       DateTime?              @map("ended_at")

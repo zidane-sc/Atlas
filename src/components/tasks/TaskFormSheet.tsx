@@ -985,10 +985,13 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
                               </div>
                             )}
 
-                            {/* Platform & Thread / Topic details */}
-                            <div className="flex items-center justify-between text-[9px] text-muted-foreground">
-                              <span>Origin: {r.platform || "telegram"}{r.threadId ? ` (topic #${r.threadId})` : ""}</span>
-                              <span>{new Date(r.startedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                            {/* Platform, Group & Thread / Topic details */}
+                            <div className="flex items-center justify-between text-[9px] text-muted-foreground gap-2">
+                              <span className="truncate max-w-[280px]" title={`${r.chatName || r.chatId || r.platform || "telegram"}${r.threadName ? ` > #${r.threadName}` : r.threadId ? ` (#${r.threadId})` : ""}`}>
+                                📍 {r.chatName ? r.chatName : r.chatId ? `Group ${r.chatId}` : r.platform || "telegram"}
+                                {r.threadName ? ` > #${r.threadName}` : r.threadId ? ` (#${r.threadId})` : ""}
+                              </span>
+                              <span className="shrink-0">{new Date(r.startedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                             </div>
                           </div>
                         ))}

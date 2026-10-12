@@ -73,7 +73,9 @@ export async function GET(req: Request) {
             "session_id" TEXT,
             "platform" TEXT,
             "chat_id" TEXT,
+            "chat_name" TEXT,
             "thread_id" TEXT,
+            "thread_name" TEXT,
             "status" TEXT NOT NULL DEFAULT 'active',
             "started_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
             "ended_at" TIMESTAMP(3),
@@ -83,6 +85,10 @@ export async function GET(req: Request) {
         );
         CREATE INDEX IF NOT EXISTS "agent_runs_task_id_idx" ON "agent_runs"("task_id");
         CREATE INDEX IF NOT EXISTS "agent_runs_session_id_idx" ON "agent_runs"("session_id");
+
+        -- Ensure chat_name & thread_name exist on agent_runs if already created
+        ALTER TABLE "agent_runs" ADD COLUMN IF NOT EXISTS "chat_name" TEXT;
+        ALTER TABLE "agent_runs" ADD COLUMN IF NOT EXISTS "thread_name" TEXT;
 
         CREATE TABLE IF NOT EXISTS "agent_checkpoints" (
             "id" UUID NOT NULL DEFAULT gen_random_uuid(),
@@ -489,7 +495,9 @@ export async function GET(req: Request) {
             "session_id" TEXT,
             "platform" TEXT,
             "chat_id" TEXT,
+            "chat_name" TEXT,
             "thread_id" TEXT,
+            "thread_name" TEXT,
             "status" TEXT NOT NULL DEFAULT 'active',
             "started_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
             "ended_at" TIMESTAMP(3),
@@ -499,6 +507,10 @@ export async function GET(req: Request) {
         );
         CREATE INDEX IF NOT EXISTS "agent_runs_task_id_idx" ON "agent_runs"("task_id");
         CREATE INDEX IF NOT EXISTS "agent_runs_session_id_idx" ON "agent_runs"("session_id");
+
+        -- Ensure chat_name & thread_name exist on agent_runs if already created
+        ALTER TABLE "agent_runs" ADD COLUMN IF NOT EXISTS "chat_name" TEXT;
+        ALTER TABLE "agent_runs" ADD COLUMN IF NOT EXISTS "thread_name" TEXT;
 
         CREATE TABLE IF NOT EXISTS "agent_checkpoints" (
             "id" UUID NOT NULL,
