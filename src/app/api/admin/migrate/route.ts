@@ -86,11 +86,15 @@ export async function GET(req: Request) {
         );
         CREATE INDEX IF NOT EXISTS "agent_runs_task_id_idx" ON "agent_runs"("task_id");
         CREATE INDEX IF NOT EXISTS "agent_runs_session_id_idx" ON "agent_runs"("session_id");
+    `);
 
-        -- Ensure chat_name & thread_name exist on agent_runs if already created
-        ALTER TABLE "agent_runs" ADD COLUMN IF NOT EXISTS "session_title" TEXT;
-        ALTER TABLE "agent_runs" ADD COLUMN IF NOT EXISTS "chat_name" TEXT;
-        ALTER TABLE "agent_runs" ADD COLUMN IF NOT EXISTS "thread_name" TEXT;
+    // Explicit alter to ensure columns exist on pre-existing agent_runs table
+    await db.$executeRawUnsafe(`ALTER TABLE "agent_runs" ADD COLUMN IF NOT EXISTS "session_title" TEXT;`);
+    await db.$executeRawUnsafe(`ALTER TABLE "agent_runs" ADD COLUMN IF NOT EXISTS "chat_name" TEXT;`);
+    await db.$executeRawUnsafe(`ALTER TABLE "agent_runs" ADD COLUMN IF NOT EXISTS "thread_name" TEXT;`);
+    logs.push("Ensured session_title, chat_name, thread_name columns on agent_runs ✅");
+
+    await db.$executeRawUnsafe(`
 
         CREATE TABLE IF NOT EXISTS "agent_checkpoints" (
             "id" UUID NOT NULL DEFAULT gen_random_uuid(),
