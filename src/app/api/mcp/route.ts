@@ -140,6 +140,7 @@ async function createAtlasMcpServer(userId: string, credentialId: string) {
                 id: true,
                 agentName: true,
                 sessionId: true,
+                sessionTitle: true,
                 platform: true,
                 chatId: true,
                 chatName: true,
@@ -298,7 +299,8 @@ async function createAtlasMcpServer(userId: string, credentialId: string) {
       inputSchema: {
         taskId: z.string().uuid(),
         agentName: z.string().default("hermes"),
-        sessionId: z.string().optional().describe("Hermes session_id"),
+        sessionId: z.string().optional().describe("Hermes session_id (e.g. 20261010_022039_e753711c)"),
+        sessionTitle: z.string().optional().describe("Hermes session title (e.g. Review Database Schema)"),
         platform: z.string().optional().describe("e.g. telegram"),
         chatId: z.string().optional().describe("e.g. -1003905247788"),
         chatName: z.string().optional().describe("e.g. SC R&D / Solo Projects"),
@@ -307,7 +309,7 @@ async function createAtlasMcpServer(userId: string, credentialId: string) {
         externalRunId: z.string().optional(),
       },
     },
-    async ({ taskId, agentName, sessionId, platform, chatId, chatName, threadId, threadName, externalRunId }) => {
+    async ({ taskId, agentName, sessionId, sessionTitle, platform, chatId, chatName, threadId, threadName, externalRunId }) => {
       try {
         const task = await db.task.findFirst({
           where: { id: taskId, ownerId: userId, deletedAt: null },
@@ -322,6 +324,7 @@ async function createAtlasMcpServer(userId: string, credentialId: string) {
             credentialId,
             agentName,
             sessionId,
+            sessionTitle,
             platform,
             chatId,
             chatName,

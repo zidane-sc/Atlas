@@ -71,6 +71,7 @@ export async function GET(req: Request) {
             "agent_profile" TEXT,
             "external_run_id" TEXT,
             "session_id" TEXT,
+            "session_title" TEXT,
             "platform" TEXT,
             "chat_id" TEXT,
             "chat_name" TEXT,
@@ -87,6 +88,7 @@ export async function GET(req: Request) {
         CREATE INDEX IF NOT EXISTS "agent_runs_session_id_idx" ON "agent_runs"("session_id");
 
         -- Ensure chat_name & thread_name exist on agent_runs if already created
+        ALTER TABLE "agent_runs" ADD COLUMN IF NOT EXISTS "session_title" TEXT;
         ALTER TABLE "agent_runs" ADD COLUMN IF NOT EXISTS "chat_name" TEXT;
         ALTER TABLE "agent_runs" ADD COLUMN IF NOT EXISTS "thread_name" TEXT;
 
@@ -493,6 +495,7 @@ export async function GET(req: Request) {
             "agent_profile" TEXT,
             "external_run_id" TEXT,
             "session_id" TEXT,
+            "session_title" TEXT,
             "platform" TEXT,
             "chat_id" TEXT,
             "chat_name" TEXT,
@@ -509,6 +512,7 @@ export async function GET(req: Request) {
         CREATE INDEX IF NOT EXISTS "agent_runs_session_id_idx" ON "agent_runs"("session_id");
 
         -- Ensure chat_name & thread_name exist on agent_runs if already created
+        ALTER TABLE "agent_runs" ADD COLUMN IF NOT EXISTS "session_title" TEXT;
         ALTER TABLE "agent_runs" ADD COLUMN IF NOT EXISTS "chat_name" TEXT;
         ALTER TABLE "agent_runs" ADD COLUMN IF NOT EXISTS "thread_name" TEXT;
 

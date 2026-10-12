@@ -380,6 +380,7 @@ export interface TaskAgentDetails {
     id: string;
     agentName: string;
     sessionId: string | null;
+    sessionTitle: string | null;
     platform: string | null;
     chatId: string | null;
     chatName: string | null;
@@ -453,6 +454,7 @@ export async function getTaskDetails(
           id: true,
           agentName: true,
           sessionId: true,
+          sessionTitle: true,
           platform: true,
           chatId: true,
           chatName: true,

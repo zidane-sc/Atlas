@@ -967,8 +967,8 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
                         {taskDetail?.agent?.runs?.slice(0, 5).map((r) => (
                           <div key={r.id} className="p-1.5 bg-background/50 border border-border flex flex-col gap-1">
                             <div className="flex items-center justify-between gap-1">
-                              <span className="font-bold text-foreground truncate max-w-[220px]" title={r.agentName}>
-                                👤 {r.agentName}
+                              <span className="font-bold text-foreground truncate max-w-[240px]" title={r.sessionTitle || r.agentName}>
+                                {r.sessionTitle ? `💬 ${r.sessionTitle}` : `👤 ${r.agentName}`}
                               </span>
                               <span className={r.status === "active" ? "text-green-400 font-bold px-1 bg-green-950/40 border border-green-500/30 text-[9px]" : "px-1 bg-muted/40 border border-border text-[9px]"}>
                                 {r.status.toUpperCase()}

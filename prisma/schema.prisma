@@ -435,7 +435,8 @@ model AgentRun {
   agentName     String                 @default("hermes") @map("agent_name")
   agentProfile  String?                @map("agent_profile")
   externalRunId String?                @map("external_run_id")
-  sessionId     String?                @map("session_id") // Hermes session_id
+  sessionId     String?                @map("session_id") // Hermes session_id (e.g. 20261010_022039_e753711c)
+  sessionTitle  String?                @map("session_title") // e.g. 'Review Database Schema'
   platform      String?                // telegram, cli, etc.
   chatId        String?                @map("chat_id")
   chatName      String?                @map("chat_name") // e.g. 'SC R&D / Solo Projects'
