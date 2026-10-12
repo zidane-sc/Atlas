@@ -141,10 +141,12 @@ export default function Page() {
 
   // MCP Integrations State
   const [credentials, setCredentials] = useState<CredentialSummary[]>([]);
-  const [newKeyLabel, setNewKeyLabel] = useState("Hermes Agent");
+  const [newKeyLabel, setNewKeyLabel] = useState("");
   const [generatedKey, setGeneratedKey] = useState<string | null>(null);
   const [creatingKey, setCreatingKey] = useState(false);
   const [copiedKey, setCopiedKey] = useState(false);
+  const [selectedClient, setSelectedClient] = useState<"claude-code" | "hermes" | "cursor" | "claude-desktop" | "windsurf">("claude-code");
+  const [copiedSnippet, setCopiedSnippet] = useState(false);
 
   useEffect(() => {
     void listCredentialsAction().then((res) => {
@@ -517,14 +519,7 @@ export default function Page() {
                 </button>
               </div>
               <div className="text-[11px] text-muted-foreground">
-                Snippet konfigurasi untuk Hermes (<code>~/.hermes/config.yaml</code>):
-                <pre className="mt-1 p-2 bg-black/80 border border-border text-[10px] font-mono overflow-x-auto text-green-400">
-{`mcp_servers:
-  atlas:
-    url: "https://atlas-zidane-scs-projects.vercel.app/api/mcp"
-    headers:
-      Authorization: "Bearer ${generatedKey}"`}
-                </pre>
+                Gunakan token ini pada panduan setup agent di bawah untuk menghubungkan client Anda.
               </div>
             </div>
           )}
@@ -534,7 +529,7 @@ export default function Page() {
               type="text"
               value={newKeyLabel}
               onChange={(e) => setNewKeyLabel(e.target.value)}
-              placeholder="Label token (contoh: Hermes Agent)"
+              placeholder="Label token (contoh: Claude Code / Cursor)"
               className="px-2.5 py-1 text-xs font-mono border border-border bg-card flex-1 outline-none focus:border-[var(--color-primary-gold)]"
             />
             <button
@@ -545,6 +540,140 @@ export default function Page() {
             >
               {creatingKey ? "CREATING..." : "+ GENERATE KEY"}
             </button>
+          </div>
+
+          {/* Interactive Agent Setup Guides & Tutorials */}
+          <div className="p-3 border border-border bg-card/70 mb-4">
+            <div className="text-xs font-mono font-bold text-[var(--color-primary-gold)] uppercase tracking-wider mb-2 flex items-center justify-between">
+              <span>Setup Guide per AI Client:</span>
+              <span className="text-[10px] text-muted-foreground font-normal">Pilih client untuk instruksi setup</span>
+            </div>
+
+            {/* Client Tabs */}
+            <div className="flex flex-wrap gap-1 mb-3 border-b border-border/60 pb-2">
+              {[
+                { id: "claude-code" as const, label: "💻 Claude Code" },
+                { id: "hermes" as const, label: "🦅 Hermes Agent" },
+                { id: "cursor" as const, label: "⚡ Cursor" },
+                { id: "claude-desktop" as const, label: "🖥️ Claude Desktop" },
+                { id: "windsurf" as const, label: "🌊 Windsurf" },
+              ].map((c) => (
+                <button
+                  key={c.id}
+                  type="button"
+                  onClick={() => setSelectedClient(c.id)}
+                  className={`px-2 py-1 text-xs font-mono transition-colors cursor-pointer border ${
+                    selectedClient === c.id
+                      ? "border-[var(--color-primary-gold)] bg-[var(--color-bg-panel)] text-[var(--color-primary-gold)] font-bold"
+                      : "border-border bg-secondary/50 text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {c.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Client Tutorial Body */}
+            {(() => {
+              const tokenValue = generatedKey || (credentials.length > 0 ? `${credentials[0].tokenPrefix}...` : "<YOUR_ATLAS_TOKEN>");
+              const guides: Record<typeof selectedClient, { title: string; subtitle: string; fileLabel: string; snippet: string; note: string }> = {
+                "claude-code": {
+                  title: "Claude Code CLI",
+                  subtitle: "Hubungkan Atlas ke Claude Code dalam 1 baris perintah terminal:",
+                  fileLabel: "Jalankan di Terminal:",
+                  snippet: `claude mcp add atlas https://atlas-zidane-scs-projects.vercel.app/api/mcp -H "Authorization: Bearer ${tokenValue}"`,
+                  note: "Claude Code otomatis membaca aturan SOP dari deskripsi tool Atlas: auto-create quest di awal (Turn 1), logging temuan di comments, dan update status ke done saat tuntas.",
+                },
+                "hermes": {
+                  title: "Hermes Agent",
+                  subtitle: "Konfigurasi untuk Hermes Agent (Telegram / Self-Hosted daemon):",
+                  fileLabel: "Tambahkan ke ~/.hermes/config.yaml:",
+                  snippet: `mcp_servers:\n  atlas:\n    url: "https://atlas-zidane-scs-projects.vercel.app/api/mcp"\n    headers:\n      Authorization: "Bearer ${tokenValue}"`,
+                  note: "Simpan token di ~/.hermes/.env sebagai ATLAS_MCP_TOKEN, lalu kirim perintah /reload-mcp di chat Telegram.",
+                },
+                "cursor": {
+                  title: "Cursor IDE",
+                  subtitle: "Buka Cursor Settings ➔ Features ➔ MCP, atau buat file .cursor/mcp.json di root project:",
+                  fileLabel: ".cursor/mcp.json:",
+                  snippet: JSON.stringify({
+                    mcpServers: {
+                      atlas: {
+                        url: "https://atlas-zidane-scs-projects.vercel.app/api/mcp",
+                        headers: {
+                          Authorization: `Bearer ${tokenValue}`,
+                        },
+                      },
+                    },
+                  }, null, 2),
+                  note: "Simpan file lalu klik refresh MCP servers di Cursor. Indikator lampu status akan menyala hijau.",
+                },
+                "claude-desktop": {
+                  title: "Claude Desktop",
+                  subtitle: "Edit file konfigurasi claude_desktop_config.json di komputer Anda:",
+                  fileLabel: "macOS: ~/Library/Application Support/Claude/ | Windows: %APPDATA%\\Claude\\",
+                  snippet: JSON.stringify({
+                    mcpServers: {
+                      atlas: {
+                        url: "https://atlas-zidane-scs-projects.vercel.app/api/mcp",
+                        headers: {
+                          Authorization: `Bearer ${tokenValue}`,
+                        },
+                      },
+                    },
+                  }, null, 2),
+                  note: "Restart aplikasi Claude Desktop setelah menyimpan file untuk memuat 8 tools Atlas.",
+                },
+                "windsurf": {
+                  title: "Windsurf (Codeium)",
+                  subtitle: "Tambahkan konfigurasi server ke ~/.codeium/windsurf/mcp_config.json:",
+                  fileLabel: "~/.codeium/windsurf/mcp_config.json:",
+                  snippet: JSON.stringify({
+                    mcpServers: {
+                      atlas: {
+                        serverUrl: "https://atlas-zidane-scs-projects.vercel.app/api/mcp",
+                        headers: {
+                          Authorization: `Bearer ${tokenValue}`,
+                        },
+                      },
+                    },
+                  }, null, 2),
+                  note: "Buka Cascade panel di Windsurf untuk mulai memanggil Atlas quest tools.",
+                },
+              };
+
+              const current = guides[selectedClient];
+
+              return (
+                <div className="flex flex-col gap-2 font-mono text-xs">
+                  <div className="text-foreground font-semibold">{current.title}</div>
+                  <div className="text-muted-foreground text-[11px]">{current.subtitle}</div>
+
+                  <div className="relative mt-1">
+                    <div className="flex items-center justify-between text-[10px] text-muted-foreground bg-black/60 px-2 py-1 border-t border-x border-border">
+                      <span className="truncate">{current.fileLabel}</span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          navigator.clipboard.writeText(current.snippet);
+                          setCopiedSnippet(true);
+                          setTimeout(() => setCopiedSnippet(false), 2000);
+                        }}
+                        className="text-[var(--color-primary-gold)] hover:underline cursor-pointer font-bold shrink-0 ml-2"
+                      >
+                        {copiedSnippet ? "COPIED!" : "COPY"}
+                      </button>
+                    </div>
+                    <pre className="p-2.5 bg-black/90 border border-border text-[11px] font-mono overflow-x-auto text-green-400 leading-relaxed select-all">
+                      {current.snippet}
+                    </pre>
+                  </div>
+
+                  <div className="p-2 bg-secondary/30 border border-border text-[11px] text-muted-foreground mt-1 leading-relaxed">
+                    💡 <span className="text-foreground font-medium">Tips:</span> {current.note}
+                  </div>
+                </div>
+              );
+            })()}
           </div>
 
           <div className="space-y-2">
