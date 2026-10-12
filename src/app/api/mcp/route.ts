@@ -32,7 +32,7 @@ async function createAtlasMcpServer(userId: string, credentialId: string) {
   server.registerTool(
     "atlas_find_tasks",
     {
-      description: "Search or resolve existing tasks/quests by code (e.g. CR-421), title, PR URL, or status filter.",
+      description: "TASK SEARCH: Search or resolve existing tasks/quests by code (e.g. CR-421, ATS-22), title, PR URL, or status filter.",
       inputSchema: {
         query: z.string().optional().describe("Free-text search or code/PR number"),
         status: z.enum(["backlog", "todo", "in_progress", "done", "archived"]).optional(),
@@ -107,10 +107,10 @@ async function createAtlasMcpServer(userId: string, credentialId: string) {
   server.registerTool(
     "atlas_get_task_context",
     {
-      description: "Retrieve distilled context, latest checkpoint, active runs, and session pointers for a specific task.",
+      description: "TASK RECALL & RESUME: Retrieve distilled context, latest checkpoint, active runs, and session pointers for a specific task before resuming work. Avoids re-reading full transcripts.",
       inputSchema: {
         taskId: z.string().uuid().optional(),
-        code: z.string().optional(),
+        code: z.string().optional().describe("Task code like CR-421 or ATS-22"),
       },
     },
     async ({ taskId, code }) => {
@@ -188,7 +188,7 @@ async function createAtlasMcpServer(userId: string, credentialId: string) {
   server.registerTool(
     "atlas_create_task",
     {
-      description: "Create a new task in Atlas, optionally binding it to a project, description, size, relations, attachments, deliverables, and canonical external source.",
+      description: "MANDATORY START STEP: Call this at the VERY BEGINNING (Turn 1, tool call 1) of any non-trivial user task or code review before reading, modifying, or executing code. Creates the active quest card on the live Kanban board in 'in_progress' status so the user can see it in real-time.",
       inputSchema: {
         title: z.string().min(1).describe("Concise task/quest title"),
         description: z.string().optional().describe("Context, PR description, or reproduction steps"),
@@ -402,7 +402,7 @@ async function createAtlasMcpServer(userId: string, credentialId: string) {
   server.registerTool(
     "atlas_save_checkpoint",
     {
-      description: "Save a structured checkpoint/summary on a task, optionally adding comments or attachments.",
+      description: "MILESTONE & STATE TRANSITION: Call this at key milestones (e.g. initial review done -> checkpointState='waiting_external' with waitingReason; or all issues resolved -> checkpointState='finished' which automatically marks the task 'done'). Auto-posts a summary comment.",
       inputSchema: {
         taskId: z.string().uuid(),
         runId: z.string().uuid().optional(),
@@ -524,7 +524,7 @@ async function createAtlasMcpServer(userId: string, credentialId: string) {
   server.registerTool(
     "atlas_add_comment",
     {
-      description: "Post a progress note, intermediate finding, question, or log entry as a comment on an Atlas task.",
+      description: "ACTIVITY LOGGING: Call this frequently throughout execution to log what the agent is currently doing, examining, discovering, or executing (e.g. file analysis findings, PR review comments posted, test results). Serves as a transparent live activity trail for teammates.",
       inputSchema: {
         taskId: z.string().optional().describe("Task UUID (or use code instead)"),
         code: z.string().optional().describe("Task code (e.g. ATL-18, TASK-2)"),
@@ -585,7 +585,7 @@ async function createAtlasMcpServer(userId: string, credentialId: string) {
   server.registerTool(
     "atlas_update_task",
     {
-      description: "Update an existing task in Atlas by taskId or code (e.g. ATS-22). Allows updating status (backlog, todo, in_progress, done), title, description, priority, size, waitingReason, and tags.",
+      description: "MID-RUN TASK ENRICHMENT: Call this during execution whenever new scope, tags (e.g. ['security', 'breaking-changes']), re-estimated size (xs/s/m/l/xl), waitingReason, or status transitions are discovered, keeping the quest card accurate.",
       inputSchema: {
         taskId: z.string().uuid().optional(),
         code: z.string().optional().describe("Task code, e.g. ATS-22 or ATL-18"),
@@ -647,7 +647,7 @@ async function createAtlasMcpServer(userId: string, credentialId: string) {
   server.registerTool(
     "atlas_finish_run",
     {
-      description: "Conclude an active agent run, updating status to completed and recording metrics.",
+      description: "TASK COMPLETION: Conclude an active agent execution run, updating status to completed and recording token metrics. Set taskCompleted=true when work is fully resolved to mark the quest 'done'.",
       inputSchema: {
         runId: z.string().uuid(),
         status: z.enum(["completed", "failed"]).default("completed"),
