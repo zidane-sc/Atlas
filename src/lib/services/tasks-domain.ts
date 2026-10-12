@@ -119,7 +119,7 @@ export async function domainCreateTask(
         });
 
         return created;
-      });
+      }, { maxWait: 10000, timeout: 20000 });
 
       await broadcastSyncEvent(ownerId, "task:created", { task, id: task.id, title: task.title });
 
@@ -276,7 +276,7 @@ export async function domainUpdateTask(
         ));
 
       return { task: updated, affectsGamification };
-    });
+    }, { maxWait: 10000, timeout: 20000 });
 
     let sheetData: CharacterSheetData | undefined;
     if (affectsGamification) {
