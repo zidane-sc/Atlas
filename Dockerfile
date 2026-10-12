@@ -1,5 +1,11 @@
 FROM node:20-alpine AS base
 
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV DIRECT_URL="postgresql://dummy:dummy@localhost:5432/dummy?sslmode=require"
+ENV DATABASE_URL="postgresql://dummy:dummy@localhost:5432/dummy?sslmode=require"
+ENV AUTH_SECRET="dummy_build_time_secret_minimum_32_characters_long"
+ENV NEXTAUTH_SECRET="dummy_build_time_secret_minimum_32_characters_long"
+
 # 1. Install dependencies
 FROM base AS deps
 RUN apk add --no-cache libc6-compat
@@ -19,6 +25,9 @@ RUN npx prisma generate
 
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
+ENV DATABASE_URL="postgresql://dummy:dummy@localhost:5432/dummy?sslmode=require"
+ENV AUTH_SECRET="dummy_build_time_secret_minimum_32_characters_long"
+ENV NEXTAUTH_SECRET="dummy_build_time_secret_minimum_32_characters_long"
 
 RUN npm run build
 

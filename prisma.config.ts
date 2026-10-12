@@ -11,6 +11,6 @@ export default defineConfig({
   },
   datasource: {
     // CLI (migrate, studio, db pull) uses the direct connection — bypasses Neon's pooler.
-    url: env("DIRECT_URL"),
+    url: process.env.DIRECT_URL || process.env.DATABASE_URL || "postgresql://dummy:dummy@localhost:5432/dummy?sslmode=require",
   },
 });
