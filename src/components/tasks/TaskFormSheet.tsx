@@ -978,8 +978,8 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
                             {/* Session ID pointer */}
                             {r.sessionId && (
                               <div className="flex items-center justify-between text-[10px] bg-secondary/40 px-1.5 py-0.5 border border-border/60">
-                                <span className="text-muted-foreground">Session ID:</span>
-                                <span className="text-[var(--color-primary-gold)] font-bold select-all truncate max-w-[240px]" title={r.sessionId}>
+                                <span className="text-muted-foreground shrink-0">Session ID:</span>
+                                <span className="text-[var(--color-primary-gold)] font-bold select-all font-mono" title={r.sessionId}>
                                   🔑 {r.sessionId}
                                 </span>
                               </div>
