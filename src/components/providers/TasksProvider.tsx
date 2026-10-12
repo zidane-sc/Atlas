@@ -207,62 +207,125 @@ export function TasksProvider({
     checkAndEmitDueDateNotifications(tasks, today);
   }, [tasks, notificationsEnabled]);
 
-  // Real-time multi-device sync via SSE
+  // Real-time multi-device sync via SSE with automatic reconnection & visibility wake
   useEffect(() => {
     if (typeof window === "undefined") return;
     let es: EventSource | null = null;
-    try {
-      es = new EventSource("/api/sync/events");
-      es.onmessage = (e) => {
-        try {
-          const payload = JSON.parse(e.data);
-          setLastSyncEvent(payload);
-          if (payload.type === "timer:started" && payload.data?.taskId) {
-            setActiveTimer({
-              taskId: payload.data.taskId,
-              startedAt: payload.data.startedAt || Date.now(),
-              phase: payload.data.phase || "focus",
-            });
-          } else if (payload.type === "timer:stopped") {
-            setActiveTimer(null);
-          } else if (payload.type === "task:created" && payload.data?.task) {
-            const mapped = mapDbTaskToClient(payload.data.task, projects as any, []);
-            dispatch({ type: "insert", task: mapped });
-          } else if (payload.type === "task:updated") {
-            if (payload.data?.task) {
-              const mapped = mapDbTaskToClient(payload.data.task, projects as any, []);
-              dispatch({ type: "sync", task: mapped });
-            } else if (payload.data?.id && payload.data?.status) {
-              dispatch({
-                type: "update",
-                id: payload.data.id,
-                changedAt: new Date().toISOString(),
-                values: { status: payload.data.status } as any,
+    let reconnectTimeout: NodeJS.Timeout | null = null;
+    let isCancelled = false;
+
+    function connect() {
+      if (isCancelled) return;
+      if (es) {
+        try { es.close(); } catch {}
+        es = null;
+      }
+
+      try {
+        es = new EventSource("/api/sync/events");
+
+        es.onmessage = (e) => {
+          try {
+            const payload = JSON.parse(e.data);
+            setLastSyncEvent(payload);
+            if (payload.type === "timer:started" && payload.data?.taskId) {
+              setActiveTimer({
+                taskId: payload.data.taskId,
+                startedAt: payload.data.startedAt || Date.now(),
+                phase: payload.data.phase || "focus",
               });
+            } else if (payload.type === "timer:stopped") {
+              setActiveTimer(null);
+            } else if (payload.type === "task:created" && payload.data?.task) {
+              const mapped = mapDbTaskToClient(payload.data.task, projects as any, []);
+              dispatch({ type: "insert", task: mapped });
+            } else if (payload.type === "task:updated") {
+              if (payload.data?.task) {
+                const mapped = mapDbTaskToClient(payload.data.task, projects as any, []);
+                dispatch({ type: "sync", task: mapped });
+              } else if (payload.data?.id && payload.data?.status) {
+                dispatch({
+                  type: "update",
+                  id: payload.data.id,
+                  changedAt: new Date().toISOString(),
+                  values: { status: payload.data.status, waitingReason: payload.data.waitingReason } as any,
+                });
+              }
+            } else if (payload.type === "task:deleted" && payload.data?.id) {
+              dispatch({ type: "delete", id: payload.data.id });
+            } else if (payload.type === "sync:reload") {
+              if (payload.data?.placedDecorations) {
+                setPlacedDecorations(payload.data.placedDecorations);
+              }
+              if (payload.data?.purchasedDecorations) {
+                setPurchasedDecorations(payload.data.purchasedDecorations);
+              }
+              if (payload.data?.bonusCoins !== undefined) {
+                setBonusCoins(payload.data.bonusCoins);
+              }
             }
-          } else if (payload.type === "task:deleted" && payload.data?.id) {
-            dispatch({ type: "delete", id: payload.data.id });
-          } else if (payload.type === "sync:reload") {
-            if (payload.data?.placedDecorations) {
-              setPlacedDecorations(payload.data.placedDecorations);
-            }
-            if (payload.data?.purchasedDecorations) {
-              setPurchasedDecorations(payload.data.purchasedDecorations);
-            }
-            if (payload.data?.bonusCoins !== undefined) {
-              setBonusCoins(payload.data.bonusCoins);
-            }
+          } catch {
+            // Heartbeat or unparseable event
           }
-        } catch {
-          // Heartbeat or unparseable event
+        };
+
+        es.onerror = () => {
+          if (es) {
+            try { es.close(); } catch {}
+            es = null;
+          }
+          if (!isCancelled && !reconnectTimeout) {
+            reconnectTimeout = setTimeout(() => {
+              reconnectTimeout = null;
+              connect();
+            }, 3000);
+          }
+        };
+      } catch (err) {
+        console.warn("SSE connection error:", err);
+        if (!isCancelled && !reconnectTimeout) {
+          reconnectTimeout = setTimeout(() => {
+            reconnectTimeout = null;
+            connect();
+          }, 4000);
         }
-      };
-    } catch (err) {
-      console.warn("SSE connection error:", err);
+      }
     }
 
+    connect();
+
+    // Reconnect immediately on tab visibility change or network online (crucial for PWA / iOS wake)
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        if (!es || es.readyState !== EventSource.OPEN) {
+          if (reconnectTimeout) clearTimeout(reconnectTimeout);
+          reconnectTimeout = null;
+          connect();
+        }
+      }
+    };
+
+    const handleOnline = () => {
+      if (!es || es.readyState !== EventSource.OPEN) {
+        if (reconnectTimeout) clearTimeout(reconnectTimeout);
+        reconnectTimeout = null;
+        connect();
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("focus", handleVisibilityChange);
+
     return () => {
-      es?.close();
+      isCancelled = true;
+      if (reconnectTimeout) clearTimeout(reconnectTimeout);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("focus", handleVisibilityChange);
+      if (es) {
+        try { es.close(); } catch {}
+      }
     };
   }, [projects]);
 

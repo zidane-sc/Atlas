@@ -199,7 +199,15 @@ async function createAtlasMcpServer(userId: string, credentialId: string) {
         size: z.enum(["xs", "s", "m", "l", "xl"]).optional().describe("Estimated task size"),
         waitingReason: z.string().optional().describe("If idling, why (e.g. Waiting for PR review)"),
         metadata: z.record(z.string(), z.any()).optional().describe("Extra structured info (models, prUrl, etc.)"),
-        tags: z.array(z.string()).optional().describe("Tags / labels for the quest, e.g. ['security', 'auth', 'pr-421']"),
+        tags: z.array(z.string()).optional().describe("Tags / labels for the quest (e.g. ['security', 'auth', 'pr-421']). If omitted, tags are auto-inferred from title and project."),
+        sessionId: z.string().optional().describe("Hermes session_id (e.g. 20261010_022039_e753711c)"),
+        sessionTitle: z.string().optional().describe("Hermes session title (e.g. Review Database Schema)"),
+        agentName: z.string().default("hermes").describe("Agent identifier name"),
+        platform: z.string().optional().describe("e.g. telegram"),
+        chatId: z.string().optional().describe("e.g. -1003905247788"),
+        chatName: z.string().optional().describe("e.g. SC R&D / Solo Projects"),
+        threadId: z.string().optional().describe("e.g. 2303"),
+        threadName: z.string().optional().describe("e.g. Atlas - RPG Task Manager"),
         attachments: z
           .array(
             z.object({
@@ -228,7 +236,7 @@ async function createAtlasMcpServer(userId: string, credentialId: string) {
           .optional(),
       },
     },
-    async ({ title, description, projectName, status, priority, type, size, waitingReason, metadata, tags, attachments, deliverables, source }) => {
+    async ({ title, description, projectName, status, priority, type, size, waitingReason, metadata, tags, sessionId, sessionTitle, agentName, platform, chatId, chatName, threadId, threadName, attachments, deliverables, source }) => {
       try {
         let projectId: string | undefined;
         if (projectName) {
@@ -237,6 +245,25 @@ async function createAtlasMcpServer(userId: string, credentialId: string) {
             select: { id: true },
           });
           if (p) projectId = p.id;
+        }
+
+        // Auto-infer tags if none provided or empty
+        let resolvedTags = (tags || []).map((t) => t.trim().toLowerCase()).filter(Boolean);
+        if (resolvedTags.length === 0) {
+          const inferred = new Set<string>();
+          if (projectName) inferred.add(projectName.toLowerCase().replace(/[^a-z0-9-]/g, ""));
+          if (type) inferred.add(type.toLowerCase().replace(/[^a-z0-9-]/g, ""));
+          const prMatches = (title + " " + (description || "")).match(/#(\d+)/g);
+          if (prMatches) {
+            for (const m of prMatches) inferred.add(`pr-${m.replace("#", "")}`);
+          }
+          const words = title.toLowerCase().split(/[\s:,\-_/]+/);
+          for (const w of words) {
+            if (["review", "holding", "auth", "bug", "feature", "api", "db", "schema", "ui", "fix", "frontend", "backend"].includes(w)) {
+              inferred.add(w);
+            }
+          }
+          resolvedTags = Array.from(inferred).slice(0, 5);
         }
 
         const createRes = await domainCreateTask(userId, {
@@ -249,7 +276,7 @@ async function createAtlasMcpServer(userId: string, credentialId: string) {
           size,
           reporter: "other",
           waitingReason,
-          tags,
+          tags: resolvedTags,
           attachments,
           deliverables,
           metadata: {
@@ -265,6 +292,23 @@ async function createAtlasMcpServer(userId: string, credentialId: string) {
         }
 
         const task = createRes.data.task;
+
+        // Auto-create initial AgentRun so runs are never empty
+        await db.agentRun.create({
+          data: {
+            taskId: task.id,
+            credentialId,
+            agentName: agentName || "hermes",
+            sessionId,
+            sessionTitle,
+            platform: platform || "telegram",
+            chatId,
+            chatName,
+            threadId,
+            threadName,
+            status: "active",
+          },
+        });
 
         if (source) {
           await db.taskSource.create({
@@ -284,6 +328,7 @@ async function createAtlasMcpServer(userId: string, credentialId: string) {
             code: task.code,
             title: task.title,
             status: task.status,
+            tags: resolvedTags,
             reporter: task.reporter,
           },
         });
@@ -413,9 +458,20 @@ async function createAtlasMcpServer(userId: string, credentialId: string) {
         });
 
         // Sync back to task status or broadcast updated task via SSE
-        if (checkpointState === "waiting_external") {
+        if (checkpointState === "finished") {
           await domainUpdateTask(userId, taskId, {
+            status: "done",
+            waitingReason: null,
+          });
+        } else if (checkpointState === "waiting_external") {
+          await domainUpdateTask(userId, taskId, {
+            status: "in_progress",
             waitingReason: waitingReason || summary,
+          });
+        } else if (checkpointState === "in_progress") {
+          await domainUpdateTask(userId, taskId, {
+            status: "in_progress",
+            waitingReason: null,
           });
         } else {
           const currentTask = await db.task.findUnique({
@@ -436,6 +492,21 @@ async function createAtlasMcpServer(userId: string, credentialId: string) {
               waitingReason: currentTask.waitingReason,
             });
           }
+        }
+
+        // Ensure at least one agentRun exists for this task so session telemetry isn't empty
+        const existingRun = await db.agentRun.findFirst({
+          where: { taskId },
+        });
+        if (!existingRun) {
+          await db.agentRun.create({
+            data: {
+              taskId,
+              credentialId,
+              agentName: "hermes",
+              status: checkpointState === "finished" ? "completed" : "active",
+            },
+          });
         }
 
         return jsonSuccess({
@@ -510,7 +581,69 @@ async function createAtlasMcpServer(userId: string, credentialId: string) {
     }
   );
 
-  // 7. atlas_finish_run
+  // 7. atlas_update_task
+  server.registerTool(
+    "atlas_update_task",
+    {
+      description: "Update an existing task in Atlas by taskId or code (e.g. ATS-22). Allows updating status (backlog, todo, in_progress, done), title, description, priority, size, waitingReason, and tags.",
+      inputSchema: {
+        taskId: z.string().uuid().optional(),
+        code: z.string().optional().describe("Task code, e.g. ATS-22 or ATL-18"),
+        status: z.enum(["backlog", "todo", "in_progress", "done", "archived"]).optional(),
+        title: z.string().optional(),
+        description: z.string().optional(),
+        priority: z.enum(["high", "medium", "low"]).optional(),
+        size: z.enum(["xs", "s", "m", "l", "xl"]).optional(),
+        waitingReason: z.string().nullable().optional(),
+        tags: z.array(z.string()).optional().describe("Updated or replacement tags"),
+      },
+    },
+    async ({ taskId, code, status, title, description, priority, size, waitingReason, tags }) => {
+      try {
+        let resolvedTaskId = taskId;
+        if (!resolvedTaskId && code) {
+          const t = await db.task.findFirst({
+            where: { ownerId: userId, code: { equals: code.trim(), mode: "insensitive" }, deletedAt: null },
+            select: { id: true },
+          });
+          if (t) resolvedTaskId = t.id;
+        }
+
+        if (!resolvedTaskId) {
+          return jsonError("Either taskId (UUID) or code (e.g. ATS-22) is required", "INVALID_INPUT");
+        }
+
+        const updateData: any = {};
+        if (status !== undefined) updateData.status = status;
+        if (title !== undefined) updateData.title = title;
+        if (description !== undefined) updateData.description = description;
+        if (priority !== undefined) updateData.priority = priority;
+        if (size !== undefined) updateData.size = size;
+        if (waitingReason !== undefined) updateData.waitingReason = waitingReason;
+        if (tags !== undefined) updateData.tags = tags;
+
+        const updateRes = await domainUpdateTask(userId, resolvedTaskId, updateData);
+        if (!updateRes.success) {
+          return jsonError(updateRes.error.message, updateRes.error.code);
+        }
+
+        return jsonSuccess({
+          message: "Task updated successfully",
+          task: {
+            id: updateRes.data.task.id,
+            code: updateRes.data.task.code,
+            title: updateRes.data.task.title,
+            status: updateRes.data.task.status,
+            waitingReason: updateRes.data.task.waitingReason,
+          },
+        });
+      } catch (err: any) {
+        return jsonError(err?.message || "Failed to update task", "INTERNAL");
+      }
+    }
+  );
+
+  // 8. atlas_finish_run
   server.registerTool(
     "atlas_finish_run",
     {
