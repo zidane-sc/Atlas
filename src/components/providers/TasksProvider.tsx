@@ -90,6 +90,7 @@ interface TasksContextValue {
   openCreateForm: () => void;
   openEditForm: (task: Task) => void;
   closeForm: () => void;
+  lastSyncEvent?: any;
   /** Briefly true right after any task is marked done — Companion's "excited" mood trigger. */
   justCompleted: boolean;
   bonusXp: number;
@@ -179,6 +180,7 @@ export function TasksProvider({
   const [purchasedDecorations, setPurchasedDecorations] = useState<string[]>(initialPurchasedDecorations);
   const [placedDecorations, setPlacedDecorations] = useState<Record<string, any>>(initialPlacedDecorations);
   const [activeTimer, setActiveTimer] = useState<ActiveTimer | null>(initialActiveTimer);
+  const [lastSyncEvent, setLastSyncEvent] = useState<any>(null);
   const [completions, setCompletions] = useState<CompletionOverlay[]>([]);
   const lastSyncTimeRef = useRef<Record<string, number>>({});
   const { notify, emit } = useNotifications();
@@ -214,6 +216,7 @@ export function TasksProvider({
       es.onmessage = (e) => {
         try {
           const payload = JSON.parse(e.data);
+          setLastSyncEvent(payload);
           if (payload.type === "timer:started" && payload.data?.taskId) {
             setActiveTimer({
               taskId: payload.data.taskId,
@@ -779,6 +782,7 @@ export function TasksProvider({
           return false;
         }
       },
+      lastSyncEvent,
     }),
     [
       tasks,
@@ -787,6 +791,7 @@ export function TasksProvider({
       unlockedAchievements,
       activityLogs,
       sheet,
+      lastSyncEvent,
       justCompletedAt,
       bonusXp,
       bonusCoins,

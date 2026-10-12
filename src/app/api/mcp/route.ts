@@ -449,7 +449,68 @@ async function createAtlasMcpServer(userId: string, credentialId: string) {
     }
   );
 
-  // 6. atlas_finish_run
+  // 6. atlas_add_comment
+  server.registerTool(
+    "atlas_add_comment",
+    {
+      description: "Post a progress note, intermediate finding, question, or log entry as a comment on an Atlas task.",
+      inputSchema: {
+        taskId: z.string().optional().describe("Task UUID (or use code instead)"),
+        code: z.string().optional().describe("Task code (e.g. ATL-18, TASK-2)"),
+        content: z.string().min(1).describe("Comment body (markdown supported)"),
+      },
+    },
+    async ({ taskId, code, content }) => {
+      try {
+        let resolvedTaskId = taskId;
+        if (!resolvedTaskId && code) {
+          const t = await db.task.findFirst({
+            where: { ownerId: userId, code: { equals: code.trim(), mode: "insensitive" }, deletedAt: null },
+            select: { id: true },
+          });
+          if (t) resolvedTaskId = t.id;
+        }
+
+        if (!resolvedTaskId) {
+          return jsonError("Either taskId (UUID) or code (e.g. ATL-18) is required", "INVALID_INPUT");
+        }
+
+        const task = await db.task.findFirst({
+          where: { id: resolvedTaskId, ownerId: userId, deletedAt: null },
+          select: { id: true, title: true, status: true, waitingReason: true },
+        });
+
+        if (!task) return jsonError("Task not found", "NOT_FOUND");
+
+        const comment = await db.comment.create({
+          data: {
+            taskId: task.id,
+            authorId: userId,
+            content: `⚡ [MCP]: ${content}`,
+          },
+        });
+
+        // Broadcast comment event + task update
+        await broadcastSyncEvent(userId, "comment:created", { taskId: task.id, commentId: comment.id });
+        await broadcastSyncEvent(userId, "task:updated", {
+          id: task.id,
+          title: task.title,
+          status: task.status,
+          waitingReason: task.waitingReason,
+        });
+
+        return jsonSuccess({
+          message: "Comment posted successfully",
+          commentId: comment.id,
+          taskId: task.id,
+        });
+      } catch (err: any) {
+        return jsonError(err?.message || "Failed to post comment", "INTERNAL");
+      }
+    }
+  );
+
+  // 7. atlas_finish_run
   server.registerTool(
     "atlas_finish_run",
     {

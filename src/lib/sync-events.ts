@@ -4,6 +4,7 @@ export type SyncEventType =
   | "task:created"
   | "task:updated"
   | "task:deleted"
+  | "comment:created"
   | "timer:started"
   | "timer:stopped"
   | "timer:switched"

@@ -114,7 +114,7 @@ export function TaskFormSheet() {
 }
 
 function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | null }) {
-  const { tasks, allTimeTasks, closeForm, createTask, updateTask, deleteTask, duplicateTask, togglePin, activeTimer, startTimer, stopTimer, switchPhase } = useTasks();
+  const { tasks, allTimeTasks, closeForm, createTask, updateTask, deleteTask, duplicateTask, togglePin, activeTimer, startTimer, stopTimer, switchPhase, lastSyncEvent } = useTasks();
   const { projects } = useProjects();
   const { notify } = useNotifications();
   const [form, setForm] = useState<TaskFormValues>(() =>
@@ -226,6 +226,15 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
       cancelled = true;
     };
   }, [mode, task?.id]);
+
+  // Live auto-refresh when an SSE update for this specific task arrives (e.g. from MCP)
+  useEffect(() => {
+    if (!lastSyncEvent || !task) return;
+    const targetId = lastSyncEvent.data?.taskId || lastSyncEvent.data?.id;
+    if (targetId === task.id) {
+      void refreshTaskDetail();
+    }
+  }, [lastSyncEvent, task?.id]);
 
   const projectOptions = useMemo(() => {
     return projectSearch
