@@ -32,16 +32,20 @@ async function createAtlasMcpServer(userId: string, credentialId: string) {
   server.registerTool(
     "atlas_find_tasks",
     {
-      description: "TASK SEARCH: Search or resolve existing tasks/quests by code (e.g. CR-421, ATS-22), title, PR URL, or status filter.",
+      description: "TASK SEARCH: Search or resolve existing tasks/quests by code (e.g. CR-421, ATS-22), title, project, tag, due date, PR URL, or status filter.",
       inputSchema: {
         query: z.string().optional().describe("Free-text search or code/PR number"),
         status: z.enum(["backlog", "todo", "in_progress", "done", "archived"]).optional(),
+        projectName: z.string().optional().describe("Filter by project name (case-insensitive)"),
+        tag: z.string().optional().describe("Filter by tag (e.g. security, pr-5053)"),
         isIdling: z.boolean().optional().describe("Filter tasks that have a waiting/idling reason set"),
+        dueToday: z.boolean().optional().describe("Filter tasks due today"),
+        overdue: z.boolean().optional().describe("Filter overdue active tasks"),
         sourceKey: z.string().optional().describe("Canonical source key like github.com/owner/repo/pull/123"),
         limit: z.number().int().min(1).max(50).default(10),
       },
     },
-    async ({ query, status, isIdling, sourceKey, limit }) => {
+    async ({ query, status, projectName, tag, isIdling, dueToday, overdue, sourceKey, limit }) => {
       try {
         const whereClause: any = {
           ownerId: userId,
@@ -54,6 +58,35 @@ async function createAtlasMcpServer(userId: string, credentialId: string) {
 
         if (isIdling) {
           whereClause.waitingReason = { not: null };
+        }
+
+        if (projectName) {
+          whereClause.project = { name: { equals: projectName.trim(), mode: "insensitive" } };
+        }
+
+        if (tag) {
+          whereClause.tags = {
+            some: {
+              tag: { name: { equals: tag.trim().toLowerCase(), mode: "insensitive" } },
+            },
+          };
+        }
+
+        if (dueToday) {
+          const todayStr = new Date().toISOString().split("T")[0];
+          const startOfToday = new Date(`${todayStr}T00:00:00.000Z`);
+          const endOfToday = new Date(`${todayStr}T23:59:59.999Z`);
+          whereClause.dueDate = {
+            gte: startOfToday,
+            lte: endOfToday,
+          };
+        }
+
+        if (overdue) {
+          const todayStr = new Date().toISOString().split("T")[0];
+          const startOfToday = new Date(`${todayStr}T00:00:00.000Z`);
+          whereClause.dueDate = { lt: startOfToday };
+          whereClause.status = { not: "done" };
         }
 
         if (sourceKey) {
@@ -90,15 +123,93 @@ async function createAtlasMcpServer(userId: string, credentialId: string) {
             priority: true,
             size: true,
             waitingReason: true,
+            dueDate: true,
+            createdAt: true,
             updatedAt: true,
             project: { select: { name: true } },
+            tags: { select: { tag: { select: { name: true } } } },
             sources: { select: { provider: true, canonicalKey: true, url: true } },
           },
         });
 
-        return jsonSuccess({ count: tasks.length, tasks });
+        const formattedTasks = tasks.map((t) => ({
+          id: t.id,
+          code: t.code,
+          title: t.title,
+          status: t.status,
+          priority: t.priority,
+          size: t.size,
+          waitingReason: t.waitingReason,
+          dueDate: t.dueDate ? t.dueDate.toISOString().split("T")[0] : null,
+          createdAt: t.createdAt.toISOString(),
+          updatedAt: t.updatedAt.toISOString(),
+          project: t.project?.name ?? null,
+          tags: t.tags?.map((item) => item.tag.name) ?? [],
+          sources: t.sources,
+        }));
+
+        return jsonSuccess({ count: formattedTasks.length, tasks: formattedTasks });
       } catch (err: any) {
         return jsonError(err?.message || "Failed to find tasks", "DB_ERROR");
+      }
+    }
+  );
+
+  // 2. atlas_list_projects
+  server.registerTool(
+    "atlas_list_projects",
+    {
+      description: "LIST PROJECTS: Retrieve all available projects in Atlas with their codes, active quest counts, categories, and descriptions. Call this to discover valid projects before creating or assigning tasks.",
+      inputSchema: {
+        status: z.enum(["active", "archived", "all"]).default("active").describe("Filter by project status"),
+        limit: z.number().int().min(1).max(50).default(20),
+      },
+    },
+    async ({ status, limit }) => {
+      try {
+        const whereClause: any = {
+          ownerId: userId,
+        };
+        if (status === "active") whereClause.archivedAt = null;
+        if (status === "archived") whereClause.archivedAt = { not: null };
+
+        const projects = await db.project.findMany({
+          where: whereClause,
+          take: limit,
+          orderBy: { name: "asc" },
+          select: {
+            id: true,
+            code: true,
+            name: true,
+            emoji: true,
+            category: true,
+            status: true,
+            description: true,
+            _count: {
+              select: {
+                tasks: {
+                  where: { deletedAt: null },
+                },
+              },
+            },
+          },
+        });
+
+        return jsonSuccess({
+          count: projects.length,
+          projects: projects.map((p) => ({
+            id: p.id,
+            code: p.code,
+            name: p.name,
+            emoji: p.emoji,
+            category: p.category,
+            status: p.status,
+            description: p.description,
+            totalTasks: p._count.tasks,
+          })),
+        });
+      } catch (err: any) {
+        return jsonError(err?.message || "Failed to list projects", "DB_ERROR");
       }
     }
   );
@@ -128,14 +239,27 @@ async function createAtlasMcpServer(userId: string, credentialId: string) {
           },
           include: {
             project: { select: { name: true, code: true } },
+            tags: { select: { tag: { select: { name: true } } } },
+            attachments: true,
+            deliverables: true,
             sources: { select: { provider: true, canonicalKey: true, url: true } },
             checkpoints: {
               orderBy: { revision: "desc" },
-              take: 3,
+              take: 5,
+            },
+            comments: {
+              orderBy: { createdAt: "desc" },
+              take: 5,
+              select: {
+                id: true,
+                content: true,
+                createdAt: true,
+                author: { select: { name: true, email: true } },
+              },
             },
             agentRuns: {
               orderBy: { startedAt: "desc" },
-              take: 3,
+              take: 5,
               select: {
                 id: true,
                 agentName: true,
@@ -168,15 +292,27 @@ async function createAtlasMcpServer(userId: string, credentialId: string) {
             description: task.description,
             status: task.status,
             priority: task.priority,
-            project: task.project?.name,
+            size: task.size,
+            project: task.project?.name ?? null,
             waitingReason: task.waitingReason,
             metadata: task.metadata,
-            updatedAt: task.updatedAt,
+            tags: task.tags?.map((t) => t.tag.name) ?? [],
+            dueDate: task.dueDate ? task.dueDate.toISOString().split("T")[0] : null,
+            createdAt: task.createdAt.toISOString(),
+            updatedAt: task.updatedAt.toISOString(),
           },
           latestCheckpoint,
           recentCheckpoints: task.checkpoints,
           recentRuns: task.agentRuns,
           sources: task.sources,
+          attachments: task.attachments,
+          deliverables: task.deliverables,
+          recentComments: task.comments.map((c) => ({
+            id: c.id,
+            authorName: c.author?.name || c.author?.email || "User",
+            content: c.content,
+            createdAt: c.createdAt.toISOString(),
+          })),
         });
       } catch (err: any) {
         return jsonError(err?.message || "Failed to get task context", "DB_ERROR");
