@@ -261,6 +261,12 @@ async function createAtlasMcpServer(userId: string, credentialId: string, scopes
             tags: { select: { tag: { select: { name: true } } } },
             attachments: true,
             deliverables: true,
+            relations: {
+              select: {
+                relationType: true,
+                relatedTask: { select: { id: true, code: true, title: true, status: true } },
+              },
+            },
             sources: { select: { provider: true, canonicalKey: true, url: true } },
             checkpoints: {
               orderBy: { revision: "desc" },
@@ -326,6 +332,13 @@ async function createAtlasMcpServer(userId: string, credentialId: string, scopes
           sources: task.sources,
           attachments: task.attachments,
           deliverables: task.deliverables,
+          relations: (task.relations || []).map((r) => ({
+            relationType: r.relationType,
+            taskId: r.relatedTask.id,
+            code: r.relatedTask.code,
+            title: r.relatedTask.title,
+            status: r.relatedTask.status,
+          })),
           recentComments: task.comments.map((c) => ({
             id: c.id,
             authorName: c.author?.name || c.author?.email || "User",
@@ -375,6 +388,16 @@ async function createAtlasMcpServer(userId: string, credentialId: string, scopes
           )
           .optional()
           .describe("Relevant links or PRs"),
+        relations: z
+          .array(
+            z.object({
+              relationType: z.enum(["blocks", "relates_to", "duplicates"]).default("relates_to"),
+              taskId: z.string().uuid().optional().describe("Related task UUID"),
+              code: z.string().optional().describe("Related task code (e.g. ATS-25 or ATL-18)"),
+            })
+          )
+          .optional()
+          .describe("Linked task relations (blocks, relates_to, duplicates)"),
         deliverables: z
           .array(
             z.object({
@@ -393,7 +416,7 @@ async function createAtlasMcpServer(userId: string, credentialId: string, scopes
           .optional(),
       },
     },
-    async ({ title, description, projectName, createProjectIfNotExists, idempotencyKey, status, priority, type, size, waitingReason, metadata, tags, sessionId, sessionTitle, agentName, platform, chatId, chatName, threadId, threadName, attachments, deliverables, source }) => {
+    async ({ title, description, projectName, createProjectIfNotExists, idempotencyKey, status, priority, type, size, waitingReason, metadata, tags, sessionId, sessionTitle, agentName, platform, chatId, chatName, threadId, threadName, attachments, relations, deliverables, source }) => {
       const perm = checkPermission("tasks:write");
       if (perm) return perm;
 
@@ -561,6 +584,24 @@ async function createAtlasMcpServer(userId: string, credentialId: string, scopes
           }
         }
 
+        // Resolve task relations (supports linking by UUID or by task code e.g. 'ATS-25')
+        const resolvedRelations: Array<{ taskId: string; relationType: "blocks" | "relates_to" | "duplicates" }> = [];
+        if (relations && relations.length > 0) {
+          for (const rel of relations) {
+            let targetId = rel.taskId;
+            if (!targetId && rel.code) {
+              const matched = await db.task.findFirst({
+                where: { ownerId: userId, code: { equals: rel.code.trim(), mode: "insensitive" }, deletedAt: null },
+                select: { id: true },
+              });
+              if (matched) targetId = matched.id;
+            }
+            if (targetId) {
+              resolvedRelations.push({ taskId: targetId, relationType: rel.relationType });
+            }
+          }
+        }
+
         const createRes = await domainCreateTask(userId, {
           title,
           description,
@@ -573,6 +614,7 @@ async function createAtlasMcpServer(userId: string, credentialId: string, scopes
           waitingReason,
           tags: resolvedTags,
           attachments: resolvedAttachments,
+          relations: resolvedRelations.length > 0 ? (resolvedRelations as any) : undefined,
           deliverables,
           metadata: {
             ...cleanMetadata,
@@ -923,9 +965,19 @@ async function createAtlasMcpServer(userId: string, credentialId: string, scopes
         size: z.enum(["xs", "s", "m", "l", "xl"]).optional(),
         waitingReason: z.string().nullable().optional(),
         tags: z.array(z.string()).optional().describe("Updated or replacement tags"),
+        relations: z
+          .array(
+            z.object({
+              relationType: z.enum(["blocks", "relates_to", "duplicates"]).default("relates_to"),
+              taskId: z.string().uuid().optional(),
+              code: z.string().optional().describe("Task code (e.g. ATS-25) to link against"),
+            })
+          )
+          .optional()
+          .describe("Updated task relations (blocks, relates_to, duplicates)"),
       },
     },
-    async ({ taskId, code, status, title, description, projectName, createProjectIfNotExists, priority, size, waitingReason, tags }) => {
+    async ({ taskId, code, status, title, description, projectName, createProjectIfNotExists, priority, size, waitingReason, tags, relations }) => {
       const perm = checkPermission("tasks:write");
       if (perm) return perm;
 
@@ -992,6 +1044,24 @@ async function createAtlasMcpServer(userId: string, credentialId: string, scopes
             } catch {}
           }
           if (p) updateData.projectId = p.id;
+        }
+
+        if (relations !== undefined) {
+          const resolvedRelations: Array<{ taskId: string; relationType: "blocks" | "relates_to" | "duplicates" }> = [];
+          for (const rel of relations) {
+            let targetId = rel.taskId;
+            if (!targetId && rel.code) {
+              const matched = await db.task.findFirst({
+                where: { ownerId: userId, code: { equals: rel.code.trim(), mode: "insensitive" }, deletedAt: null },
+                select: { id: true },
+              });
+              if (matched) targetId = matched.id;
+            }
+            if (targetId) {
+              resolvedRelations.push({ taskId: targetId, relationType: rel.relationType });
+            }
+          }
+          updateData.relations = resolvedRelations;
         }
 
         const updateRes = await domainUpdateTask(userId, resolvedTaskId, updateData);

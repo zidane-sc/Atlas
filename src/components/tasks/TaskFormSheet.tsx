@@ -114,7 +114,7 @@ export function TaskFormSheet() {
 }
 
 function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | null }) {
-  const { tasks, allTimeTasks, closeForm, createTask, updateTask, deleteTask, duplicateTask, togglePin, activeTimer, startTimer, stopTimer, switchPhase, lastSyncEvent } = useTasks();
+  const { tasks, allTimeTasks, closeForm, openEditForm, createTask, updateTask, deleteTask, duplicateTask, togglePin, activeTimer, startTimer, stopTimer, switchPhase, lastSyncEvent } = useTasks();
   const { projects } = useProjects();
   const { notify } = useNotifications();
   const [form, setForm] = useState<TaskFormValues>(() =>
@@ -648,16 +648,28 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
             {form.relations.length === 0 ? (
               <p className="text-muted-foreground text-xs italic">No relations yet.</p>
             ) : (
-              <ul className="flex flex-col gap-1">
+              <ul className="flex flex-col gap-1.5">
                 {form.relations.map((r) => {
                   const isGone = !liveTaskIds.has(r.taskId);
                   return (
-                    <li key={r.taskId} className="flex items-center justify-between gap-2">
-                      <span className="text-muted-foreground capitalize">{humanize(r.relationType)}</span>
-                      <span className="flex-1 truncate text-right" style={isGone ? { color: "var(--color-text-muted)", fontStyle: "italic" } : undefined}>
-                        {r.title}{isGone && " (trashed)"}
+                    <li key={r.taskId} className="flex items-center justify-between gap-2 p-1.5 bg-secondary/30 border border-border/60 text-xs font-mono">
+                      <span className="text-[10px] uppercase font-bold px-1.5 py-0.5 bg-muted/60 border border-border shrink-0 text-muted-foreground">
+                        {humanize(r.relationType)}
                       </span>
-                      <button type="button" onClick={() => removeRelation(r.taskId)} className="shrink-0" style={{ color: "var(--color-status-blocked)" }}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const target = tasks.find((t) => t.id === r.taskId) || allTimeTasks.find((t) => t.id === r.taskId);
+                          if (target) openEditForm(target);
+                        }}
+                        className={`flex-1 truncate text-left text-xs hover:underline cursor-pointer ${
+                          isGone ? "text-muted-foreground italic" : "text-foreground font-medium"
+                        }`}
+                        title={r.title}
+                      >
+                        {r.title}{isGone && " (trashed)"}
+                      </button>
+                      <button type="button" onClick={() => removeRelation(r.taskId)} className="shrink-0 px-1 py-0.5 hover:text-red-400 font-bold" style={{ color: "var(--color-status-blocked)" }} title="Remove link">
                         ✕
                       </button>
                     </li>
