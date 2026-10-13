@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo, useRef } from "react";
-import { Check, ChevronDown, Copy, Trash2, Info, Pin, Bot, Cpu } from "lucide-react";
+import { Check, ChevronDown, Copy, Trash2, Info, Pin, Bot, Cpu, ExternalLink, Clock } from "lucide-react";
 import { DatePicker } from "@/components/ui/DatePicker";
 import { BattleTimer } from "@/components/gamification/BattleTimer";
 import {
@@ -188,6 +188,14 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
     agent?: TaskAgentDetails;
   } | null>(null);
   const [taskDetailLoading, setTaskDetailLoading] = useState(mode === "edit" && !!task);
+  const [showCheckpointHistory, setShowCheckpointHistory] = useState(false);
+
+  const agentComments = useMemo(() => {
+    return (taskDetail?.comments || [])
+      .filter((c) => c.content.startsWith("⚡ [MCP]") || c.content.startsWith("🏁 [MCP") || c.content.startsWith("🤖"))
+      .slice(-5)
+      .reverse();
+  }, [taskDetail?.comments]);
 
   const refreshTaskDetail = async () => {
     if (!task) return;
@@ -907,11 +915,51 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
                     </div>
                   ) : (
                     <>
+                      {/* Linked External Sources (PR, Repo, Canonical Key) */}
+                      {Boolean(taskDetail?.agent?.sources && taskDetail.agent.sources.length > 0) && (
+                        <div className="flex flex-wrap items-center gap-1.5 p-2 bg-background/80 border border-border min-w-0">
+                          <span className="text-[10px] font-mono font-bold text-cyan-400 uppercase flex items-center gap-1 shrink-0">
+                            <ExternalLink size={11} className="text-cyan-400" /> Linked Sources:
+                          </span>
+                          {taskDetail!.agent!.sources!.map((s) => {
+                            const targetUrl = s.url || (s.canonicalKey.startsWith("http") ? s.canonicalKey : `https://${s.canonicalKey}`);
+                            return (
+                              <a
+                                key={s.id}
+                                href={targetUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-secondary hover:bg-secondary/80 text-[var(--color-primary-gold)] hover:underline font-mono text-[10px] border border-border transition-colors truncate max-w-[280px]"
+                                title={s.canonicalKey}
+                              >
+                                <span>{s.provider === "github_pr" ? "🐙 PR" : "🔗"}</span>
+                                <span className="truncate">{s.canonicalKey}</span>
+                              </a>
+                            );
+                          })}
+                        </div>
+                      )}
+
                       {/* Latest Checkpoint or Waiting Reason */}
                       {((taskDetail?.agent?.checkpoints?.length ?? 0) > 0 && taskDetail?.agent?.checkpoints?.[0]) ? (
                         <div className="min-w-0">
-                          <div className="font-mono font-bold text-[10px] text-cyan-400 uppercase mb-1 flex items-center gap-1.5">
-                            <Bot size={12} className="shrink-0" /> Latest Checkpoint (Rev #{taskDetail.agent.checkpoints[0].revision})
+                          <div className="font-mono font-bold text-[10px] text-cyan-400 uppercase mb-1 flex items-center justify-between gap-1.5">
+                            <span className="flex items-center gap-1.5 truncate">
+                              <Bot size={12} className="shrink-0" /> Latest Checkpoint (Rev #{taskDetail.agent.checkpoints[0].revision})
+                            </span>
+                            {taskDetail.agent.checkpoints[0].checkpointState && (
+                              <span
+                                className={`text-[9px] font-mono px-1 py-0.5 border shrink-0 ${
+                                  taskDetail.agent.checkpoints[0].checkpointState === "finished"
+                                    ? "border-green-500/40 text-green-400 bg-green-950/30"
+                                    : taskDetail.agent.checkpoints[0].checkpointState === "waiting_external"
+                                    ? "border-amber-500/40 text-amber-400 bg-amber-950/30"
+                                    : "border-cyan-500/40 text-cyan-400 bg-cyan-950/30"
+                                }`}
+                              >
+                                {taskDetail.agent.checkpoints[0].checkpointState.toUpperCase()}
+                              </span>
+                            )}
                           </div>
                           <p className="bg-background/80 p-2 border border-border text-foreground font-mono leading-relaxed break-words whitespace-pre-wrap">
                             {taskDetail.agent.checkpoints[0].summary}
@@ -926,6 +974,15 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
                               ▸ Next step: {taskDetail.agent.checkpoints[0].nextStep}
                             </div>
                           )}
+                          {taskDetail.agent.checkpoints[0].provenanceSource && (
+                            <div className="mt-0.5 text-[10px] font-mono text-muted-foreground/80 break-words truncate">
+                              📌 Ref / SHA: {taskDetail.agent.checkpoints[0].provenanceSource}
+                            </div>
+                          )}
+                          <div className="mt-1 text-[9px] font-mono text-muted-foreground/60 flex items-center gap-1">
+                            <Clock size={10} />
+                            <span>Logged at {new Date(taskDetail.agent.checkpoints[0].createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                          </div>
                         </div>
                       ) : (task as any)?.waitingReason ? (
                         <div className="min-w-0">
@@ -937,6 +994,72 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
                           </div>
                         </div>
                       ) : null}
+
+                      {/* Milestone Revision History Toggle */}
+                      {Boolean((taskDetail?.agent?.checkpoints?.length ?? 0) > 1) && (
+                        <div className="border-t border-border/40 pt-1.5">
+                          <button
+                            type="button"
+                            onClick={() => setShowCheckpointHistory((v) => !v)}
+                            className="flex items-center justify-between w-full text-[10px] font-mono text-muted-foreground hover:text-foreground py-1 px-1.5 bg-secondary/40 border border-border/50 cursor-pointer transition-colors"
+                          >
+                            <span className="font-bold">
+                              📜 Milestone History ({taskDetail!.agent!.checkpoints.length} revisions)
+                            </span>
+                            <span className="text-cyan-400">{showCheckpointHistory ? "▲ Hide" : "▼ Show"}</span>
+                          </button>
+                          {showCheckpointHistory && (
+                            <div className="mt-1.5 space-y-1.5 max-h-52 overflow-y-auto pr-1">
+                              {taskDetail!.agent!.checkpoints.slice(1).map((cp) => (
+                                <div key={cp.id} className="p-2 bg-background/60 border border-border text-[11px] font-mono space-y-1">
+                                  <div className="flex items-center justify-between text-[9px]">
+                                    <span className="font-bold text-cyan-400">Rev #{cp.revision}</span>
+                                    <span className="text-muted-foreground">
+                                      {new Date(cp.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                    </span>
+                                  </div>
+                                  <p className="text-foreground leading-relaxed break-words whitespace-pre-wrap">{cp.summary}</p>
+                                  {cp.waitingReason && (
+                                    <div className="text-[10px] text-amber-400">⏸️ {cp.waitingReason}</div>
+                                  )}
+                                  {cp.nextStep && (
+                                    <div className="text-[10px] text-muted-foreground">▸ {cp.nextStep}</div>
+                                  )}
+                                  {cp.provenanceSource && (
+                                    <div className="text-[9px] text-muted-foreground/70">📌 {cp.provenanceSource}</div>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Live Agent Activity Trail (Recent Comments/Logs) */}
+                      {agentComments.length > 0 && (
+                        <div className="border-t border-border/40 pt-2 min-w-0">
+                          <div className="font-mono font-bold text-[10px] text-cyan-400 uppercase mb-1.5 flex items-center justify-between">
+                            <span className="flex items-center gap-1.5">
+                              <span className="inline-block w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
+                              Live Agent Activity Trail:
+                            </span>
+                            <span className="text-[9px] text-muted-foreground font-normal">Real-time Stream</span>
+                          </div>
+                          <div className="space-y-1.5">
+                            {agentComments.map((c) => (
+                              <div key={c.id} className="p-1.5 bg-background/70 border border-border/80 font-mono text-[11px]">
+                                <div className="flex items-center justify-between text-[9px] text-muted-foreground mb-0.5">
+                                  <span className="text-[var(--color-primary-gold)] font-bold">{c.authorName}</span>
+                                  <span>{new Date(c.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                </div>
+                                <div className="text-foreground leading-relaxed break-words whitespace-pre-wrap">
+                                  {c.content.replace(/^⚡ \[MCP\]:\s*/, "")}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
 
                       {/* Multi-Model & Token Breakdown */}
                       {Boolean(taskDetail?.agent?.runs?.some((r) => r.usageEvents && r.usageEvents.length > 0)) && (

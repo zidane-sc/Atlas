@@ -664,7 +664,7 @@ async function createAtlasMcpServer(userId: string, credentialId: string, scopes
   server.registerTool(
     "atlas_save_checkpoint",
     {
-      description: "MILESTONE & STATE TRANSITION: Call this at key milestones (e.g. initial review done -> checkpointState='waiting_external' with waitingReason; or all issues resolved -> checkpointState='finished' which automatically marks the task 'done'). Auto-posts a summary comment.",
+      description: "MILESTONE & STATE TRANSITION: Call this at key milestones throughout execution (e.g. initial review done -> checkpointState='waiting_external' with waitingReason; or all issues resolved -> checkpointState='finished' which automatically marks the task 'done'). Auto-posts a summary comment and increments revision counter.",
       inputSchema: {
         taskId: z.string().uuid(),
         runId: z.string().uuid().optional(),
@@ -789,7 +789,7 @@ async function createAtlasMcpServer(userId: string, credentialId: string, scopes
   server.registerTool(
     "atlas_add_comment",
     {
-      description: "ACTIVITY LOGGING: Call this frequently throughout execution to log what the agent is currently doing, examining, discovering, or executing (e.g. file analysis findings, PR review comments posted, test results). Serves as a transparent live activity trail for teammates.",
+      description: "ACTIVITY LOGGING: Call this frequently throughout execution for EACH intermediate action, inspection, or finding (e.g. file analysis findings, PR review comments posted, test results). Do NOT wait until prompt ends — log continuously so the live Kanban drawer streams progress in real time.",
       inputSchema: {
         taskId: z.string().optional().describe("Task UUID (or use code instead)"),
         code: z.string().optional().describe("Task code (e.g. ATL-18, TASK-2)"),

@@ -376,6 +376,12 @@ export async function stopFocusTimerAction(): Promise<
  * TaskFormSheet opens an existing task, since that's the only place either is displayed.
  */
 export interface TaskAgentDetails {
+  sources?: {
+    id: string;
+    provider: string;
+    canonicalKey: string;
+    url: string | null;
+  }[];
   runs: {
     id: string;
     agentName: string;
@@ -407,6 +413,7 @@ export interface TaskAgentDetails {
     checkpointState: string | null;
     waitingReason: string | null;
     nextStep: string | null;
+    provenanceSource: string | null;
     createdAt: string;
   }[];
 }
@@ -479,6 +486,14 @@ export async function getTaskDetails(
             },
           },
         },
+        sources: {
+          select: {
+            id: true,
+            provider: true,
+            canonicalKey: true,
+            url: true,
+          },
+        },
         checkpoints: {
           orderBy: { revision: "desc" },
           take: 10,
@@ -489,6 +504,7 @@ export async function getTaskDetails(
             checkpointState: true,
             waitingReason: true,
             nextStep: true,
+            provenanceSource: true,
             createdAt: true,
           },
         },
@@ -532,6 +548,7 @@ export async function getTaskDetails(
           createdAt: c.createdAt instanceof Date ? c.createdAt.toISOString() : String(c.createdAt),
         })),
         agent: {
+          sources: task.sources || [],
           runs: (task.agentRuns || []).map((r) => ({
             ...r,
             startedAt: r.startedAt instanceof Date ? r.startedAt.toISOString() : String(r.startedAt),
