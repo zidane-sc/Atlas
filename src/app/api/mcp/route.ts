@@ -526,6 +526,21 @@ async function createAtlasMcpServer(userId: string, credentialId: string, scopes
 
         // Auto-bridge attachments and canonical source so PR links never get lost
         const resolvedAttachments = attachments ? [...attachments] : [];
+        const cleanMetadata = { ...(metadata || {}) };
+
+        // Safety net: if an agent still passes prUrl in metadata, auto-migrate to attachments & source
+        if (cleanMetadata.prUrl && typeof cleanMetadata.prUrl === "string") {
+          const legacyPrUrl = cleanMetadata.prUrl;
+          delete cleanMetadata.prUrl;
+          if (!resolvedAttachments.some((a) => a.url === legacyPrUrl)) {
+            resolvedAttachments.push({
+              type: "github_pr",
+              url: legacyPrUrl,
+              label: legacyPrUrl.split("/").pop() ? `PR #${legacyPrUrl.split("/").pop()}` : "PR Link",
+            });
+          }
+        }
+
         if (resolvedAttachments.length === 0 && source?.url) {
           resolvedAttachments.push({
             type: (source.provider === "github_pr" ? "github_pr" : source.provider === "github_issue" ? "github_issue" : "link") as any,
@@ -560,7 +575,7 @@ async function createAtlasMcpServer(userId: string, credentialId: string, scopes
           attachments: resolvedAttachments,
           deliverables,
           metadata: {
-            ...metadata,
+            ...cleanMetadata,
             ...(idempotencyKey ? { idempotencyKey } : {}),
             agentReporter: "agent",
             createdByAgent: true,
