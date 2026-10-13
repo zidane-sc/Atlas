@@ -606,15 +606,35 @@ async function createAtlasMcpServer(userId: string, credentialId: string, scopes
           },
         });
 
-        if (resolvedSource) {
-          await db.taskSource.create({
-            data: {
-              taskId: task.id,
-              provider: resolvedSource.provider,
-              canonicalKey: resolvedSource.canonicalKey,
-              url: resolvedSource.url,
-            },
-          });
+        // Collect all sources to register (support multiple PRs/issues per task)
+        const sourcesToCreate: Array<{ provider: string; canonicalKey: string; url?: string | null }> = [];
+        if (source) {
+          sourcesToCreate.push(source);
+        }
+        for (const a of resolvedAttachments) {
+          if (a.url && (a.type === "github_pr" || a.type === "github_issue" || a.url.includes("github.com/"))) {
+            const canonicalKey = a.url.replace(/^https?:\/\//, "");
+            if (!sourcesToCreate.some((s) => s.canonicalKey === canonicalKey)) {
+              sourcesToCreate.push({
+                provider: a.type === "github_issue" ? "github_issue" : "github_pr",
+                canonicalKey,
+                url: a.url,
+              });
+            }
+          }
+        }
+
+        for (const s of sourcesToCreate) {
+          try {
+            await db.taskSource.create({
+              data: {
+                taskId: task.id,
+                provider: s.provider,
+                canonicalKey: s.canonicalKey,
+                url: s.url || null,
+              },
+            });
+          } catch {}
         }
 
         return jsonSuccess({
