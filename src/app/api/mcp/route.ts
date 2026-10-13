@@ -585,19 +585,29 @@ async function createAtlasMcpServer(userId: string, credentialId: string, scopes
         }
 
         // Resolve task relations (supports linking by UUID or by task code e.g. 'ATS-25')
-        const resolvedRelations: Array<{ taskId: string; relationType: "blocks" | "relates_to" | "duplicates" }> = [];
+        const resolvedRelations: Array<{ taskId: string; relationType: "blocks" | "relates_to" | "duplicates"; title?: string }> = [];
         if (relations && relations.length > 0) {
           for (const rel of relations) {
             let targetId = rel.taskId;
-            if (!targetId && rel.code) {
+            let targetTitle = "";
+            if (rel.taskId) {
+              const matched = await db.task.findUnique({
+                where: { id: rel.taskId },
+                select: { id: true, title: true },
+              });
+              if (matched) targetTitle = matched.title;
+            } else if (rel.code) {
               const matched = await db.task.findFirst({
                 where: { ownerId: userId, code: { equals: rel.code.trim(), mode: "insensitive" }, deletedAt: null },
-                select: { id: true },
+                select: { id: true, title: true },
               });
-              if (matched) targetId = matched.id;
+              if (matched) {
+                targetId = matched.id;
+                targetTitle = matched.title;
+              }
             }
             if (targetId) {
-              resolvedRelations.push({ taskId: targetId, relationType: rel.relationType });
+              resolvedRelations.push({ taskId: targetId, relationType: rel.relationType, title: targetTitle });
             }
           }
         }
@@ -1047,18 +1057,28 @@ async function createAtlasMcpServer(userId: string, credentialId: string, scopes
         }
 
         if (relations !== undefined) {
-          const resolvedRelations: Array<{ taskId: string; relationType: "blocks" | "relates_to" | "duplicates" }> = [];
+          const resolvedRelations: Array<{ taskId: string; relationType: "blocks" | "relates_to" | "duplicates"; title?: string }> = [];
           for (const rel of relations) {
             let targetId = rel.taskId;
-            if (!targetId && rel.code) {
+            let targetTitle = "";
+            if (rel.taskId) {
+              const matched = await db.task.findUnique({
+                where: { id: rel.taskId },
+                select: { id: true, title: true },
+              });
+              if (matched) targetTitle = matched.title;
+            } else if (rel.code) {
               const matched = await db.task.findFirst({
                 where: { ownerId: userId, code: { equals: rel.code.trim(), mode: "insensitive" }, deletedAt: null },
-                select: { id: true },
+                select: { id: true, title: true },
               });
-              if (matched) targetId = matched.id;
+              if (matched) {
+                targetId = matched.id;
+                targetTitle = matched.title;
+              }
             }
             if (targetId) {
-              resolvedRelations.push({ taskId: targetId, relationType: rel.relationType });
+              resolvedRelations.push({ taskId: targetId, relationType: rel.relationType, title: targetTitle });
             }
           }
           updateData.relations = resolvedRelations;

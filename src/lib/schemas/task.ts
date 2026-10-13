@@ -47,7 +47,7 @@ const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const relationSchema = z.object({
   relationType: z.enum(RELATION_TYPES),
   taskId: z.string().min(1),
-  title: z.string().min(1),
+  title: z.string().optional().default(""),
 });
 
 const attachmentSchema = z.object({
