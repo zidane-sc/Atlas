@@ -355,7 +355,7 @@ async function createAtlasMcpServer(userId: string, credentialId: string, scopes
         type: z.enum(["coding", "research", "design", "documentation", "bug", "meeting", "admin"]).default("coding"),
         size: z.enum(["xs", "s", "m", "l", "xl"]).optional().describe("Estimated task size"),
         waitingReason: z.string().optional().describe("If idling, why (e.g. Waiting for PR review)"),
-        metadata: z.record(z.string(), z.any()).optional().describe("Extra structured info (models, prUrl, etc.)"),
+        metadata: z.record(z.string(), z.any()).optional().describe("Extra custom debugging or client metadata (models, flags, etc.). Note: Put PR links in 'source' or 'attachments', NOT in metadata."),
         tags: z.array(z.string()).optional().describe("Tags / labels for the quest (e.g. ['security', 'auth', 'pr-421']). If omitted, tags are auto-inferred from title and project."),
         sessionId: z.string().optional().describe("Hermes session_id (e.g. 20261010_022039_e753711c)"),
         sessionTitle: z.string().optional().describe("Hermes session title (e.g. Review Database Schema)"),
@@ -524,6 +524,28 @@ async function createAtlasMcpServer(userId: string, credentialId: string, scopes
           resolvedTags = Array.from(inferred).slice(0, 5);
         }
 
+        // Auto-bridge attachments and canonical source so PR links never get lost
+        const resolvedAttachments = attachments ? [...attachments] : [];
+        if (resolvedAttachments.length === 0 && source?.url) {
+          resolvedAttachments.push({
+            type: (source.provider === "github_pr" ? "github_pr" : source.provider === "github_issue" ? "github_issue" : "link") as any,
+            url: source.url,
+            label: source.canonicalKey || "PR Link",
+          });
+        }
+
+        let resolvedSource = source;
+        if (!resolvedSource && resolvedAttachments.length > 0) {
+          const prItem = resolvedAttachments.find((a) => a.type === "github_pr" || a.url.includes("github.com/"));
+          if (prItem) {
+            resolvedSource = {
+              provider: "github_pr",
+              canonicalKey: prItem.url.replace(/^https?:\/\//, ""),
+              url: prItem.url,
+            };
+          }
+        }
+
         const createRes = await domainCreateTask(userId, {
           title,
           description,
@@ -535,7 +557,7 @@ async function createAtlasMcpServer(userId: string, credentialId: string, scopes
           reporter: "other",
           waitingReason,
           tags: resolvedTags,
-          attachments,
+          attachments: resolvedAttachments,
           deliverables,
           metadata: {
             ...metadata,
@@ -569,13 +591,13 @@ async function createAtlasMcpServer(userId: string, credentialId: string, scopes
           },
         });
 
-        if (source) {
+        if (resolvedSource) {
           await db.taskSource.create({
             data: {
               taskId: task.id,
-              provider: source.provider,
-              canonicalKey: source.canonicalKey,
-              url: source.url,
+              provider: resolvedSource.provider,
+              canonicalKey: resolvedSource.canonicalKey,
+              url: resolvedSource.url,
             },
           });
         }
