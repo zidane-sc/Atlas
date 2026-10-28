@@ -29,7 +29,14 @@ export async function GET(req: Request) {
       EXCEPTION WHEN duplicate_object THEN null;
       END $$;
     `);
-    logs.push("Ensured agent in task_reporter enum ✅");
+    await db.$executeRawUnsafe(`
+      DO $$ BEGIN
+        ALTER TYPE "task_relation_type" ADD VALUE IF NOT EXISTS 'relates_to';
+        ALTER TYPE "task_relation_type" ADD VALUE IF NOT EXISTS 'duplicates';
+      EXCEPTION WHEN duplicate_object THEN null;
+      END $$;
+    `);
+    logs.push("Ensured agent in task_reporter enum and relates_to/duplicates in task_relation_type ✅");
 
     // Ensure MCP integration tables exist
     await db.$executeRawUnsafe(`

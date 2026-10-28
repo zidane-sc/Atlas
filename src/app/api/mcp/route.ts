@@ -773,7 +773,7 @@ async function createAtlasMcpServer(userId: string, credentialId: string, scopes
   server.registerTool(
     "atlas_save_checkpoint",
     {
-      description: "MILESTONE & STATE TRANSITION: Call this at key milestones throughout execution (e.g. initial review done -> checkpointState='waiting_external' with waitingReason; or all issues resolved -> checkpointState='finished' which automatically marks the task 'done'). Auto-posts a summary comment and increments revision counter.",
+      description: "MILESTONE & STATE TRANSITION: Call this at key milestones throughout execution (e.g. initial review done -> checkpointState='waiting_external' with waitingReason; or all issues resolved -> checkpointState='finished' which automatically marks the task 'done'). Records revision checkpoint in agent telemetry.",
       inputSchema: {
         taskId: z.string().uuid(),
         runId: z.string().uuid().optional(),
@@ -782,7 +782,7 @@ async function createAtlasMcpServer(userId: string, credentialId: string, scopes
         waitingReason: z.string().optional(),
         nextStep: z.string().optional(),
         provenanceSource: z.string().optional().describe("e.g. commit SHA, PR link"),
-        comment: z.string().optional().describe("Auto-post a comment under the task for teammates to read"),
+        comment: z.string().optional().describe("Optional note to post into task comments"),
       },
     },
     async ({ taskId, runId, summary, checkpointState, waitingReason, nextStep, provenanceSource, comment }) => {
@@ -818,18 +818,16 @@ async function createAtlasMcpServer(userId: string, credentialId: string, scopes
           },
         });
 
-        // Always auto-post a comment under the task with findings/progress
-        const commentContent = comment
-          ? `⚡ [MCP]: ${comment}`
-          : `⚡ [MCP Checkpoint Rev #${nextRevision}]: ${summary}${waitingReason ? ` (Idling: ${waitingReason})` : ""}`;
-
-        await db.comment.create({
-          data: {
-            taskId,
-            authorId: userId,
-            content: commentContent,
-          },
-        });
+        // Only post to comments if an explicit comment was passed
+        if (comment?.trim()) {
+          await db.comment.create({
+            data: {
+              taskId,
+              authorId: userId,
+              content: `⚡ [MCP]: ${comment.trim()}`,
+            },
+          });
+        }
 
         // Sync back to task status or broadcast updated task via SSE
         if (checkpointState === "finished") {
@@ -1163,17 +1161,6 @@ async function createAtlasMcpServer(userId: string, credentialId: string, scopes
         if (taskCompleted) {
           await domainUpdateTask(userId, run.taskId, { status: "done" });
         }
-
-        // Auto-post a brief finish comment to the task
-        await db.comment.create({
-          data: {
-            taskId: run.taskId,
-            authorId: userId,
-            content: taskCompleted
-              ? `🏁 [MCP Run Finished]: Quest marked DONE by ${run.agentName}.${usage?.totalTokens ? ` Burned ${usage.totalTokens.toLocaleString()} tokens.` : ""}`
-              : `🏁 [MCP Run Concluded]: Run by ${run.agentName} ended (${status}).${usage?.totalTokens ? ` Burned ${usage.totalTokens.toLocaleString()} tokens.` : ""}`,
-          },
-        });
 
         return jsonSuccess({
           message: "Run finished successfully",

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo, useRef } from "react";
-import { Check, ChevronDown, Copy, Trash2, Info, Pin, Bot, Cpu, ExternalLink, Clock } from "lucide-react";
+import { Check, ChevronDown, Copy, Trash2, Info, Pin, Bot, Cpu, ExternalLink, Clock, Sparkles } from "lucide-react";
 import { DatePicker } from "@/components/ui/DatePicker";
 import { BattleTimer } from "@/components/gamification/BattleTimer";
 import {
@@ -69,6 +69,40 @@ function Section({ title, shape, defaultOpen = false, children }: { title: strin
       <CollapsibleContent className="border-t-2 border-border px-3 py-3 text-sm">{children}</CollapsibleContent>
     </Collapsible>
   );
+}
+
+function CopyButton({ text, label, className }: { text: string; label?: string; className?: string }) {
+  const [copied, setCopied] = useState(false);
+  const onCopy = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  };
+  return (
+    <button
+      type="button"
+      onClick={onCopy}
+      title="Copy to clipboard"
+      className={className || "inline-flex items-center gap-1 text-[10px] text-muted-foreground hover:text-cyan-400 p-0.5 rounded cursor-pointer transition-colors"}
+    >
+      {copied ? <Check size={11} className="text-green-400" /> : <Copy size={11} />}
+      {label && <span>{copied ? "Copied" : label}</span>}
+    </button>
+  );
+}
+
+function formatDuration(startedAt: string, endedAt?: string | null) {
+  const start = new Date(startedAt).getTime();
+  const end = endedAt ? new Date(endedAt).getTime() : Date.now();
+  const diffSec = Math.max(0, Math.floor((end - start) / 1000));
+  if (diffSec < 60) return `${diffSec}s`;
+  const mins = Math.floor(diffSec / 60);
+  const secs = diffSec % 60;
+  if (mins < 60) return `${mins}m ${secs}s`;
+  const hours = Math.floor(mins / 60);
+  const remainMins = mins % 60;
+  return `${hours}h ${remainMins}m`;
 }
 
 const EMPTY_FORM: Omit<TaskFormValues, "project"> = {
@@ -189,13 +223,6 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
   } | null>(null);
   const [taskDetailLoading, setTaskDetailLoading] = useState(mode === "edit" && !!task);
   const [showCheckpointHistory, setShowCheckpointHistory] = useState(false);
-
-  const agentComments = useMemo(() => {
-    return (taskDetail?.comments || [])
-      .filter((c) => c.content.startsWith("⚡ [MCP]") || c.content.startsWith("🏁 [MCP") || c.content.startsWith("🤖"))
-      .slice(-5)
-      .reverse();
-  }, [taskDetail?.comments]);
 
   const refreshTaskDetail = async () => {
     if (!task) return;
@@ -919,15 +946,94 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
           <>
             {/* MCP Agent Telemetry & Checkpoints */}
             {isAgentTask && (
-              <Section title="MCP Agent Memory & Runs" shape="⚡" defaultOpen={true}>
+              <Section title="MCP Agent Telemetry & Runs" shape="⚡" defaultOpen={true}>
                 <div className="flex flex-col gap-3 p-2.5 bg-primary/5 border-2 border-cyan-500/40 text-xs shadow-[2px_2px_0_rgba(16,224,224,0.15)] max-w-full overflow-hidden">
                   {taskDetailLoading && !taskDetail ? (
                     <div className="text-xs text-muted-foreground italic p-2 flex items-center gap-2">
-                      <span className="text-sm">⚔️</span> Loading agent runs & checkpoints…
+                      <span className="text-sm">⚔️</span> Loading agent telemetry & runs…
                     </div>
                   ) : (
                     <>
-                      {/* Linked External Sources (PR, Repo, Canonical Key) */}
+                      {/* 1. Executive Status & Agent Deck */}
+                      {(() => {
+                        const runs = taskDetail?.agent?.runs ?? [];
+                        const latestRun = runs[0];
+                        const activeRun = runs.find((r) => r.status === "active");
+                        const latestCp = taskDetail?.agent?.checkpoints?.[0];
+                        const isIdling = Boolean(latestCp?.checkpointState === "waiting_external" || (task as any)?.waitingReason);
+                        const isDone = Boolean(latestCp?.checkpointState === "finished" || task?.status === "done");
+
+                        return (
+                          <div className="p-2.5 bg-background/90 border border-cyan-500/30 flex flex-col gap-2">
+                            <div className="flex items-center justify-between gap-2 flex-wrap">
+                              <div className="flex items-center gap-2">
+                                <span className="font-mono text-[11px] font-bold text-[var(--color-primary-gold)] flex items-center gap-1.5">
+                                  <Bot size={14} className="text-cyan-400 shrink-0" />
+                                  <span>{latestRun?.agentName || "Hermes Copilot"}</span>
+                                </span>
+                                {activeRun ? (
+                                  <span className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-green-950/70 border border-green-500/60 text-green-300 font-mono font-bold text-[10px]">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
+                                    LIVE RUNNING
+                                  </span>
+                                ) : isIdling ? (
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-950/70 border border-amber-500/60 text-amber-300 font-mono font-bold text-[10px]">
+                                    ⏸️ WAITING / IDLING
+                                  </span>
+                                ) : isDone ? (
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-cyan-950/70 border border-cyan-500/60 text-cyan-300 font-mono font-bold text-[10px]">
+                                    ✓ COMPLETED
+                                  </span>
+                                ) : (
+                                  <span className="px-2 py-0.5 bg-secondary border border-border text-muted-foreground font-mono font-bold text-[10px]">
+                                    {(latestRun?.status || "IN_PROGRESS").toUpperCase()}
+                                  </span>
+                                )}
+                              </div>
+
+                              {latestRun?.startedAt && (
+                                <div className="text-[10px] font-mono text-muted-foreground flex items-center gap-1">
+                                  <Clock size={11} className="text-cyan-400 shrink-0" />
+                                  <span>
+                                    {latestRun.endedAt
+                                      ? `Duration: ${formatDuration(latestRun.startedAt, latestRun.endedAt)}`
+                                      : `Active since ${new Date(latestRun.startedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`}
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Session Pointer & Origin Meta */}
+                            {latestRun && (
+                              <div className="pt-2 border-t border-border/50 flex flex-col gap-1.5 text-[10px] font-mono">
+                                {latestRun.sessionTitle && (
+                                  <div className="text-foreground font-bold flex items-center gap-1.5 truncate">
+                                    <span className="text-cyan-400">💬</span>
+                                    <span className="truncate">{latestRun.sessionTitle}</span>
+                                  </div>
+                                )}
+                                <div className="flex items-center justify-between gap-2 flex-wrap text-muted-foreground">
+                                  <span className="truncate max-w-[280px]" title={`${latestRun.chatName || latestRun.platform || 'Hermes'}${latestRun.threadName ? ` > #${latestRun.threadName}` : latestRun.threadId ? ` (#${latestRun.threadId})` : ''}`}>
+                                    📍 {latestRun.chatName || latestRun.platform || "Hermes"}
+                                    {latestRun.threadName ? ` > #${latestRun.threadName}` : latestRun.threadId ? ` (#${latestRun.threadId})` : ""}
+                                  </span>
+                                  {latestRun.sessionId && (
+                                    <div className="flex items-center gap-1 bg-secondary/60 px-1.5 py-0.5 border border-border/60">
+                                      <span className="text-muted-foreground">Session:</span>
+                                      <span className="text-[var(--color-primary-gold)] font-bold select-all truncate max-w-[120px]" title={latestRun.sessionId}>
+                                        {latestRun.sessionId}
+                                      </span>
+                                      <CopyButton text={latestRun.sessionId} />
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })()}
+
+                      {/* 2. Linked External Sources (PR, Repo, Canonical Key) */}
                       {Boolean(taskDetail?.agent?.sources && taskDetail.agent.sources.length > 0) && (
                         <div className="flex flex-wrap items-center gap-1.5 p-2 bg-background/80 border border-border min-w-0">
                           <span className="text-[10px] font-mono font-bold text-cyan-400 uppercase flex items-center gap-1 shrink-0">
@@ -952,62 +1058,66 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
                         </div>
                       )}
 
-                      {/* Latest Checkpoint or Waiting Reason */}
+                      {/* 3. Latest Checkpoint or Waiting Reason */}
                       {((taskDetail?.agent?.checkpoints?.length ?? 0) > 0 && taskDetail?.agent?.checkpoints?.[0]) ? (
-                        <div className="min-w-0">
-                          <div className="font-mono font-bold text-[10px] text-cyan-400 uppercase mb-1 flex items-center justify-between gap-1.5">
+                        <div className="p-2.5 bg-background/90 border border-cyan-500/30 flex flex-col gap-2 min-w-0">
+                          <div className="font-mono font-bold text-[10px] text-cyan-400 uppercase flex items-center justify-between gap-1.5">
                             <span className="flex items-center gap-1.5 truncate">
-                              <Bot size={12} className="shrink-0" /> Latest Checkpoint (Rev #{taskDetail.agent.checkpoints[0].revision})
+                              <Sparkles size={12} className="shrink-0 text-cyan-400" /> Latest Checkpoint (Rev #{taskDetail.agent.checkpoints[0].revision})
                             </span>
                             {taskDetail.agent.checkpoints[0].checkpointState && (
                               <span
-                                className={`text-[9px] font-mono px-1 py-0.5 border shrink-0 ${
+                                className={`text-[9px] font-mono px-1.5 py-0.5 border shrink-0 ${
                                   taskDetail.agent.checkpoints[0].checkpointState === "finished"
-                                    ? "border-green-500/40 text-green-400 bg-green-950/30"
+                                    ? "border-green-500/50 text-green-300 bg-green-950/40"
                                     : taskDetail.agent.checkpoints[0].checkpointState === "waiting_external"
-                                    ? "border-amber-500/40 text-amber-400 bg-amber-950/30"
-                                    : "border-cyan-500/40 text-cyan-400 bg-cyan-950/30"
+                                    ? "border-amber-500/50 text-amber-300 bg-amber-950/40"
+                                    : "border-cyan-500/50 text-cyan-300 bg-cyan-950/40"
                                 }`}
                               >
                                 {taskDetail.agent.checkpoints[0].checkpointState.toUpperCase()}
                               </span>
                             )}
                           </div>
-                          <p className="bg-background/80 p-2 border border-border text-foreground font-mono leading-relaxed break-words whitespace-pre-wrap">
+
+                          <p className="p-2 bg-background/60 border border-border/80 text-foreground font-mono text-[11px] leading-relaxed break-words whitespace-pre-wrap">
                             {taskDetail.agent.checkpoints[0].summary}
                           </p>
-                          {taskDetail.agent.checkpoints[0].waitingReason && (
-                            <div className="mt-1 text-[11px] font-mono text-amber-400 bg-amber-950/20 p-1 border border-amber-500/30 break-words">
-                              ⏸️ Idling Reason: {taskDetail.agent.checkpoints[0].waitingReason}
-                            </div>
-                          )}
+
                           {taskDetail.agent.checkpoints[0].nextStep && (
-                            <div className="mt-0.5 text-[11px] font-mono text-muted-foreground break-words">
-                              ▸ Next step: {taskDetail.agent.checkpoints[0].nextStep}
+                            <div className="p-1.5 bg-cyan-950/20 border border-cyan-500/30 text-[11px] font-mono text-cyan-300 flex items-start gap-1.5">
+                              <span className="font-bold shrink-0">🎯 Next:</span>
+                              <span className="break-words">{taskDetail.agent.checkpoints[0].nextStep}</span>
                             </div>
                           )}
-                          {taskDetail.agent.checkpoints[0].provenanceSource && (
-                            <div className="mt-0.5 text-[10px] font-mono text-muted-foreground/80 break-words truncate">
-                              📌 Ref / SHA: {taskDetail.agent.checkpoints[0].provenanceSource}
+
+                          {(taskDetail.agent.checkpoints[0].waitingReason || (task as any)?.waitingReason) && (
+                            <div className="p-1.5 bg-amber-950/20 border border-amber-500/30 text-[11px] font-mono text-amber-300 flex items-start gap-1.5">
+                              <span className="font-bold shrink-0">⏸️ Idling:</span>
+                              <span className="break-words">{taskDetail.agent.checkpoints[0].waitingReason || (task as any).waitingReason}</span>
                             </div>
                           )}
-                          <div className="mt-1 text-[9px] font-mono text-muted-foreground/60 flex items-center gap-1">
-                            <Clock size={10} />
-                            <span>Logged at {new Date(taskDetail.agent.checkpoints[0].createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+
+                          <div className="flex items-center justify-between text-[9px] font-mono text-muted-foreground/80 pt-1 border-t border-border/40">
+                            {taskDetail.agent.checkpoints[0].provenanceSource ? (
+                              <div className="flex items-center gap-1 truncate max-w-[260px]">
+                                <span>📌 Ref:</span>
+                                <code className="bg-secondary px-1 py-0.5 border border-border text-[var(--color-primary-gold)] truncate" title={taskDetail.agent.checkpoints[0].provenanceSource}>
+                                  {taskDetail.agent.checkpoints[0].provenanceSource}
+                                </code>
+                                <CopyButton text={taskDetail.agent.checkpoints[0].provenanceSource} />
+                              </div>
+                            ) : <span />}
+                            <span>{new Date(taskDetail.agent.checkpoints[0].createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                           </div>
                         </div>
                       ) : (task as any)?.waitingReason ? (
-                        <div className="min-w-0">
-                          <div className="font-mono font-bold text-[10px] text-cyan-400 uppercase mb-1 flex items-center gap-1.5">
-                            <Bot size={12} className="shrink-0" /> MCP Status Note
-                          </div>
-                          <div className="text-[11px] font-mono text-amber-400 bg-amber-950/20 p-1.5 border border-amber-500/30 break-words">
-                            ⏸️ Idling Reason: {(task as any).waitingReason}
-                          </div>
+                        <div className="p-2.5 bg-amber-950/20 border border-amber-500/30 text-[11px] font-mono text-amber-300">
+                          <span className="font-bold">⏸️ Idling Reason:</span> {(task as any).waitingReason}
                         </div>
                       ) : null}
 
-                      {/* Milestone Revision History Toggle */}
+                      {/* 4. Milestone Revision History Toggle */}
                       {Boolean((taskDetail?.agent?.checkpoints?.length ?? 0) > 1) && (
                         <div className="border-t border-border/40 pt-1.5">
                           <button
@@ -1031,11 +1141,11 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
                                     </span>
                                   </div>
                                   <p className="text-foreground leading-relaxed break-words whitespace-pre-wrap">{cp.summary}</p>
+                                  {cp.nextStep && (
+                                    <div className="text-[10px] text-cyan-300">▸ Next: {cp.nextStep}</div>
+                                  )}
                                   {cp.waitingReason && (
                                     <div className="text-[10px] text-amber-400">⏸️ {cp.waitingReason}</div>
-                                  )}
-                                  {cp.nextStep && (
-                                    <div className="text-[10px] text-muted-foreground">▸ {cp.nextStep}</div>
                                   )}
                                   {cp.provenanceSource && (
                                     <div className="text-[9px] text-muted-foreground/70">📌 {cp.provenanceSource}</div>
@@ -1047,145 +1157,141 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
                         </div>
                       )}
 
-                      {/* Live Agent Activity Trail (Recent Comments/Logs) */}
-                      {agentComments.length > 0 && (
-                        <div className="border-t border-border/40 pt-2 min-w-0">
-                          <div className="font-mono font-bold text-[10px] text-cyan-400 uppercase mb-1.5 flex items-center justify-between">
-                            <span className="flex items-center gap-1.5">
-                              <span className="inline-block w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
-                              Live Agent Activity Trail:
-                            </span>
-                            <span className="text-[9px] text-muted-foreground font-normal">Real-time Stream</span>
-                          </div>
-                          <div className="space-y-1.5">
-                            {agentComments.map((c) => (
-                              <div key={c.id} className="p-1.5 bg-background/70 border border-border/80 font-mono text-[11px]">
-                                <div className="flex items-center justify-between text-[9px] text-muted-foreground mb-0.5">
-                                  <span className="text-[var(--color-primary-gold)] font-bold">{c.authorName}</span>
-                                  <span>{new Date(c.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                                </div>
-                                <div className="text-foreground leading-relaxed break-words whitespace-pre-wrap">
-                                  {c.content.replace(/^⚡ \[MCP\]:\s*/, "")}
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Multi-Model & Token Breakdown */}
+                      {/* 5. Resource & Token Economics Dashboard */}
                       {Boolean(taskDetail?.agent?.runs?.some((r) => r.usageEvents && r.usageEvents.length > 0)) && (
                         <div className="border-t border-border/40 pt-2 min-w-0">
-                          <div className="font-mono font-bold text-[10px] text-muted-foreground uppercase mb-1.5 flex items-center gap-1">
-                            <Cpu size={12} className="shrink-0" /> Models & Token Consumption:
-                          </div>
-                          <div className="space-y-1.5">
-                            {(() => {
-                              const modelMap: Record<string, { prompt: number; completion: number; total: number; cost: number }> = {};
-                              for (const r of taskDetail?.agent?.runs ?? []) {
-                                for (const u of r.usageEvents ?? []) {
-                                  const key = `${u.model} (${u.provider || "9Router"})`;
-                                  if (!modelMap[key]) modelMap[key] = { prompt: 0, completion: 0, total: 0, cost: 0 };
-                                  modelMap[key].prompt += u.promptTokens;
-                                  modelMap[key].completion += u.completionTokens;
-                                  modelMap[key].total += u.totalTokens;
-                                  modelMap[key].cost += u.costUsd || 0;
-                                }
-                              }
-                              const grandTotal = Object.values(modelMap).reduce((acc, cur) => acc + cur.total, 0);
-                              const totalCost = Object.values(modelMap).reduce((acc, cur) => acc + cur.cost, 0);
+                          {(() => {
+                            const modelMap: Record<string, { prompt: number; completion: number; total: number; cost: number; provider: string }> = {};
+                            let grandTotal = 0;
+                            let grandPrompt = 0;
+                            let grandCompletion = 0;
+                            let totalCost = 0;
 
-                              return (
-                                <>
+                            for (const r of taskDetail?.agent?.runs ?? []) {
+                              for (const u of r.usageEvents ?? []) {
+                                const key = u.model;
+                                if (!modelMap[key]) {
+                                  modelMap[key] = { prompt: 0, completion: 0, total: 0, cost: 0, provider: u.provider || "9Router" };
+                                }
+                                modelMap[key].prompt += u.promptTokens;
+                                modelMap[key].completion += u.completionTokens;
+                                modelMap[key].total += u.totalTokens;
+                                modelMap[key].cost += u.costUsd || 0;
+                                grandTotal += u.totalTokens;
+                                grandPrompt += u.promptTokens;
+                                grandCompletion += u.completionTokens;
+                                totalCost += u.costUsd || 0;
+                              }
+                            }
+
+                            return (
+                              <div className="space-y-2">
+                                <div className="font-mono font-bold text-[10px] text-cyan-400 uppercase flex items-center justify-between">
+                                  <span className="flex items-center gap-1">
+                                    <Cpu size={12} className="shrink-0" /> Token Economics & Cost:
+                                  </span>
+                                  <span className="text-[9px] text-muted-foreground font-normal">Real Telemetry</span>
+                                </div>
+
+                                {/* KPI Metrics Cards */}
+                                <div className="grid grid-cols-2 gap-1.5 font-mono">
+                                  <div className="p-1.5 bg-background/80 border border-border">
+                                    <div className="text-[9px] text-muted-foreground">TOTAL TOKENS</div>
+                                    <div className="text-[12px] font-bold text-[var(--color-primary-gold)]">
+                                      ⚡ {grandTotal.toLocaleString()}
+                                    </div>
+                                    <div className="text-[9px] text-muted-foreground mt-0.5">
+                                      {grandPrompt.toLocaleString()} in · {grandCompletion.toLocaleString()} out
+                                    </div>
+                                  </div>
+                                  <div className="p-1.5 bg-background/80 border border-border">
+                                    <div className="text-[9px] text-muted-foreground">ESTIMATED COST</div>
+                                    <div className="text-[12px] font-bold text-green-400">
+                                      ${totalCost.toFixed(4)}
+                                    </div>
+                                    <div className="text-[9px] text-muted-foreground mt-0.5">
+                                      {Object.keys(modelMap).length} model{Object.keys(modelMap).length > 1 ? "s" : ""} used
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {/* Models detail list */}
+                                <div className="space-y-1">
                                   {Object.entries(modelMap).map(([mName, data]) => (
-                                    <div key={mName} className="p-1.5 bg-background/60 border border-border font-mono text-[11px] min-w-0 overflow-hidden">
-                                      <div className="font-bold text-[var(--color-primary-gold)] truncate" title={mName}>{mName}</div>
-                                      <div className="text-muted-foreground flex flex-wrap justify-between gap-1 mt-0.5">
+                                    <div key={mName} className="p-1.5 bg-background/60 border border-border/80 font-mono text-[10px]">
+                                      <div className="flex items-center justify-between gap-1">
+                                        <span className="font-bold text-foreground truncate" title={mName}>{mName}</span>
+                                        <span className="text-[9px] px-1 bg-secondary text-cyan-400 border border-border/50 shrink-0">{data.provider}</span>
+                                      </div>
+                                      <div className="text-muted-foreground flex justify-between gap-1 mt-0.5 text-[9px]">
                                         <span>{data.prompt.toLocaleString()} prompt · {data.completion.toLocaleString()} comp</span>
-                                        <span>{data.total.toLocaleString()} tokens {data.cost > 0 && `(~$${data.cost.toFixed(3)})`}</span>
+                                        <span className="text-[var(--color-primary-gold)] font-bold">{data.total.toLocaleString()} tkn {data.cost > 0 && `(~$${data.cost.toFixed(4)})`}</span>
                                       </div>
                                     </div>
                                   ))}
-                                  <div className="flex flex-wrap justify-between gap-1 font-mono font-bold text-[11px] text-foreground pt-1 border-t border-border/30">
-                                    <span>Total Burn:</span>
-                                    <span>⚡ {grandTotal.toLocaleString()} tokens {totalCost > 0 && `(~$${totalCost.toFixed(3)})`}</span>
-                                  </div>
-                                </>
-                              );
-                            })()}
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Active/Recent Runs & Session Context */}
-                      <div className="border-t border-border/40 pt-2 text-[10px] font-mono text-muted-foreground min-w-0">
-                        <div className="font-bold uppercase mb-1 flex items-center justify-between">
-                          <span>Hermes Sessions & Runs:</span>
-                          <span className="text-[9px] font-normal opacity-70">L2 Pointer</span>
-                        </div>
-                        {((taskDetail?.agent?.runs?.length ?? 0) === 0) ? (
-                          <div className="p-1.5 bg-background/50 border border-border text-muted-foreground italic">
-                            No active/completed agent session registered for this quest yet.
-                          </div>
-                        ) : (
-                          <div className="space-y-1.5">
-                            {taskDetail?.agent?.runs?.slice(0, 5).map((r) => (
-                              <div key={r.id} className="p-1.5 bg-background/50 border border-border flex flex-col gap-1">
-                                <div className="flex items-center justify-between gap-1">
-                                  <span className="font-bold text-foreground truncate max-w-[240px]" title={r.sessionTitle || r.agentName}>
-                                    {r.sessionTitle ? `💬 ${r.sessionTitle}` : `👤 ${r.agentName}`}
-                                  </span>
-                                  <span className={r.status === "active" ? "text-green-400 font-bold px-1 bg-green-950/40 border border-green-500/30 text-[9px]" : "px-1 bg-muted/40 border border-border text-[9px]"}>
-                                    {r.status.toUpperCase()}
-                                  </span>
-                                </div>
-
-                                {/* Session ID pointer */}
-                                {r.sessionId && (
-                                  <div className="flex items-center justify-between text-[10px] bg-secondary/40 px-1.5 py-0.5 border border-border/60">
-                                    <span className="text-muted-foreground shrink-0">Session ID:</span>
-                                    <span className="text-[var(--color-primary-gold)] font-bold select-all font-mono" title={r.sessionId}>
-                                      🔑 {r.sessionId}
-                                    </span>
-                                  </div>
-                                )}
-
-                                {/* Platform, Group & Thread / Topic details */}
-                                <div className="flex items-center justify-between text-[9px] text-muted-foreground gap-2">
-                                  <span className="truncate max-w-[280px]" title={`${r.chatName || (r.chatId ? (r.chatId.startsWith("-") ? `Group ${r.chatId}` : "Direct Message") : r.platform || "Local Agent")}${r.threadName ? ` > #${r.threadName}` : r.threadId ? ` (#${r.threadId})` : ""}`}>
-                                    📍 {r.chatName ? r.chatName : r.chatId ? (r.chatId.startsWith("-") ? `Group ${r.chatId}` : "Direct Message") : (r.platform ? r.platform : "Local Agent")}
-                                    {r.threadName ? ` > #${r.threadName}` : r.threadId ? ` (#${r.threadId})` : ""}
-                                  </span>
-                                  <span className="shrink-0">{new Date(r.startedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                                 </div>
                               </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
+                            );
+                          })()}
+                        </div>
+                      )}
                     </>
                   )}
                 </div>
               </Section>
             )}
 
-            <Section title="Comments" shape="💬" defaultOpen={false}>
+            <Section
+              title={`Comments ${taskDetail?.comments?.length ? `(${taskDetail.comments.length})` : ""}`}
+              shape="💬"
+              defaultOpen={Boolean(taskDetail?.comments && taskDetail.comments.length > 0)}
+            >
               <div className="flex flex-col gap-2">
-                <ul className="flex flex-col gap-2 max-h-48 overflow-y-auto border-b border-border pb-2">
+                <ul className="flex flex-col gap-2 max-h-72 overflow-y-auto border-b border-border pb-2 pr-1">
                   {taskDetailLoading ? (
                     <li className="text-xs text-muted-foreground italic">Loading comments…</li>
                   ) : (!taskDetail?.comments || taskDetail.comments.length === 0) ? (
                     <li className="text-xs text-muted-foreground italic">No comments yet</li>
                   ) : (
-                    taskDetail.comments.map((c) => (
-                      <li key={c.id} className="flex flex-col gap-0.5 text-xs bg-muted/30 p-1.5 border border-border">
-                        <div className="flex justify-between font-bold text-muted-foreground">
-                          <span>{c.authorName}</span>
-                          <span>{new Date(c.createdAt).toLocaleDateString()} {new Date(c.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                        </div>
-                        <p className="text-foreground">{c.content}</p>
-                      </li>
-                    ))
+                    taskDetail.comments.map((c) => {
+                      const isAgent =
+                        c.content.startsWith("⚡ [MCP]") ||
+                        c.content.startsWith("🤖") ||
+                        c.content.startsWith("🏁 [MCP") ||
+                        c.authorName?.toLowerCase() === "hermes";
+                      const cleanContent = c.content.replace(/^⚡ \[MCP\]:\s*/, "");
+
+                      return (
+                        <li
+                          key={c.id}
+                          className={`flex flex-col gap-1 p-2 border ${
+                            isAgent
+                              ? "bg-cyan-950/15 border-cyan-500/40"
+                              : "bg-muted/30 border-border"
+                          }`}
+                        >
+                          <div className="flex items-center justify-between text-[10px] font-mono">
+                            <div className="flex items-center gap-1.5">
+                              {isAgent ? (
+                                <span className="inline-flex items-center gap-1 px-1.5 py-0.2 bg-cyan-950 border border-cyan-500/60 text-cyan-300 font-bold text-[9px]">
+                                  <Bot size={11} /> AGENT LOG
+                                </span>
+                              ) : null}
+                              <span className="font-bold text-foreground">{c.authorName}</span>
+                            </div>
+                            <div className="flex items-center gap-1.5 text-muted-foreground text-[9px]">
+                              <span>
+                                {new Date(c.createdAt).toLocaleDateString()} {new Date(c.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                              </span>
+                              <CopyButton text={cleanContent} />
+                            </div>
+                          </div>
+                          <div className={`leading-relaxed break-words whitespace-pre-wrap ${isAgent ? "font-mono text-[11px] text-foreground" : "text-xs text-foreground"}`}>
+                            {cleanContent}
+                          </div>
+                        </li>
+                      );
+                    })
                   )}
                 </ul>
                 <CommentInput taskId={task.id} onAdded={refreshTaskDetail} />
