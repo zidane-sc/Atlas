@@ -52,7 +52,7 @@ export default function Page() {
           <div className="flex items-center justify-between sm:justify-start gap-3 sm:pr-4 sm:border-r-2 border-border">
             <div className="flex items-center gap-3">
               <div className="flex flex-col items-center">
-                <span className="text-[9px] tracking-widest text-muted-foreground font-mono">LEVEL</span>
+                <span className="text-xs font-bold tracking-widest text-muted-foreground font-mono">LEVEL</span>
                 <span
                   style={{
                     fontFamily: "var(--font-press-start), monospace",
@@ -65,7 +65,7 @@ export default function Page() {
                 </span>
               </div>
               <span
-                className="border px-1.5 py-0.5 text-[9px] font-mono tracking-wider"
+                className="border px-2 py-0.5 text-xs font-mono font-bold tracking-wider"
                 style={{ borderColor: "var(--color-primary-gold)", color: "var(--color-primary-gold)" }}
               >
                 {classTitle.toUpperCase()}
@@ -75,9 +75,9 @@ export default function Page() {
             {/* Streak & Coins visible on right side on mobile */}
             <div className="flex sm:hidden items-center gap-3">
               <StreakCampfire days={streakDays} />
-              <div className="flex items-center gap-1 font-mono text-xs">
+              <div className="flex items-center gap-1 font-mono text-sm">
                 <span aria-hidden>🪙</span>
-                <span style={{ fontFamily: "var(--font-press-start), monospace", fontSize: "11px", color: "var(--color-coin)" }}>
+                <span style={{ fontFamily: "var(--font-press-start), monospace", fontSize: "12px", color: "var(--color-coin)" }}>
                   {sheet.totalCoins}
                 </span>
               </div>
@@ -86,14 +86,14 @@ export default function Page() {
 
           {/* XP Progress bar */}
           <div className="flex flex-1 flex-col justify-center min-w-0">
-            <div className="mb-1 flex justify-between text-[11px] text-muted-foreground font-mono">
+            <div className="mb-1 flex justify-between text-xs text-muted-foreground font-mono">
               <span>XP PROGRESS</span>
               <span style={{ color: "var(--color-xp-gold)" }}>
                 {sheet.xpIntoLevel.toLocaleString()} / {sheet.xpForNextLevel.toLocaleString()} ({xpPercentage}%)
               </span>
             </div>
             <PixBar value={sheet.xpIntoLevel} max={sheet.xpForNextLevel} colorVar="--color-xp-gold" blocks={20} showLabel={false} />
-            <div className="mt-0.5 text-[10px] text-muted-foreground font-mono truncate">
+            <div className="mt-1 text-xs text-muted-foreground font-mono truncate">
               {(sheet.xpForNextLevel - sheet.xpIntoLevel).toLocaleString()} XP to Lv.{sheet.globalLevel + 1}
             </div>
           </div>
@@ -109,13 +109,13 @@ export default function Page() {
               <div
                 style={{
                   fontFamily: "var(--font-press-start), monospace",
-                  fontSize: "13px",
+                  fontSize: "14px",
                   color: "var(--color-coin)",
                 }}
               >
                 {sheet.totalCoins}
               </div>
-              <div className="text-[10px] text-muted-foreground font-mono">COINS</div>
+              <div className="text-xs text-muted-foreground font-mono font-bold mt-0.5">COINS</div>
             </div>
           </div>
         </div>

@@ -28,7 +28,7 @@ export function StatPanel({
         {shape && <span className="text-xs shrink-0">{shape}</span>}
         <span>{value}</span>
       </div>
-      <div className="mt-1 text-[11px] tracking-wider text-muted-foreground uppercase font-mono">{label}</div>
+      <div className="mt-1 text-xs tracking-wider text-muted-foreground uppercase font-mono">{label}</div>
     </>
   );
 

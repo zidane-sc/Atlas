@@ -70,19 +70,19 @@ function TaskCardComponent({
     >
       {/* Optional Top MCP Banner Header (clean & dedicated) */}
       {isAgentTask && (
-        <div className="flex items-center justify-between px-2.5 py-1 -mx-3 -mt-3 mb-1 bg-cyan-950/70 border-b border-cyan-500/40 font-mono text-[9px] text-cyan-300">
+        <div className="flex items-center justify-between px-2.5 py-1 -mx-3 -mt-3 mb-1 bg-cyan-950/70 border-b border-cyan-500/40 font-mono text-xs text-cyan-300">
           <span className="flex items-center gap-1.5 font-bold tracking-wider">
             ⚡ MCP SPAWNED
           </span>
-          <span className="text-[8px] opacity-75 font-mono">HERMES</span>
+          <span className="text-[10px] tracking-wider opacity-85 font-mono font-bold">HERMES</span>
         </div>
       )}
 
       {/* Primary Top Row: Code + Type + Priority + Status Move */}
       <div className="flex items-center justify-between gap-2 border-b border-border/30 pb-1.5">
         <div className="flex items-center gap-1.5 min-w-0">
-          <span aria-hidden className="text-sm shrink-0 leading-none">{TYPE_ICON[task.type]}</span>
-          <span className="text-xs font-mono font-bold tracking-tight text-[var(--color-primary-gold)]">
+          <span aria-hidden className="text-base shrink-0 leading-none">{TYPE_ICON[task.type]}</span>
+          <span className="text-sm font-mono font-bold tracking-tight text-[var(--color-primary-gold)]">
             {task.code}
           </span>
         </div>
@@ -96,7 +96,7 @@ function TaskCardComponent({
               onClick={(e) => e.stopPropagation()}
               onKeyDown={(e) => e.stopPropagation()}
               onChange={(e) => onMoveStatus(task, e.target.value as TaskStatus)}
-              className="border border-border bg-secondary/80 px-1 py-0.5 text-[9px] text-foreground outline-none font-mono cursor-pointer"
+              className="border border-border bg-secondary/80 px-2 py-0.5 text-xs text-foreground outline-none font-mono cursor-pointer"
               style={{ color: `var(${STATUS_COLOR_VAR[task.status]})` }}
             >
               {KANBAN_COLUMNS.map((s) => (
@@ -108,15 +108,15 @@ function TaskCardComponent({
       </div>
 
       {/* Task Title (Prominent, High-Contrast & Clear) */}
-      <h4 className="text-sm font-semibold leading-snug text-foreground line-clamp-3 my-0.5">
+      <h4 className="text-[15px] sm:text-base font-semibold leading-snug text-foreground line-clamp-3 my-1">
         {task.title}
       </h4>
 
       {/* Bottom meta row: Project pill + Tags + Due Date + Size */}
-      <div className="flex items-center justify-between gap-1.5 pt-1.5 border-t border-border/40 font-mono text-[10px]">
+      <div className="flex items-center justify-between gap-1.5 pt-1.5 border-t border-border/40 font-mono text-xs">
         <div className="flex items-center gap-1.5 min-w-0">
           {task.project && (
-            <span className="max-w-[90px] truncate px-1.5 py-0 border border-border bg-secondary/50 text-muted-foreground">
+            <span className="max-w-[110px] truncate px-1.5 py-0.5 border border-border bg-secondary/50 text-muted-foreground text-xs">
               {task.project}
             </span>
           )}
@@ -141,7 +141,7 @@ function TaskCardComponent({
 
       {/* Idling / Blocked Status strip */}
       {task.status === "in_progress" && (task.waitingOn || task.waitingReason) && (
-        <div className="text-[10px] font-mono text-amber-400 bg-amber-950/40 border border-amber-500/40 px-2 py-1 leading-tight break-words">
+        <div className="text-xs font-mono text-amber-400 bg-amber-950/40 border border-amber-500/40 px-2.5 py-1.5 leading-snug break-words">
           ⏸️ {task.waitingReason || task.waitingOn}
         </div>
       )}

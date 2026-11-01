@@ -121,7 +121,7 @@ function NavLink({ href, label, icon: Icon, count, badgeColorVar, collapsed }: N
 
 function GroupLabel({ children, collapsed }: { children: React.ReactNode; collapsed?: boolean }) {
   return (
-    <div className={cn("px-3 py-1 text-[10px] font-mono tracking-widest uppercase", collapsed && "lg:hidden")} style={{ color: "var(--color-dim)" }}>
+    <div className={cn("px-3 py-1.5 text-xs font-mono font-bold tracking-widest uppercase", collapsed && "lg:hidden")} style={{ color: "var(--color-dim)" }}>
       ── {children} ──
     </div>
   );
@@ -183,12 +183,12 @@ export function Sidebar() {
           {/* Mobile Header: Logo + Close Drawer Button */}
           <div className="flex items-center justify-between w-full lg:hidden">
             <div className="flex items-center gap-2">
-              <span style={{ fontFamily: "var(--font-press-start), monospace", fontSize: "12px", color: "var(--color-primary-gold)" }}>⚔</span>
+              <span style={{ fontFamily: "var(--font-press-start), monospace", fontSize: "14px", color: "var(--color-primary-gold)" }}>⚔</span>
               <div>
-                <div style={{ fontFamily: "var(--font-press-start), monospace", fontSize: "11px", color: "var(--color-primary-gold)" }}>
+                <div style={{ fontFamily: "var(--font-press-start), monospace", fontSize: "13px", color: "var(--color-primary-gold)" }}>
                   ATLAS
                 </div>
-                <div className="text-[10px] text-muted-foreground">Your Second Brain</div>
+                <div className="text-xs text-muted-foreground">Your Second Brain</div>
               </div>
             </div>
             <button
@@ -217,10 +217,10 @@ export function Sidebar() {
             ) : (
               <>
                 <div>
-                  <div style={{ fontFamily: "var(--font-press-start), monospace", fontSize: "11px", color: "var(--color-primary-gold)" }}>
+                  <div style={{ fontFamily: "var(--font-press-start), monospace", fontSize: "13px", color: "var(--color-primary-gold)" }}>
                     ⚔ ATLAS
                   </div>
-                  <div className="text-[10px] text-muted-foreground mt-0.5">Your Second Brain</div>
+                  <div className="text-xs text-muted-foreground mt-0.5">Your Second Brain</div>
                 </div>
                 <button
                   type="button"

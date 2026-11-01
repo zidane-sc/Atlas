@@ -84,9 +84,9 @@ function CopyButton({ text, label, className }: { text: string; label?: string; 
       type="button"
       onClick={onCopy}
       title="Copy to clipboard"
-      className={className || "inline-flex items-center gap-1 text-[10px] text-muted-foreground hover:text-cyan-400 p-0.5 rounded cursor-pointer transition-colors"}
+      className={className || "inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-cyan-400 p-1 rounded cursor-pointer transition-colors"}
     >
-      {copied ? <Check size={11} className="text-green-400" /> : <Copy size={11} />}
+      {copied ? <Check size={12} className="text-green-400" /> : <Copy size={12} />}
       {label && <span>{copied ? "Copied" : label}</span>}
     </button>
   );
@@ -409,17 +409,17 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
         style={{ backgroundColor: "var(--color-bg-panel-alt)" }}
       >
         <div className="flex items-center gap-2">
-          <SheetTitle className="font-display" style={{ fontSize: "11px", color: "var(--color-primary-gold)" }}>
+          <SheetTitle className="font-display" style={{ fontSize: "13px", color: "var(--color-primary-gold)" }}>
             {mode === "edit" ? "◈ QUEST DETAIL" : "+ NEW QUEST"}
           </SheetTitle>
           {mode === "edit" && currentTask && (
-            <span className="text-xs font-mono font-bold" style={{ color: "var(--color-primary-gold)", minWidth: "50px" }}>
+            <span className="text-sm font-mono font-bold" style={{ color: "var(--color-primary-gold)", minWidth: "50px" }}>
               {currentTask.code}
             </span>
           )}
           {isAgentTask && (
-            <span className="px-1.5 py-0.5 text-[9px] font-mono font-bold border border-cyan-500/50 bg-cyan-950/60 text-cyan-300 flex items-center gap-1">
-              <Bot size={11} /> MCP SPAWNED
+            <span className="px-2 py-0.5 text-xs font-mono font-bold border border-cyan-500/50 bg-cyan-950/60 text-cyan-300 flex items-center gap-1">
+              <Bot size={13} /> MCP SPAWNED
             </span>
           )}
         </div>
@@ -680,7 +680,7 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
                   const isGone = !liveTaskIds.has(r.taskId);
                   return (
                     <li key={r.taskId} className="flex items-center justify-between gap-2 p-1.5 bg-secondary/30 border border-border/60 text-xs font-mono">
-                      <span className="text-[10px] uppercase font-bold px-1.5 py-0.5 bg-muted/60 border border-border shrink-0 text-muted-foreground">
+                      <span className="text-xs uppercase font-bold px-2 py-0.5 bg-muted/60 border border-border shrink-0 text-muted-foreground">
                         {humanize(r.relationType)}
                       </span>
                       <button
@@ -964,36 +964,36 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
                         const isDone = Boolean(latestCp?.checkpointState === "finished" || task?.status === "done");
 
                         return (
-                          <div className="p-2.5 bg-background/90 border border-cyan-500/30 flex flex-col gap-2">
+                          <div className="p-3 bg-background/90 border border-cyan-500/30 flex flex-col gap-2.5">
                             <div className="flex items-center justify-between gap-2 flex-wrap">
                               <div className="flex items-center gap-2">
-                                <span className="font-mono text-[11px] font-bold text-[var(--color-primary-gold)] flex items-center gap-1.5">
-                                  <Bot size={14} className="text-cyan-400 shrink-0" />
+                                <span className="font-mono text-sm font-bold text-[var(--color-primary-gold)] flex items-center gap-1.5">
+                                  <Bot size={15} className="text-cyan-400 shrink-0" />
                                   <span>{latestRun?.agentName || "Hermes Copilot"}</span>
                                 </span>
                                 {activeRun ? (
-                                  <span className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-green-950/70 border border-green-500/60 text-green-300 font-mono font-bold text-[10px]">
+                                  <span className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-green-950/70 border border-green-500/60 text-green-300 font-mono font-bold text-xs">
                                     <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
                                     LIVE RUNNING
                                   </span>
                                 ) : isIdling ? (
-                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-950/70 border border-amber-500/60 text-amber-300 font-mono font-bold text-[10px]">
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-950/70 border border-amber-500/60 text-amber-300 font-mono font-bold text-xs">
                                     ⏸️ WAITING / IDLING
                                   </span>
                                 ) : isDone ? (
-                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-cyan-950/70 border border-cyan-500/60 text-cyan-300 font-mono font-bold text-[10px]">
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-cyan-950/70 border border-cyan-500/60 text-cyan-300 font-mono font-bold text-xs">
                                     ✓ COMPLETED
                                   </span>
                                 ) : (
-                                  <span className="px-2 py-0.5 bg-secondary border border-border text-muted-foreground font-mono font-bold text-[10px]">
+                                  <span className="px-2 py-0.5 bg-secondary border border-border text-muted-foreground font-mono font-bold text-xs">
                                     {(latestRun?.status || "IN_PROGRESS").toUpperCase()}
                                   </span>
                                 )}
                               </div>
 
                               {latestRun?.startedAt && (
-                                <div className="text-[10px] font-mono text-muted-foreground flex items-center gap-1">
-                                  <Clock size={11} className="text-cyan-400 shrink-0" />
+                                <div className="text-xs font-mono text-muted-foreground flex items-center gap-1">
+                                  <Clock size={12} className="text-cyan-400 shrink-0" />
                                   <span>
                                     {latestRun.endedAt
                                       ? `Duration: ${formatDuration(latestRun.startedAt, latestRun.endedAt)}`
@@ -1005,9 +1005,9 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
 
                             {/* Session Pointer & Origin Meta */}
                             {latestRun && (
-                              <div className="pt-2 border-t border-border/50 flex flex-col gap-1.5 text-[10px] font-mono">
+                              <div className="pt-2 border-t border-border/50 flex flex-col gap-1.5 text-xs font-mono">
                                 {latestRun.sessionTitle && (
-                                  <div className="text-foreground font-bold flex items-center gap-1.5 truncate">
+                                  <div className="text-foreground text-sm font-bold flex items-center gap-1.5 truncate">
                                     <span className="text-cyan-400">💬</span>
                                     <span className="truncate">{latestRun.sessionTitle}</span>
                                   </div>
@@ -1018,9 +1018,9 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
                                     {latestRun.threadName ? ` > #${latestRun.threadName}` : latestRun.threadId ? ` (#${latestRun.threadId})` : ""}
                                   </span>
                                   {latestRun.sessionId && (
-                                    <div className="flex items-center gap-1 bg-secondary/60 px-1.5 py-0.5 border border-border/60">
+                                    <div className="flex items-center gap-1.5 bg-secondary/60 px-2 py-0.5 border border-border/60">
                                       <span className="text-muted-foreground">Session:</span>
-                                      <span className="text-[var(--color-primary-gold)] font-bold select-all truncate max-w-[120px]" title={latestRun.sessionId}>
+                                      <span className="text-[var(--color-primary-gold)] font-bold select-all truncate max-w-[140px]" title={latestRun.sessionId}>
                                         {latestRun.sessionId}
                                       </span>
                                       <CopyButton text={latestRun.sessionId} />
@@ -1035,9 +1035,9 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
 
                       {/* 2. Linked External Sources (PR, Repo, Canonical Key) */}
                       {Boolean(taskDetail?.agent?.sources && taskDetail.agent.sources.length > 0) && (
-                        <div className="flex flex-wrap items-center gap-1.5 p-2 bg-background/80 border border-border min-w-0">
-                          <span className="text-[10px] font-mono font-bold text-cyan-400 uppercase flex items-center gap-1 shrink-0">
-                            <ExternalLink size={11} className="text-cyan-400" /> Linked Sources:
+                        <div className="flex flex-wrap items-center gap-2 p-2.5 bg-background/80 border border-border min-w-0">
+                          <span className="text-xs font-mono font-bold text-cyan-400 uppercase flex items-center gap-1 shrink-0">
+                            <ExternalLink size={12} className="text-cyan-400" /> Linked Sources:
                           </span>
                           {taskDetail!.agent!.sources!.map((s) => {
                             const targetUrl = s.url || (s.canonicalKey.startsWith("http") ? s.canonicalKey : `https://${s.canonicalKey}`);
@@ -1047,7 +1047,7 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
                                 href={targetUrl}
                                 target="_blank"
                                 rel="noreferrer"
-                                className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-secondary hover:bg-secondary/80 text-[var(--color-primary-gold)] hover:underline font-mono text-[10px] border border-border transition-colors truncate max-w-[280px]"
+                                className="inline-flex items-center gap-1 px-2 py-0.5 bg-secondary hover:bg-secondary/80 text-[var(--color-primary-gold)] hover:underline font-mono text-xs border border-border transition-colors truncate max-w-[280px]"
                                 title={s.canonicalKey}
                               >
                                 <span>{s.provider === "github_pr" ? "🐙 PR" : "🔗"}</span>
@@ -1060,14 +1060,14 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
 
                       {/* 3. Latest Checkpoint or Waiting Reason */}
                       {((taskDetail?.agent?.checkpoints?.length ?? 0) > 0 && taskDetail?.agent?.checkpoints?.[0]) ? (
-                        <div className="p-2.5 bg-background/90 border border-cyan-500/30 flex flex-col gap-2 min-w-0">
-                          <div className="font-mono font-bold text-[10px] text-cyan-400 uppercase flex items-center justify-between gap-1.5">
+                        <div className="p-3 bg-background/90 border border-cyan-500/30 flex flex-col gap-2 min-w-0">
+                          <div className="font-mono font-bold text-xs text-cyan-400 uppercase flex items-center justify-between gap-1.5">
                             <span className="flex items-center gap-1.5 truncate">
-                              <Sparkles size={12} className="shrink-0 text-cyan-400" /> Latest Checkpoint (Rev #{taskDetail.agent.checkpoints[0].revision})
+                              <Sparkles size={13} className="shrink-0 text-cyan-400" /> Latest Checkpoint (Rev #{taskDetail.agent.checkpoints[0].revision})
                             </span>
                             {taskDetail.agent.checkpoints[0].checkpointState && (
                               <span
-                                className={`text-[9px] font-mono px-1.5 py-0.5 border shrink-0 ${
+                                className={`text-xs font-mono font-bold px-2 py-0.5 border shrink-0 ${
                                   taskDetail.agent.checkpoints[0].checkpointState === "finished"
                                     ? "border-green-500/50 text-green-300 bg-green-950/40"
                                     : taskDetail.agent.checkpoints[0].checkpointState === "waiting_external"
@@ -1080,29 +1080,29 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
                             )}
                           </div>
 
-                          <p className="p-2 bg-background/60 border border-border/80 text-foreground font-mono text-[11px] leading-relaxed break-words whitespace-pre-wrap">
+                          <p className="p-2.5 bg-background/60 border border-border/80 text-foreground font-mono text-xs sm:text-sm leading-relaxed break-words whitespace-pre-wrap">
                             {taskDetail.agent.checkpoints[0].summary}
                           </p>
 
                           {taskDetail.agent.checkpoints[0].nextStep && (
-                            <div className="p-1.5 bg-cyan-950/20 border border-cyan-500/30 text-[11px] font-mono text-cyan-300 flex items-start gap-1.5">
+                            <div className="p-2 bg-cyan-950/20 border border-cyan-500/30 text-xs sm:text-sm font-mono text-cyan-300 flex items-start gap-1.5">
                               <span className="font-bold shrink-0">🎯 Next:</span>
                               <span className="break-words">{taskDetail.agent.checkpoints[0].nextStep}</span>
                             </div>
                           )}
 
                           {(taskDetail.agent.checkpoints[0].waitingReason || (task as any)?.waitingReason) && (
-                            <div className="p-1.5 bg-amber-950/20 border border-amber-500/30 text-[11px] font-mono text-amber-300 flex items-start gap-1.5">
+                            <div className="p-2 bg-amber-950/20 border border-amber-500/30 text-xs sm:text-sm font-mono text-amber-300 flex items-start gap-1.5">
                               <span className="font-bold shrink-0">⏸️ Idling:</span>
                               <span className="break-words">{taskDetail.agent.checkpoints[0].waitingReason || (task as any).waitingReason}</span>
                             </div>
                           )}
 
-                          <div className="flex items-center justify-between text-[9px] font-mono text-muted-foreground/80 pt-1 border-t border-border/40">
+                          <div className="flex items-center justify-between text-xs font-mono text-muted-foreground pt-1.5 border-t border-border/40">
                             {taskDetail.agent.checkpoints[0].provenanceSource ? (
-                              <div className="flex items-center gap-1 truncate max-w-[260px]">
+                              <div className="flex items-center gap-1.5 truncate max-w-[280px]">
                                 <span>📌 Ref:</span>
-                                <code className="bg-secondary px-1 py-0.5 border border-border text-[var(--color-primary-gold)] truncate" title={taskDetail.agent.checkpoints[0].provenanceSource}>
+                                <code className="bg-secondary px-1.5 py-0.5 border border-border text-[var(--color-primary-gold)] truncate" title={taskDetail.agent.checkpoints[0].provenanceSource}>
                                   {taskDetail.agent.checkpoints[0].provenanceSource}
                                 </code>
                                 <CopyButton text={taskDetail.agent.checkpoints[0].provenanceSource} />
@@ -1112,7 +1112,7 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
                           </div>
                         </div>
                       ) : (task as any)?.waitingReason ? (
-                        <div className="p-2.5 bg-amber-950/20 border border-amber-500/30 text-[11px] font-mono text-amber-300">
+                        <div className="p-3 bg-amber-950/20 border border-amber-500/30 text-xs sm:text-sm font-mono text-amber-300">
                           <span className="font-bold">⏸️ Idling Reason:</span> {(task as any).waitingReason}
                         </div>
                       ) : null}
@@ -1123,18 +1123,18 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
                           <button
                             type="button"
                             onClick={() => setShowCheckpointHistory((v) => !v)}
-                            className="flex items-center justify-between w-full text-[10px] font-mono text-muted-foreground hover:text-foreground py-1 px-1.5 bg-secondary/40 border border-border/50 cursor-pointer transition-colors"
+                            className="flex items-center justify-between w-full text-xs font-mono text-muted-foreground hover:text-foreground py-1.5 px-2 bg-secondary/40 border border-border/50 cursor-pointer transition-colors"
                           >
                             <span className="font-bold">
                               📜 Milestone History ({taskDetail!.agent!.checkpoints.length} revisions)
                             </span>
-                            <span className="text-cyan-400">{showCheckpointHistory ? "▲ Hide" : "▼ Show"}</span>
+                            <span className="text-cyan-400 font-bold">{showCheckpointHistory ? "▲ Hide" : "▼ Show"}</span>
                           </button>
                           {showCheckpointHistory && (
-                            <div className="mt-1.5 space-y-1.5 max-h-52 overflow-y-auto pr-1">
+                            <div className="mt-1.5 space-y-2 max-h-56 overflow-y-auto pr-1">
                               {taskDetail!.agent!.checkpoints.slice(1).map((cp) => (
-                                <div key={cp.id} className="p-2 bg-background/60 border border-border text-[11px] font-mono space-y-1">
-                                  <div className="flex items-center justify-between text-[9px]">
+                                <div key={cp.id} className="p-2.5 bg-background/60 border border-border text-xs font-mono space-y-1.5">
+                                  <div className="flex items-center justify-between text-xs">
                                     <span className="font-bold text-cyan-400">Rev #{cp.revision}</span>
                                     <span className="text-muted-foreground">
                                       {new Date(cp.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -1142,13 +1142,13 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
                                   </div>
                                   <p className="text-foreground leading-relaxed break-words whitespace-pre-wrap">{cp.summary}</p>
                                   {cp.nextStep && (
-                                    <div className="text-[10px] text-cyan-300">▸ Next: {cp.nextStep}</div>
+                                    <div className="text-xs text-cyan-300">▸ Next: {cp.nextStep}</div>
                                   )}
                                   {cp.waitingReason && (
-                                    <div className="text-[10px] text-amber-400">⏸️ {cp.waitingReason}</div>
+                                    <div className="text-xs text-amber-400">⏸️ {cp.waitingReason}</div>
                                   )}
                                   {cp.provenanceSource && (
-                                    <div className="text-[9px] text-muted-foreground/70">📌 {cp.provenanceSource}</div>
+                                    <div className="text-xs text-muted-foreground">📌 {cp.provenanceSource}</div>
                                   )}
                                 </div>
                               ))}
@@ -1186,44 +1186,44 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
 
                             return (
                               <div className="space-y-2">
-                                <div className="font-mono font-bold text-[10px] text-cyan-400 uppercase flex items-center justify-between">
-                                  <span className="flex items-center gap-1">
-                                    <Cpu size={12} className="shrink-0" /> Token Economics & Cost:
+                                <div className="font-mono font-bold text-xs text-cyan-400 uppercase flex items-center justify-between">
+                                  <span className="flex items-center gap-1.5">
+                                    <Cpu size={13} className="shrink-0" /> Token Economics & Cost:
                                   </span>
-                                  <span className="text-[9px] text-muted-foreground font-normal">Real Telemetry</span>
+                                  <span className="text-xs text-muted-foreground font-normal">Real Telemetry</span>
                                 </div>
 
                                 {/* KPI Metrics Cards */}
-                                <div className="grid grid-cols-2 gap-1.5 font-mono">
-                                  <div className="p-1.5 bg-background/80 border border-border">
-                                    <div className="text-[9px] text-muted-foreground">TOTAL TOKENS</div>
-                                    <div className="text-[12px] font-bold text-[var(--color-primary-gold)]">
+                                <div className="grid grid-cols-2 gap-2 font-mono">
+                                  <div className="p-2 bg-background/80 border border-border">
+                                    <div className="text-xs font-bold text-muted-foreground">TOTAL TOKENS</div>
+                                    <div className="text-sm sm:text-base font-bold text-[var(--color-primary-gold)] mt-0.5">
                                       ⚡ {grandTotal.toLocaleString()}
                                     </div>
-                                    <div className="text-[9px] text-muted-foreground mt-0.5">
+                                    <div className="text-xs text-muted-foreground mt-0.5">
                                       {grandPrompt.toLocaleString()} in · {grandCompletion.toLocaleString()} out
                                     </div>
                                   </div>
-                                  <div className="p-1.5 bg-background/80 border border-border">
-                                    <div className="text-[9px] text-muted-foreground">ESTIMATED COST</div>
-                                    <div className="text-[12px] font-bold text-green-400">
+                                  <div className="p-2 bg-background/80 border border-border">
+                                    <div className="text-xs font-bold text-muted-foreground">ESTIMATED COST</div>
+                                    <div className="text-sm sm:text-base font-bold text-green-400 mt-0.5">
                                       ${totalCost.toFixed(4)}
                                     </div>
-                                    <div className="text-[9px] text-muted-foreground mt-0.5">
+                                    <div className="text-xs text-muted-foreground mt-0.5">
                                       {Object.keys(modelMap).length} model{Object.keys(modelMap).length > 1 ? "s" : ""} used
                                     </div>
                                   </div>
                                 </div>
 
                                 {/* Models detail list */}
-                                <div className="space-y-1">
+                                <div className="space-y-1.5">
                                   {Object.entries(modelMap).map(([mName, data]) => (
-                                    <div key={mName} className="p-1.5 bg-background/60 border border-border/80 font-mono text-[10px]">
+                                    <div key={mName} className="p-2 bg-background/60 border border-border/80 font-mono text-xs">
                                       <div className="flex items-center justify-between gap-1">
                                         <span className="font-bold text-foreground truncate" title={mName}>{mName}</span>
-                                        <span className="text-[9px] px-1 bg-secondary text-cyan-400 border border-border/50 shrink-0">{data.provider}</span>
+                                        <span className="text-xs font-bold px-1.5 py-0.5 bg-secondary text-cyan-400 border border-border/50 shrink-0">{data.provider}</span>
                                       </div>
-                                      <div className="text-muted-foreground flex justify-between gap-1 mt-0.5 text-[9px]">
+                                      <div className="text-muted-foreground flex justify-between gap-1 mt-1 text-xs">
                                         <span>{data.prompt.toLocaleString()} prompt · {data.completion.toLocaleString()} comp</span>
                                         <span className="text-[var(--color-primary-gold)] font-bold">{data.total.toLocaleString()} tkn {data.cost > 0 && `(~$${data.cost.toFixed(4)})`}</span>
                                       </div>
@@ -1264,29 +1264,29 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
                       return (
                         <li
                           key={c.id}
-                          className={`flex flex-col gap-1 p-2 border ${
+                          className={`flex flex-col gap-1.5 p-2.5 border ${
                             isAgent
                               ? "bg-cyan-950/15 border-cyan-500/40"
                               : "bg-muted/30 border-border"
                           }`}
                         >
-                          <div className="flex items-center justify-between text-[10px] font-mono">
-                            <div className="flex items-center gap-1.5">
+                          <div className="flex items-center justify-between text-xs font-mono">
+                            <div className="flex items-center gap-2">
                               {isAgent ? (
-                                <span className="inline-flex items-center gap-1 px-1.5 py-0.2 bg-cyan-950 border border-cyan-500/60 text-cyan-300 font-bold text-[9px]">
-                                  <Bot size={11} /> AGENT LOG
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-cyan-950 border border-cyan-500/60 text-cyan-300 font-bold text-xs">
+                                  <Bot size={12} /> AGENT LOG
                                 </span>
                               ) : null}
-                              <span className="font-bold text-foreground">{c.authorName}</span>
+                              <span className="font-bold text-foreground text-xs sm:text-sm">{c.authorName}</span>
                             </div>
-                            <div className="flex items-center gap-1.5 text-muted-foreground text-[9px]">
+                            <div className="flex items-center gap-2 text-muted-foreground text-xs">
                               <span>
                                 {new Date(c.createdAt).toLocaleDateString()} {new Date(c.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                               </span>
                               <CopyButton text={cleanContent} />
                             </div>
                           </div>
-                          <div className={`leading-relaxed break-words whitespace-pre-wrap ${isAgent ? "font-mono text-[11px] text-foreground" : "text-xs text-foreground"}`}>
+                          <div className={`leading-relaxed break-words whitespace-pre-wrap ${isAgent ? "font-mono text-xs sm:text-sm text-foreground" : "text-sm text-foreground"}`}>
                             {cleanContent}
                           </div>
                         </li>
