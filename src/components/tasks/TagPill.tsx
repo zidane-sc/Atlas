@@ -1,8 +1,8 @@
 export function TagPill({ tag }: { tag: string }) {
   return (
     <span
-      className="inline-block border px-1.5 text-sm whitespace-nowrap text-muted-foreground"
-      style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-bg-panel-alt)" }}
+      className="inline-block border border-border bg-secondary/50 px-1.5 py-0.5 text-xs font-mono whitespace-nowrap text-muted-foreground truncate max-w-[110px]"
+      title={`#${tag}`}
     >
       #{tag}
     </span>

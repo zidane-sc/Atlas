@@ -80,31 +80,31 @@ function TaskCardComponent({
 
       {/* Primary Top Row: Code + Type + Priority + Status Move */}
       <div className="flex items-center justify-between gap-2 border-b border-border/30 pb-1.5">
-        <div className="flex items-center gap-1.5 min-w-0">
+        <div className="flex items-center gap-1.5 shrink-0">
           <span aria-hidden className="text-base shrink-0 leading-none">{TYPE_ICON[task.type]}</span>
-          <span className="text-sm font-mono font-bold tracking-tight text-[var(--color-primary-gold)]">
+          <span className="text-sm font-mono font-bold tracking-tight text-[var(--color-primary-gold)] whitespace-nowrap">
             {task.code}
           </span>
+          <PriorityMark priority={task.priority} />
         </div>
 
-        <div className="flex items-center gap-1.5 shrink-0">
-          <PriorityMark priority={task.priority} />
-          {onMoveStatus && (
+        {onMoveStatus && (
+          <div className="shrink-0">
             <select
               aria-label={`Move "${task.title}" to a different status`}
               value={task.status}
               onClick={(e) => e.stopPropagation()}
               onKeyDown={(e) => e.stopPropagation()}
               onChange={(e) => onMoveStatus(task, e.target.value as TaskStatus)}
-              className="border border-border bg-secondary/80 px-2 py-0.5 text-xs text-foreground outline-none font-mono cursor-pointer"
+              className="border border-border/70 hover:border-primary/60 bg-secondary/80 hover:bg-secondary px-2 py-0.5 text-xs text-foreground outline-none font-mono cursor-pointer transition-colors max-w-[125px] truncate"
               style={{ color: `var(${STATUS_COLOR_VAR[task.status]})` }}
             >
               {KANBAN_COLUMNS.map((s) => (
                 <option key={s} value={s}>{STATUS_LABEL[s]}</option>
               ))}
             </select>
-          )}
-        </div>
+          </div>
+        )}
       </div>
 
       {/* Task Title (Prominent, High-Contrast & Clear) */}
@@ -113,26 +113,34 @@ function TaskCardComponent({
       </h4>
 
       {/* Bottom meta row: Project pill + Tags + Due Date + Size */}
-      <div className="flex items-center justify-between gap-1.5 pt-1.5 border-t border-border/40 font-mono text-xs">
-        <div className="flex items-center gap-1.5 min-w-0">
+      <div className="flex items-center justify-between gap-2 pt-1.5 border-t border-border/40 font-mono text-xs">
+        <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
           {task.project && (
-            <span className="max-w-[110px] truncate px-1.5 py-0.5 border border-border bg-secondary/50 text-muted-foreground text-xs">
+            <span className="max-w-[120px] truncate px-1.5 py-0.5 border border-border bg-secondary/50 text-muted-foreground text-xs">
               {task.project}
             </span>
           )}
           {task.tags.slice(0, 1).map((t) => (
             <TagPill key={t} tag={t} />
           ))}
+          {task.tags.length > 1 && (
+            <span
+              className="text-xs text-muted-foreground/70 font-mono font-bold cursor-default"
+              title={task.tags.slice(1).map((t) => `#${t}`).join(", ")}
+            >
+              +{task.tags.length - 1}
+            </span>
+          )}
         </div>
 
-        <div className="flex items-center gap-1.5 shrink-0 ml-auto">
+        <div className="flex items-center gap-2 shrink-0 ml-auto font-mono text-xs">
           {task.size != null && (
-            <span className="text-muted-foreground font-bold">
+            <span className="text-muted-foreground font-bold px-1 py-0.2 bg-secondary/60 border border-border/50">
               {task.size.toUpperCase()}
             </span>
           )}
           {task.dueDate && (
-            <span style={{ color: overdue ? "var(--color-status-blocked)" : "var(--color-text-muted)" }}>
+            <span className="font-medium whitespace-nowrap" style={{ color: overdue ? "var(--color-status-blocked)" : "var(--color-text-muted)" }}>
               {overdue && "⚠ "}{formatDueDate(task.dueDate)}
             </span>
           )}
@@ -141,8 +149,9 @@ function TaskCardComponent({
 
       {/* Idling / Blocked Status strip */}
       {task.status === "in_progress" && (task.waitingOn || task.waitingReason) && (
-        <div className="text-xs font-mono text-amber-400 bg-amber-950/40 border border-amber-500/40 px-2.5 py-1.5 leading-snug break-words">
-          ⏸️ {task.waitingReason || task.waitingOn}
+        <div className="text-xs font-mono text-amber-300 bg-amber-950/40 border border-amber-500/40 px-2 py-1 leading-snug flex items-start gap-1.5 break-words">
+          <span className="shrink-0 text-xs mt-0.5">⏸️</span>
+          <span className="line-clamp-2">{task.waitingReason || task.waitingOn}</span>
         </div>
       )}
     </div>
