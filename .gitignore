@@ -41,6 +41,10 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
+# backups
+/backups/
+*.sql
+
 # prisma generated client
 /src/generated/
 
