@@ -902,16 +902,16 @@ export function TasksProvider({
           `}</style>
           <div className="animate-completion-panel relative flex flex-col items-center gap-2 border-4 border-primary bg-card p-6 text-center shadow-[8px_8px_0_var(--color-bg-deep)]">
             <div className="text-4xl text-[var(--color-status-ready)] font-bold animate-bounce">✓</div>
-            <div className="font-display text-[9px] tracking-widest text-[var(--color-primary-gold)]">QUEST COMPLETED</div>
-            <div className="text-sm font-bold text-foreground max-w-[200px] truncate">{c.title}</div>
-            <div className="animate-float-xp font-display text-sm text-[var(--color-xp-gold)] mt-2">
+            <div className="font-display text-xs tracking-widest text-[var(--color-primary-gold)]">QUEST COMPLETED</div>
+            <div className="text-base font-bold text-foreground max-w-[240px] truncate">{c.title}</div>
+            <div className="animate-float-xp font-display text-base text-[var(--color-xp-gold)] mt-2">
               +{c.xp} XP
             </div>
             {c.streak !== undefined && (
               <div className="mt-3 flex flex-col items-center gap-1 border-t border-border pt-3 w-full animate-pulse">
                 <span className="text-3xl animate-bounce" style={{ filter: "drop-shadow(0 0 8px var(--color-streak-flame))", animationDuration: "0.6s" }}>🔥</span>
-                <span className="font-display text-[9px] tracking-widest text-[var(--color-streak-flame)] font-bold">STREAK EXTENDED!</span>
-                <span className="font-display text-sm text-foreground font-bold">{c.streak} DAYS</span>
+                <span className="font-display text-xs tracking-widest text-[var(--color-streak-flame)] font-bold">STREAK EXTENDED!</span>
+                <span className="font-display text-base text-foreground font-bold">{c.streak} DAYS</span>
               </div>
             )}
             {/* 12 Particle burst pixels */}

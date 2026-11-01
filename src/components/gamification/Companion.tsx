@@ -137,7 +137,7 @@ export function Companion({
           }}
           onClick={() => hasPinned && setShowPinned(true)}
         >
-          <div className="mb-1 font-display text-[7px]" style={{ color: `var(${colorVar})` }}>
+          <div className="mb-1 font-display text-[10px]" style={{ color: `var(${colorVar})` }}>
             PIP · LV.{compLv}
           </div>
           <div className="text-xs" style={{ color: "var(--color-text-muted)", lineHeight: 1.4 }}>
@@ -349,7 +349,7 @@ export function Companion({
         </div>
 
         <div className="mt-1.5 text-center">
-          <div className="font-display text-[7px]" style={{ color: `var(${colorVar})` }}>PIP</div>
+          <div className="font-display text-[10px]" style={{ color: `var(${colorVar})` }}>PIP</div>
           <div className="text-xs" style={{ color: "var(--color-dim)" }}>companion lv.{compLv}</div>
         </div>
       </div>

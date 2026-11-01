@@ -294,11 +294,11 @@ function TableTab({
                 className="cursor-pointer border-b border-border transition-colors hover:bg-[var(--color-bg-panel-alt)] text-xs"
               >
                 <td className="px-3 py-1.5"><PriorityMark priority={t.priority} withLabel /></td>
-                <td className="px-3 py-1.5 text-[11px] font-mono font-bold" style={{ color: "var(--color-primary-gold)" }}>{t.code}</td>
+                <td className="px-3 py-1.5 text-xs font-mono font-bold" style={{ color: "var(--color-primary-gold)" }}>{t.code}</td>
                 <td className="px-3 py-1.5"><StatusBadge status={t.status} /></td>
                 <td className="px-3 py-1.5 text-xs">{TYPE_ICON[t.type]}</td>
-                <td className="max-w-xs truncate px-3 py-1.5 text-xs text-foreground font-medium">{t.title}</td>
-                <td className="px-3 py-1.5 text-[11px] font-mono" style={{ color: ov ? "var(--color-status-blocked)" : "var(--color-text-muted)" }}>{formatDueDate(t.dueDate)}</td>
+                <td className="max-w-xs truncate px-3 py-1.5 text-xs sm:text-sm text-foreground font-medium">{t.title}</td>
+                <td className="px-3 py-1.5 text-xs font-mono" style={{ color: ov ? "var(--color-status-blocked)" : "var(--color-text-muted)" }}>{formatDueDate(t.dueDate)}</td>
               </tr>
             );
           })}
@@ -648,9 +648,9 @@ function TimelineTab({ tasks, projects, onSelect }: { tasks: Task[]; projects: P
                       className="absolute top-0.5 h-6 max-w-[160px] min-w-[90px] cursor-pointer overflow-hidden px-1.5 transition-opacity hover:opacity-70 rounded-xs"
                       style={{ left: `${pct}%`, backgroundColor: `var(--color-priority-${t.priority})`, border: `1px solid var(${STATUS_COLOR_VAR[t.status]})` }}
                     >
-                      <div className="flex h-full items-center gap-1 overflow-hidden text-[11px] leading-none">
+                      <div className="flex h-full items-center gap-1.5 overflow-hidden text-xs leading-none">
                         <span className="shrink-0 font-mono font-bold uppercase" style={{ color: `var(${PRIORITY_BAR_TEXT_VAR[t.priority]})` }}>{t.code}</span>
-                        <span className="truncate font-medium" style={{ color: `var(${PRIORITY_BAR_TEXT_VAR[t.priority]})` }}>
+                        <span className="truncate font-medium text-xs" style={{ color: `var(${PRIORITY_BAR_TEXT_VAR[t.priority]})` }}>
                           {t.title}
                         </span>
                       </div>

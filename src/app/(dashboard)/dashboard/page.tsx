@@ -203,7 +203,7 @@ export default function Page() {
                       </span>
                     )}
                   </div>
-                  <span className="text-[11px] text-muted-foreground shrink-0 font-mono">
+                  <span className="text-xs text-muted-foreground shrink-0 font-mono">
                     {new Date(log.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                   </span>
                 </div>

@@ -351,7 +351,7 @@ export function RoomDecoration() {
         {/* Header HUD Overlays */}
         <div className="absolute top-3 left-3 z-20 flex items-center gap-2">
           <div
-            className="border-2 px-3 py-1 font-display text-[9px] uppercase tracking-wider"
+            className="border-2 px-3 py-1 font-display text-xs uppercase tracking-wider"
             style={{
               backgroundColor: "var(--color-bg-deep)",
               borderColor: "var(--color-border)",
@@ -370,7 +370,7 @@ export function RoomDecoration() {
               borderColor: "var(--color-border)",
             }}
           >
-            <RotateCcw size={12} />
+            <RotateCcw size={14} />
           </button>
         </div>
 
@@ -383,13 +383,13 @@ export function RoomDecoration() {
               borderColor: "var(--color-primary-gold)",
             }}
           >
-            <span className="font-display text-[8px]" style={{ color: "var(--color-primary-gold)" }}>
+            <span className="font-display text-xs" style={{ color: "var(--color-primary-gold)" }}>
               PREVIEW: {previewItem.name}
             </span>
             <button
               type="button"
               onClick={() => setPreviewItem(null)}
-              className="text-[9px] font-bold text-muted-foreground hover:text-foreground ml-1"
+              className="text-xs font-mono font-bold text-muted-foreground hover:text-foreground ml-1"
             >
               ✕ EXIT
             </button>
@@ -442,7 +442,7 @@ export function RoomDecoration() {
           </span>
           <div className="contact-shadow" />
           <div
-            className="relative z-10 border px-1.5 py-0.5 mt-0.5 text-[8px] font-mono font-bold tracking-widest uppercase truncate max-w-[80px]"
+            className="relative z-10 border px-2 py-0.5 mt-0.5 text-xs font-mono font-bold tracking-wider uppercase truncate max-w-[100px]"
             style={{
               backgroundColor: "var(--color-bg-deep)",
               borderColor: "var(--color-border)",
@@ -472,7 +472,7 @@ export function RoomDecoration() {
           </span>
           <div className="contact-shadow" style={{ width: "80%" }} />
           <span
-            className="relative z-10 text-[7px] font-mono font-bold px-1 py-0 border opacity-80"
+            className="relative z-10 text-[10px] font-mono font-bold px-1.5 py-0 border opacity-90"
             style={{
               backgroundColor: "var(--color-bg-deep)",
               borderColor: "var(--color-border)",
@@ -508,7 +508,7 @@ export function RoomDecoration() {
             </span>
             <div className="contact-shadow" />
             {dragging?.category === "chair" && dragPos && (
-              <span className="absolute -bottom-4 left-1/2 -translate-x-1/2 whitespace-nowrap bg-deep border border-primary-gold px-1 py-0 text-[7px] font-mono text-primary-gold font-bold z-30">
+              <span className="absolute -bottom-4 left-1/2 -translate-x-1/2 whitespace-nowrap bg-deep border border-primary-gold px-1.5 py-0.5 text-xs font-mono text-primary-gold font-bold z-30">
                 {dragPos.x}%, {dragPos.y}%
               </span>
             )}
@@ -553,7 +553,7 @@ export function RoomDecoration() {
             </div>
             <div className="contact-shadow" style={{ width: "95%", height: "10px", bottom: "-4px" }} />
             {dragging?.category === "desk" && dragPos && (
-              <span className="absolute -bottom-4 left-1/2 -translate-x-1/2 whitespace-nowrap bg-deep border border-primary-gold px-1 py-0 text-[7px] font-mono text-primary-gold font-bold z-30">
+              <span className="absolute -bottom-4 left-1/2 -translate-x-1/2 whitespace-nowrap bg-deep border border-primary-gold px-1.5 py-0.5 text-xs font-mono text-primary-gold font-bold z-30">
                 {dragPos.x}%, {dragPos.y}%
               </span>
             )}
@@ -596,7 +596,7 @@ export function RoomDecoration() {
             </div>
             <div className="contact-shadow" style={{ width: "80%", height: "5px", bottom: "-3px" }} />
             {dragging?.category === "decor" && dragPos && (
-              <span className="absolute -bottom-4 left-1/2 -translate-x-1/2 whitespace-nowrap bg-deep border border-primary-gold px-1 py-0 text-[7px] font-mono text-primary-gold font-bold z-30">
+              <span className="absolute -bottom-4 left-1/2 -translate-x-1/2 whitespace-nowrap bg-deep border border-primary-gold px-1.5 py-0.5 text-xs font-mono text-primary-gold font-bold z-30">
                 {dragPos.x}%, {dragPos.y}%
               </span>
             )}
@@ -607,11 +607,11 @@ export function RoomDecoration() {
       {/* 2. COINS OVERVIEW & CATEGORY TABS */}
       <div className="flex flex-col gap-3 border-b border-border pb-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-4">
         <div className="flex shrink-0 items-center gap-2">
-          <span className="font-display text-[9px] text-muted-foreground uppercase tracking-widest">
+          <span className="font-display text-xs text-muted-foreground uppercase tracking-widest">
             ▸ RETRO FURNITURE SHOP
           </span>
           <div
-            className="relative flex items-center gap-1.5 border border-border bg-card px-3 py-1 font-display text-[9px]"
+            className="relative flex items-center gap-1.5 border border-border bg-card px-3 py-1 font-display text-xs font-bold"
             style={{ color: "var(--color-coin)" }}
           >
             🪙 {currentCoins} COINS
@@ -633,7 +633,7 @@ export function RoomDecoration() {
                   if (soundEnabled) playRetroBlip();
                   setActiveTab(cat.id);
                 }}
-                className="shrink-0 whitespace-nowrap px-3 py-1 font-display text-[8px] uppercase border transition-all flex items-center gap-1.5"
+                className="shrink-0 whitespace-nowrap px-3 py-1.5 font-display text-[10px] uppercase border transition-all flex items-center gap-1.5"
                 style={{
                   backgroundColor: isActive ? "var(--color-primary-gold)" : "var(--color-bg-panel-alt)",
                   color: isActive ? "var(--color-bg-deep)" : "var(--color-text-primary)",
@@ -697,7 +697,7 @@ export function RoomDecoration() {
                   </div>
                   {isPlaced && (
                     <span
-                      className="font-display text-[7px] px-1.5 py-0.5 tracking-wider shrink-0"
+                      className="font-display text-[9px] font-bold px-2 py-0.5 tracking-wider shrink-0"
                       style={{
                         backgroundColor: "var(--color-primary-gold)",
                         color: "var(--color-bg-deep)",
@@ -710,7 +710,7 @@ export function RoomDecoration() {
               </div>
 
               <div className="mt-4 flex items-center justify-between gap-2 pt-2 border-t border-border/40">
-                <div className="font-display text-[9px]" style={{ color: "var(--color-coin)" }}>
+                <div className="font-display text-xs" style={{ color: "var(--color-coin)" }}>
                   {isFree ? "FREE" : `🪙 ${item.cost}`}
                 </div>
 
@@ -729,14 +729,14 @@ export function RoomDecoration() {
                       color: isPreviewing ? "var(--color-status-ready)" : undefined,
                     }}
                   >
-                    <Eye size={12} />
+                    <Eye size={14} />
                   </button>
 
                   {isOwned ? (
                     <button
                       disabled={isPlaced || placingId === item.id}
                       onClick={() => handlePlace(item)}
-                      className="px-3 py-1 font-display text-[8px] uppercase border-2 text-foreground disabled:opacity-50 transition-all flex items-center justify-center gap-1 active:translate-y-0.5"
+                      className="px-3 py-1 font-display text-[10px] uppercase border-2 text-foreground disabled:opacity-50 transition-all flex items-center justify-center gap-1 active:translate-y-0.5"
                       style={{
                         borderColor: isPlaced ? "var(--color-dim)" : "var(--color-primary-gold)",
                         backgroundColor: "transparent",
@@ -748,13 +748,13 @@ export function RoomDecoration() {
                     <button
                       disabled={!isAffordable || buyingId === item.id}
                       onClick={() => handleBuy(item)}
-                      className="px-3 py-1 font-display text-[8px] uppercase border-2 text-deep disabled:opacity-50 disabled:pointer-events-none transition-all flex items-center justify-center gap-1 active:translate-y-0.5"
+                      className="px-3 py-1 font-display text-[10px] uppercase border-2 text-deep disabled:opacity-50 disabled:pointer-events-none transition-all flex items-center justify-center gap-1 active:translate-y-0.5"
                       style={{
                         backgroundColor: "var(--color-primary-gold)",
                         borderColor: "var(--color-primary-gold)",
                       }}
                     >
-                      {buyingId === item.id ? "BUYING..." : "BUY"}
+                      {buyingId === item.id ? "BUYING..." : "PURCHASE"}
                     </button>
                   )}
                 </div>

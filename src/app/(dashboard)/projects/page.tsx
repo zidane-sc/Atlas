@@ -39,13 +39,13 @@ export default function Page() {
                     <div className="min-w-0">
                       <div className="mb-0.5 flex items-center gap-1.5">
                         <span className="text-base shrink-0">{p.emoji}</span>
-                        <span className="text-xs font-bold text-foreground truncate">{p.name}</span>
-                        <span className="text-[11px] text-muted-foreground font-mono">[{p.category}]</span>
+                        <span className="text-sm sm:text-base font-bold text-foreground truncate">{p.name}</span>
+                        <span className="text-xs text-muted-foreground font-mono">[{p.category}]</span>
                       </div>
-                      <p className="text-xs text-muted-foreground line-clamp-2">{p.description}</p>
+                      <p className="text-xs sm:text-sm text-muted-foreground line-clamp-2">{p.description}</p>
                     </div>
                     <span
-                      className="border px-1.5 py-0.5 text-[10px] font-mono font-bold whitespace-nowrap shrink-0"
+                      className="border px-2 py-0.5 text-xs font-mono font-bold whitespace-nowrap shrink-0"
                       style={{ borderColor: resolveColorVar(p.colorVar), color: resolveColorVar(p.colorVar) }}
                     >
                       {p.status.replace("_", " ").toUpperCase()}

@@ -71,7 +71,7 @@ function NavLink({ href, label, icon: Icon, count, badgeColorVar, collapsed }: N
             <span
               className={cn(
                 "hidden font-bold font-mono",
-                collapsed && "lg:flex absolute -top-1.5 -right-2 h-3.5 min-w-[14px] items-center justify-center px-0.5 text-[9px]"
+                collapsed && "lg:flex absolute -top-1.5 -right-2 h-4 min-w-[16px] items-center justify-center px-1 text-xs"
               )}
               style={{
                 backgroundColor: badgeColorVar ? `var(${badgeColorVar})` : "var(--color-primary-gold)",
@@ -85,7 +85,7 @@ function NavLink({ href, label, icon: Icon, count, badgeColorVar, collapsed }: N
         <span className={cn("flex-1 truncate", collapsed && "lg:hidden")}>{label}</span>
         {count !== undefined && count > 0 && (
           <span
-            className={cn("px-1 text-[11px] font-mono", collapsed && "lg:hidden")}
+            className={cn("px-1.5 py-0.2 text-xs font-mono font-bold", collapsed && "lg:hidden")}
             style={{
               backgroundColor: "var(--color-bg-panel-alt)",
               border: "1px solid var(--color-border)",
@@ -103,7 +103,7 @@ function NavLink({ href, label, icon: Icon, count, badgeColorVar, collapsed }: N
           <span className="font-bold">{label}</span>
           {count !== undefined && count > 0 && (
             <span
-              className="px-1 text-[10px] font-mono font-bold"
+              className="px-1.5 text-xs font-mono font-bold"
               style={{
                 backgroundColor: "var(--color-bg-panel-alt)",
                 border: "1px solid var(--color-border)",
@@ -239,15 +239,15 @@ export function Sidebar() {
         {collapsed && (
           <div className="hidden lg:flex flex-col items-center gap-1.5 py-2.5 border-b border-border text-center">
             <span
-              className="font-mono text-[10px] font-bold text-[var(--color-primary-gold)] px-1 py-0.5 border border-[var(--color-primary-gold)]/40 bg-[var(--color-bg-panel)]"
+              className="font-mono text-xs font-bold text-[var(--color-primary-gold)] px-1.5 py-0.5 border border-[var(--color-primary-gold)]/40 bg-[var(--color-bg-panel)]"
               title={`Level ${sheet.globalLevel} ${sheet.classTitle}`}
             >
               L{sheet.globalLevel}
             </span>
-            <span className="text-[10px] text-[var(--color-streak-flame)] font-mono" title={`${streakDays}d Streak`}>
+            <span className="text-xs text-[var(--color-streak-flame)] font-mono font-bold" title={`${streakDays}d Streak`}>
               🔥{streakDays}
             </span>
-            <span className="text-[10px] text-[var(--color-coin)] font-mono" title={`${sheet.totalCoins} Coins`}>
+            <span className="text-xs text-[var(--color-coin)] font-mono font-bold" title={`${sheet.totalCoins} Coins`}>
               🪙{sheet.totalCoins > 999 ? `${Math.floor(sheet.totalCoins / 1000)}k` : sheet.totalCoins}
             </span>
           </div>
@@ -270,7 +270,7 @@ export function Sidebar() {
           </div>
           {milestone && (
             <div className="mt-1 pt-1.5 border-t border-border">
-              <div className="mb-1 flex justify-between text-[11px]" style={{ color: "var(--color-dim)" }}>
+              <div className="mb-1 flex justify-between text-xs font-mono" style={{ color: "var(--color-dim)" }}>
                 <span style={{ color: "var(--color-text-muted)" }}>Next: {milestone.label}</span>
                 <span style={{ color: "var(--color-streak-flame)" }}>{milestone.daysLeft}d</span>
               </div>

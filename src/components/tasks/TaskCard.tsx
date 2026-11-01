@@ -74,7 +74,7 @@ function TaskCardComponent({
           <span className="flex items-center gap-1.5 font-bold tracking-wider">
             ⚡ MCP SPAWNED
           </span>
-          <span className="text-[10px] tracking-wider opacity-85 font-mono font-bold">HERMES</span>
+          <span className="text-xs tracking-wider opacity-90 font-mono font-bold">HERMES</span>
         </div>
       )}
 

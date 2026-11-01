@@ -26,7 +26,7 @@ export function EmptyState({
         <p className="text-xs font-mono font-bold tracking-wider uppercase text-[var(--color-primary-gold)]">
           {message}
         </p>
-        <p className="text-[10px] font-mono text-muted-foreground mt-0.5">
+        <p className="text-xs font-mono text-muted-foreground mt-1">
           {subtext || "No active quests in this slot"}
         </p>
       </div>

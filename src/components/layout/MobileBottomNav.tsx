@@ -46,7 +46,7 @@ export function MobileBottomNav() {
               <Icon size={17} />
               {badge !== undefined && badge > 0 && (
                 <span
-                  className="absolute -top-1.5 -right-2 flex h-3.5 min-w-[14px] items-center justify-center px-0.5 text-[9px] font-bold font-mono"
+                  className="absolute -top-1.5 -right-2 flex h-4 min-w-[16px] items-center justify-center px-1 text-xs font-bold font-mono"
                   style={{
                     backgroundColor: "var(--color-primary-gold)",
                     color: "#000",
@@ -58,7 +58,7 @@ export function MobileBottomNav() {
             </div>
             <span
               className={cn(
-                "mt-0.5 text-[10px] font-mono tracking-tight",
+                "mt-0.5 text-xs font-mono tracking-tight",
                 active && "font-bold"
               )}
             >
@@ -89,7 +89,7 @@ export function MobileBottomNav() {
         </div>
         <span
           className={cn(
-            "mt-0.5 text-[10px] font-mono tracking-tight",
+            "mt-0.5 text-xs font-mono tracking-tight",
             isMenuRoute && "font-bold"
           )}
         >

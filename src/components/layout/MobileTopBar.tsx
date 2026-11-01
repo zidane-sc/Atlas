@@ -16,7 +16,7 @@ export function MobileTopBar() {
     >
       {/* Left: Brand Identity */}
       <div className="flex items-center gap-2">
-        <span style={{ fontFamily: "var(--font-press-start), monospace", fontSize: "11px", color: "var(--color-primary-gold)" }}>
+        <span style={{ fontFamily: "var(--font-press-start), monospace", fontSize: "13px", color: "var(--color-primary-gold)" }}>
           ⚔ ATLAS
         </span>
       </div>
@@ -25,16 +25,16 @@ export function MobileTopBar() {
       <div className="flex items-center gap-2.5">
         <div className="flex items-center gap-2 text-xs font-mono">
           <span
-            className="border px-1.5 py-0.5 font-bold text-[10px]"
+            className="border px-2 py-0.5 font-bold text-xs"
             style={{ borderColor: "var(--color-primary-gold)", color: "var(--color-primary-gold)" }}
             title={`Level ${characterSheet.globalLevel}`}
           >
             L{characterSheet.globalLevel}
           </span>
-          <span className="text-[11px]" style={{ color: "var(--color-streak-flame)" }} title={`${streakDays}d Streak`}>
+          <span className="text-xs font-bold" style={{ color: "var(--color-streak-flame)" }} title={`${streakDays}d Streak`}>
             🔥{streakDays}
           </span>
-          <span className="text-[11px]" style={{ color: "var(--color-coin)" }} title={`${characterSheet.totalCoins} Coins`}>
+          <span className="text-xs font-bold" style={{ color: "var(--color-coin)" }} title={`${characterSheet.totalCoins} Coins`}>
             🪙{characterSheet.totalCoins}
           </span>
         </div>

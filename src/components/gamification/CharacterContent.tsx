@@ -116,7 +116,7 @@ export default function CharacterContent() {
                   </button>
                 </div>
               )}
-              <div className="mb-2 font-display text-[10px]" style={{ color: "var(--color-primary-gold)" }}>
+              <div className="mb-2 font-display text-xs" style={{ color: "var(--color-primary-gold)" }}>
                 {sheet.classTitle.toUpperCase()}
               </div>
               <div className="flex gap-2">
@@ -164,8 +164,8 @@ export default function CharacterContent() {
                   return (
                     <div key={stat} className="px-3 py-4 text-center" style={{ backgroundColor: "var(--color-bg-panel-alt)", border: "1.5px solid var(--color-border)" }}>
                       <div className="font-display text-[24px] font-bold text-foreground">{sheet.statScore[stat]}</div>
-                      <div className="text-[11px] text-muted-foreground mt-1.5 font-semibold">{fullNames[stat]}</div>
-                      <div className="text-[9px] text-muted-foreground mt-1">{descriptions[stat]}</div>
+                      <div className="text-xs text-muted-foreground mt-1.5 font-bold">{fullNames[stat]}</div>
+                      <div className="text-xs text-muted-foreground mt-1">{descriptions[stat]}</div>
                     </div>
                   );
                 })}
@@ -176,7 +176,7 @@ export default function CharacterContent() {
 
         {/* Skill grid */}
         <div className="p-4">
-          <div className="mb-2 font-display text-[10px] tracking-widest" style={{ color: "var(--color-status-ready)" }}>
+          <div className="mb-2 font-display text-xs tracking-widest" style={{ color: "var(--color-status-ready)" }}>
             ▸ SKILL PROFICIENCIES
           </div>
           <div className="grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-3">
@@ -195,7 +195,7 @@ export default function CharacterContent() {
                   }}
                 >
                   <div
-                    className="absolute top-2.5 right-2.5 border font-display text-[9px]"
+                    className="absolute top-2.5 right-2.5 border font-display text-xs font-bold"
                     style={{
                       color: isEmpty ? "var(--color-dim)" : `var(${meta.colorVar})`,
                       borderColor: isEmpty ? "var(--color-border)" : `var(${meta.colorVar})`,
@@ -208,7 +208,7 @@ export default function CharacterContent() {
                     <span style={{ fontSize: "22px" }}>{TYPE_ICON[skill.type]}</span>
                     <div>
                       <div className="text-base font-bold capitalize" style={{ color: isEmpty ? "var(--color-dim)" : "var(--color-text-primary)" }}>{skill.type}</div>
-                      <div className="font-display text-[8px]" style={{ color: `var(${meta.colorVar})` }}>{meta.title.toUpperCase()}</div>
+                      <div className="font-display text-[10px]" style={{ color: `var(${meta.colorVar})` }}>{meta.title.toUpperCase()}</div>
                     </div>
                   </div>
                   <div className="mb-2 text-[13px]" style={{ color: "var(--color-dim)", lineHeight: 1.4 }}>{meta.desc}</div>

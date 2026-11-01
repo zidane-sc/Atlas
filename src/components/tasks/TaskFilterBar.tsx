@@ -153,8 +153,8 @@ export function TaskFilterBar({
           style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-bg-panel)" }}
         >
           📑 Saved Views
-          {savedFilters.length > 0 && <span className="ml-1 text-[10px]">({savedFilters.length})</span>}
-          <ChevronDown size={10} />
+          {savedFilters.length > 0 && <span className="ml-1 text-xs font-bold">({savedFilters.length})</span>}
+          <ChevronDown size={12} />
         </button>
         {viewsOpen && (
           <>

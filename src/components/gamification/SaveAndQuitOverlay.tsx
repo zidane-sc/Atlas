@@ -136,7 +136,7 @@ export function SaveAndQuitOverlay({ onClose }: { onClose: () => void }) {
 
       <div className="relative z-10 flex w-full max-w-lg flex-col items-center gap-6 px-6">
         <div className="text-center">
-          <div className="font-display mb-2.5 text-[9px]" style={{ color: "var(--color-text-muted)" }}>
+          <div className="font-display mb-2.5 text-xs font-bold" style={{ color: "var(--color-text-muted)" }}>
             ◈ SAVE &amp; QUIT
           </div>
           <div
@@ -178,7 +178,7 @@ export function SaveAndQuitOverlay({ onClose }: { onClose: () => void }) {
             👾
           </div>
           <div>
-            <div className="font-display text-[7px]" style={{ color: `var(${colorVar})` }}>
+            <div className="font-display text-[10px]" style={{ color: `var(${colorVar})` }}>
               PIP · {farewell.mood.toUpperCase()}
             </div>
             <div className="mt-1 text-sm" style={{ color: "var(--color-text)" }}>
@@ -189,7 +189,7 @@ export function SaveAndQuitOverlay({ onClose }: { onClose: () => void }) {
 
         {saving && (
           <div
-            className="font-display text-[8px]"
+            className="font-display text-xs"
             style={{ color: "var(--color-primary-gold)", animation: "pixelPulse 0.4s ease-in-out infinite" }}
           >
             SAVING PROGRESS...

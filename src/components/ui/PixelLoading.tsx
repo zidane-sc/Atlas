@@ -4,7 +4,7 @@ export function PixelLoading({ text = "LOADING REALM..." }: { text?: string }) {
       <div className="flex flex-col items-center gap-3">
         <span className="text-3xl animate-bounce">⚔️</span>
         <div
-          className="font-display text-[10px] uppercase tracking-widest animate-pulse"
+          className="font-display text-xs uppercase tracking-widest animate-pulse"
           style={{ color: "var(--color-primary-gold)" }}
         >
           {text}

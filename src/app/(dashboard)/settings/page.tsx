@@ -524,7 +524,7 @@ export default function Page() {
                   {copiedKey ? "COPIED!" : "COPY"}
                 </button>
               </div>
-              <div className="text-[11px] text-muted-foreground">
+              <div className="text-xs text-muted-foreground">
                 Gunakan token ini pada panduan setup agent di bawah untuk menghubungkan client Anda.
               </div>
             </div>
@@ -549,13 +549,13 @@ export default function Page() {
               </button>
             </div>
 
-            <div className="flex flex-wrap items-center gap-3 text-[11px] font-mono text-muted-foreground pt-1 border-t border-border/40">
+            <div className="flex flex-wrap items-center gap-3 text-xs font-mono text-muted-foreground pt-1 border-t border-border/40">
               <div className="flex items-center gap-1.5">
                 <span>Scope:</span>
                 <select
                   value={keyScopePreset}
                   onChange={(e) => setKeyScopePreset(e.target.value as any)}
-                  className="bg-secondary/70 border border-border px-1.5 py-0.5 text-[11px] font-mono text-foreground outline-none cursor-pointer"
+                  className="bg-secondary/70 border border-border px-2 py-0.5 text-xs font-mono text-foreground outline-none cursor-pointer"
                 >
                   <option value="all">Full Access (All Permissions)</option>
                   <option value="read-write">Read & Write (Tasks, Runs, Comments)</option>
@@ -568,7 +568,7 @@ export default function Page() {
                 <select
                   value={keyExpiryDays === null ? "never" : String(keyExpiryDays)}
                   onChange={(e) => setKeyExpiryDays(e.target.value === "never" ? null : Number(e.target.value))}
-                  className="bg-secondary/70 border border-border px-1.5 py-0.5 text-[11px] font-mono text-foreground outline-none cursor-pointer"
+                  className="bg-secondary/70 border border-border px-2 py-0.5 text-xs font-mono text-foreground outline-none cursor-pointer"
                 >
                   <option value="never">Never (Permanent)</option>
                   <option value="30">30 Days</option>
@@ -583,7 +583,7 @@ export default function Page() {
           <div className="p-3 border border-border bg-card/70 mb-4">
             <div className="text-xs font-mono font-bold text-[var(--color-primary-gold)] uppercase tracking-wider mb-2 flex items-center justify-between">
               <span>Setup Guide per AI Client:</span>
-              <span className="text-[10px] text-muted-foreground font-normal">Pilih client untuk instruksi setup</span>
+              <span className="text-xs text-muted-foreground font-normal">Pilih client untuk instruksi setup</span>
             </div>
 
             {/* Client Tabs */}
@@ -682,11 +682,11 @@ export default function Page() {
 
               return (
                 <div className="flex flex-col gap-2 font-mono text-xs">
-                  <div className="text-foreground font-semibold">{current.title}</div>
-                  <div className="text-muted-foreground text-[11px]">{current.subtitle}</div>
+                  <div className="text-foreground font-semibold text-sm">{current.title}</div>
+                  <div className="text-muted-foreground text-xs">{current.subtitle}</div>
 
                   <div className="relative mt-1">
-                    <div className="flex items-center justify-between text-[10px] text-muted-foreground bg-black/60 px-2 py-1 border-t border-x border-border">
+                    <div className="flex items-center justify-between text-xs text-muted-foreground bg-black/60 px-2.5 py-1.5 border-t border-x border-border">
                       <span className="truncate">{current.fileLabel}</span>
                       <button
                         type="button"
@@ -695,17 +695,17 @@ export default function Page() {
                           setCopiedSnippet(true);
                           setTimeout(() => setCopiedSnippet(false), 2000);
                         }}
-                        className="text-[var(--color-primary-gold)] hover:underline cursor-pointer font-bold shrink-0 ml-2"
+                        className="text-[var(--color-primary-gold)] hover:underline cursor-pointer font-bold shrink-0 ml-2 text-xs"
                       >
                         {copiedSnippet ? "COPIED!" : "COPY"}
                       </button>
                     </div>
-                    <pre className="p-2.5 bg-black/90 border border-border text-[11px] font-mono overflow-x-auto text-green-400 leading-relaxed select-all">
+                    <pre className="p-3 bg-black/90 border border-border text-xs sm:text-sm font-mono overflow-x-auto text-green-400 leading-relaxed select-all">
                       {current.snippet}
                     </pre>
                   </div>
 
-                  <div className="p-2 bg-secondary/30 border border-border text-[11px] text-muted-foreground mt-1 leading-relaxed">
+                  <div className="p-2.5 bg-secondary/30 border border-border text-xs text-muted-foreground mt-1 leading-relaxed">
                     💡 <span className="text-foreground font-medium">Tips:</span> {current.note}
                   </div>
                 </div>
@@ -714,23 +714,23 @@ export default function Page() {
           </div>
 
           <div className="space-y-2">
-            <div className="text-xs font-mono text-muted-foreground uppercase tracking-wider">Active Keys:</div>
+            <div className="text-xs font-mono text-muted-foreground uppercase tracking-wider font-bold">Active Keys:</div>
             {credentials.length === 0 ? (
               <div className="text-xs text-muted-foreground italic py-1">Belum ada API key aktif.</div>
             ) : (
               credentials.map((cred) => (
-                <div key={cred.id} className="flex items-center justify-between p-2 border border-border bg-card/60">
+                <div key={cred.id} className="flex items-center justify-between p-2.5 border border-border bg-card/60">
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
-                      <span className="text-xs font-bold text-foreground truncate">{cred.label}</span>
-                      <span className="text-[10px] font-mono px-1 py-0 border border-border bg-secondary text-muted-foreground">
+                      <span className="text-sm font-bold text-foreground truncate">{cred.label}</span>
+                      <span className="text-xs font-mono px-1.5 py-0.5 border border-border bg-secondary text-muted-foreground">
                         {cred.tokenPrefix}...
                       </span>
-                      <span className={`text-[9px] font-mono px-1 py-0 border ${cred.scopes.includes("all") ? "border-amber-500/40 text-amber-400 bg-amber-950/20" : "border-cyan-500/40 text-cyan-400 bg-cyan-950/20"}`}>
+                      <span className={`text-xs font-mono font-bold px-1.5 py-0.5 border ${cred.scopes.includes("all") ? "border-amber-500/40 text-amber-400 bg-amber-950/20" : "border-cyan-500/40 text-cyan-400 bg-cyan-950/20"}`}>
                         {cred.scopes.includes("all") ? "ALL" : cred.scopes.includes("tasks:write") ? "READ-WRITE" : "READ-ONLY"}
                       </span>
                     </div>
-                    <div className="text-[10px] text-muted-foreground font-mono mt-0.5 flex items-center gap-3">
+                    <div className="text-xs text-muted-foreground font-mono mt-1 flex items-center gap-3">
                       <span>Last seen: {cred.lastUsedAt ? new Date(cred.lastUsedAt).toLocaleDateString() : "Never"}</span>
                       {cred.expiresAt && (
                         <span className="text-amber-400/90 font-medium">Expires: {new Date(cred.expiresAt).toLocaleDateString()}</span>
@@ -740,7 +740,7 @@ export default function Page() {
                   <button
                     type="button"
                     onClick={() => handleRevokeKey(cred.id)}
-                    className="text-[10px] font-mono text-red-400 hover:text-red-300 border border-red-500/30 px-2 py-0.5 hover:bg-red-500/10 cursor-pointer"
+                    className="text-xs font-mono text-red-400 hover:text-red-300 border border-red-500/30 px-2.5 py-1 hover:bg-red-500/10 cursor-pointer font-bold"
                   >
                     REVOKE
                   </button>
