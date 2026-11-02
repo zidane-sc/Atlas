@@ -116,11 +116,13 @@ export async function getAgentFleetStatus(): Promise<ActionResult<AgentFleetStat
       return { success: false, error: { code: "NOT_FOUND", message: "User not found." } };
     }
 
-    // 1. Fetch active runs
+    // 1. Fetch active runs (only on non-done tasks within the last 12 hours)
+    const activeThreshold = new Date(Date.now() - 12 * 60 * 60 * 1000);
     const rawActiveRuns = await db.agentRun.findMany({
       where: {
-        task: { ownerId: user.id, deletedAt: null },
+        task: { ownerId: user.id, deletedAt: null, status: { not: "done" } },
         status: "active",
+        startedAt: { gte: activeThreshold },
       },
       orderBy: { startedAt: "desc" },
       take: 5,
