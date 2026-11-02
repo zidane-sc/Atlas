@@ -199,42 +199,94 @@ export function AgentWarRoomCard() {
   }
 
   // Standby / Idle State
+  const targetRecentTask = recentRun
+    ? tasks.find((t) => t.id === recentRun.task.id) ||
+      allTimeTasks.find((t) => t.id === recentRun.task.id)
+    : null;
+
   return (
-    <div className="border-2 border-border/80 bg-card p-3 sm:p-3.5">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
-        <div className="flex items-center gap-2.5">
-          <ShieldCheck size={16} className="text-[var(--color-primary-gold)]" />
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="font-display text-xs tracking-wider" style={{ color: "var(--color-primary-gold)" }}>
-                🛡️ AGENT FLEET: STANDBY
-              </span>
-              <span className="text-[10px] font-mono uppercase px-1.5 py-0.2 border border-border/80 bg-secondary text-muted-foreground">
-                All Agents Idle
-              </span>
-            </div>
-            <div className="text-xs text-muted-foreground font-mono mt-0.5">
-              {recentRun ? (
-                <span>
-                  Last active: <span className="font-semibold text-foreground">[{recentRun.task.code || "QUEST"}]</span> {recentRun.task.title.slice(0, 45)}… ({formatTimeAgo(recentRun.endedAt || recentRun.startedAt)})
-                </span>
-              ) : (
-                <span>Autonomous AI operating system ready for MCP requests.</span>
-              )}
-            </div>
-          </div>
+    <div className="border-2 border-border/80 bg-[var(--color-bg-panel)] p-3.5 sm:p-4 shadow-[2px_2px_0_rgba(0,0,0,0.5)]">
+      {/* Header Bar */}
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/60 pb-2.5">
+        <div className="flex items-center gap-2">
+          <Bot size={16} className="text-[var(--color-primary-gold)]" />
+          <span className="font-display text-xs tracking-wider" style={{ color: "var(--color-primary-gold)" }}>
+            AGENT FLEET: MISSION CONTROL
+          </span>
+          <span className="text-[10px] font-mono font-bold uppercase px-2 py-0.5 border border-emerald-500/40 bg-emerald-950/40 text-emerald-400 flex items-center gap-1.5">
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+            STANDBY / READY
+          </span>
         </div>
 
         {todayStats && (
-          <div className="flex items-center gap-3 text-xs font-mono border-t sm:border-t-0 sm:border-l border-border/60 pt-2 sm:pt-0 sm:pl-3">
-            <div className="flex flex-col sm:items-end">
-              <span className="text-[10px] text-muted-foreground uppercase">Today&apos;s AI Compute</span>
-              <span className="font-bold text-foreground">
-                {todayStats.totalTokens.toLocaleString()} tokens {todayStats.totalCostUsd > 0 ? `($${todayStats.totalCostUsd.toFixed(3)})` : ""}
-              </span>
-            </div>
+          <div className="flex items-center gap-2 text-xs font-mono text-muted-foreground">
+            <span className="text-foreground font-semibold">{todayStats.totalRuns} runs</span> today
+            <span>·</span>
+            <span>{todayStats.totalTokens.toLocaleString()} tokens</span>
+            {todayStats.totalCostUsd > 0 && (
+              <span className="text-emerald-400 font-bold">(${todayStats.totalCostUsd.toFixed(3)})</span>
+            )}
           </div>
         )}
+      </div>
+
+      {/* Recent Mission Log Card */}
+      {recentRun ? (
+        <div className="mt-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-secondary/30 border border-border/70 p-2.5">
+          <div className="min-w-0 flex-1 font-mono text-xs">
+            <div className="flex items-center gap-2 mb-1 flex-wrap">
+              <span className="text-[10px] uppercase font-bold px-1.5 py-0.2 border border-border bg-secondary text-muted-foreground">
+                LATEST COMPLETED RUN
+              </span>
+              {recentRun.task.projectName && (
+                <span className="text-[10px] px-1.5 py-0.2 border border-border/50 text-muted-foreground">
+                  {recentRun.task.projectName}
+                </span>
+              )}
+              <span className="text-[11px] text-muted-foreground">
+                ended {formatTimeAgo(recentRun.endedAt || recentRun.startedAt)}
+              </span>
+            </div>
+
+            <div className="text-sm font-semibold text-foreground truncate flex items-center gap-1.5">
+              {recentRun.task.code && (
+                <span className="text-[var(--color-primary-gold)] font-mono font-bold shrink-0">
+                  [{recentRun.task.code}]
+                </span>
+              )}
+              <span className="truncate">{recentRun.task.title}</span>
+            </div>
+
+            {recentRun.latestCheckpoint?.summary && (
+              <div className="mt-1 text-xs text-muted-foreground truncate">
+                Outcome: <span className="text-foreground/90">{recentRun.latestCheckpoint.summary}</span>
+              </div>
+            )}
+          </div>
+
+          <button
+            type="button"
+            onClick={() => {
+              if (targetRecentTask) openEditForm(targetRecentTask);
+            }}
+            className="pixel-button shrink-0 flex items-center gap-1.5 border border-border hover:border-primary-gold bg-secondary/80 px-3 py-1.5 text-xs font-mono font-bold text-foreground hover:text-[var(--color-primary-gold)] transition-colors cursor-pointer"
+          >
+            <Terminal size={13} />
+            <span>Inspect Quest</span>
+            <ExternalLink size={11} className="opacity-70" />
+          </button>
+        </div>
+      ) : (
+        <div className="mt-3 text-xs font-mono text-muted-foreground p-3 border border-dashed border-border text-center">
+          Autonomous AI agent fleet ready on MCP (<code className="text-foreground">/api/mcp</code>). Trigger any quest via Hermes on Telegram to see live telemetry here.
+        </div>
+      )}
+
+      {/* Footer Info */}
+      <div className="mt-2.5 pt-2 border-t border-border/40 flex flex-wrap items-center justify-between text-[11px] font-mono text-muted-foreground">
+        <span>Listener: <code className="text-foreground">https://atlas-rpg.fly.dev/api/mcp</code> (HTTP JSON-RPC)</span>
+        <span className="text-emerald-400">Zero Idle Compute · Supabase SG</span>
       </div>
     </div>
   );
