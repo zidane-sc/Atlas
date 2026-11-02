@@ -7,6 +7,7 @@ import { PixBar } from "@/components/ui/PixBar";
 import { StreakCampfire } from "@/components/gamification/StreakCampfire";
 import { StatPanel } from "@/components/gamification/StatPanel";
 import { DailyQuestCard } from "@/components/gamification/DailyQuestCard";
+import { AgentWarRoomCard } from "@/components/dashboard/AgentWarRoomCard";
 import { TaskListView } from "@/components/tasks/TaskListView";
 import { useTasks } from "@/components/providers/TasksProvider";
 import { useSettings } from "@/components/providers/SettingsProvider";
@@ -128,6 +129,9 @@ export default function Page() {
         <StatPanel label="In Progress" value={inProgressCount} shape="▶" colorVar="--color-status-in-progress" href="/tasks" />
         <StatPanel label="Completed Today" value={doneTodayCount} shape="✓" colorVar="--color-status-done" href="/statistics" />
       </div>
+
+      {/* Autonomous AI Agent War-Room & Fleet Telemetry */}
+      <AgentWarRoomCard />
 
       {/* Daily Quest */}
       <DailyQuestCard
