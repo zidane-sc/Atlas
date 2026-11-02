@@ -212,6 +212,7 @@ model Deliverable {
   taskId        String            @map("task_id") @db.Uuid
   task          Task              @relation(fields: [taskId], references: [id], onDelete: Cascade)
   type          DeliverableType
+  label         String?
   urlOrContent  String            @map("url_or_content")
   createdAt     DateTime          @default(now()) @map("created_at")
 

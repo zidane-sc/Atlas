@@ -38,6 +38,69 @@ async function createAtlasMcpServer(userId: string, credentialId: string, scopes
     );
   }
 
+  async function resolveRelations(
+    items: Array<{ taskId?: string; code?: string; relationType: "blocks" | "relates_to" | "duplicates" }>
+  ): Promise<Array<{ taskId: string; relationType: "blocks" | "relates_to" | "duplicates"; title?: string }>> {
+    const resolved: Array<{ taskId: string; relationType: "blocks" | "relates_to" | "duplicates"; title?: string }> = [];
+    for (const item of items) {
+      let targetId = item.taskId;
+      let targetTitle = "";
+      if (item.taskId) {
+        const matched = await db.task.findUnique({
+          where: { id: item.taskId },
+          select: { id: true, title: true },
+        });
+        if (matched) targetTitle = matched.title;
+      } else if (item.code) {
+        const matched = await db.task.findFirst({
+          where: { ownerId: userId, code: { equals: item.code.trim(), mode: "insensitive" }, deletedAt: null },
+          select: { id: true, title: true },
+        });
+        if (matched) {
+          targetId = matched.id;
+          targetTitle = matched.title;
+        }
+      }
+      if (targetId) {
+        resolved.push({ taskId: targetId, relationType: item.relationType, title: targetTitle });
+      }
+    }
+    return resolved;
+  }
+
+  async function bridgeSourcesFromUrls(taskId: string, items: Array<{ url?: string; provider?: string }>) {
+    for (const item of items) {
+      if (!item.url) continue;
+      const url = item.url;
+      const isGithubPr = item.provider === "github_pr" || (url.includes("github.com/") && url.includes("/pull/"));
+      const isGithubIssue = item.provider === "github_issue" || (url.includes("github.com/") && url.includes("/issues/"));
+      if (isGithubPr || isGithubIssue) {
+        const provider = isGithubPr ? "github_pr" : "github_issue";
+        const canonicalKey = url.replace(/^https?:\/\//, "");
+        try {
+          await db.taskSource.upsert({
+            where: {
+              taskId_provider_canonicalKey: {
+                taskId,
+                provider,
+                canonicalKey,
+              },
+            },
+            create: {
+              taskId,
+              provider,
+              canonicalKey,
+              url,
+            },
+            update: {
+              url,
+            },
+          });
+        } catch {}
+      }
+    }
+  }
+
   // 1. atlas_find_tasks
   server.registerTool(
     "atlas_find_tasks",
@@ -142,6 +205,14 @@ async function createAtlasMcpServer(userId: string, credentialId: string, scopes
             project: { select: { name: true } },
             tags: { select: { tag: { select: { name: true } } } },
             sources: { select: { provider: true, canonicalKey: true, url: true } },
+            attachments: { select: { id: true, type: true, label: true, url: true } },
+            deliverables: { select: { id: true, type: true, label: true, urlOrContent: true } },
+            relations: {
+              select: {
+                relationType: true,
+                relatedTask: { select: { id: true, code: true, title: true, status: true } },
+              },
+            },
           },
         });
 
@@ -159,6 +230,15 @@ async function createAtlasMcpServer(userId: string, credentialId: string, scopes
           project: t.project?.name ?? null,
           tags: t.tags?.map((item) => item.tag.name) ?? [],
           sources: t.sources,
+          attachments: t.attachments,
+          deliverables: t.deliverables,
+          relations: (t.relations || []).map((r) => ({
+            relationType: r.relationType,
+            taskId: r.relatedTask?.id,
+            code: r.relatedTask?.code,
+            title: r.relatedTask?.title,
+            status: r.relatedTask?.status,
+          })),
         }));
 
         return jsonSuccess({ count: formattedTasks.length, tasks: formattedTasks });
@@ -773,7 +853,7 @@ async function createAtlasMcpServer(userId: string, credentialId: string, scopes
   server.registerTool(
     "atlas_save_checkpoint",
     {
-      description: "MILESTONE & STATE TRANSITION: Call this at key milestones throughout execution (e.g. initial review done -> checkpointState='waiting_external' with waitingReason; or all issues resolved -> checkpointState='finished' which automatically marks the task 'done'). Records revision checkpoint in agent telemetry.",
+      description: "MILESTONE & STATE TRANSITION: Call this at key milestones throughout execution (e.g. initial review done -> checkpointState='waiting_external' with waitingReason; or all issues resolved -> checkpointState='finished' which automatically marks the task 'done'). Records revision checkpoint in agent telemetry, with optional attachments and deliverables.",
       inputSchema: {
         taskId: z.string().uuid(),
         runId: z.string().uuid().optional(),
@@ -783,9 +863,29 @@ async function createAtlasMcpServer(userId: string, credentialId: string, scopes
         nextStep: z.string().optional(),
         provenanceSource: z.string().optional().describe("e.g. commit SHA, PR link"),
         comment: z.string().optional().describe("Optional note to post into task comments"),
+        deliverables: z
+          .array(
+            z.object({
+              type: z.enum(["pr", "doc", "design", "other"]).default("pr"),
+              urlOrContent: z.string(),
+              label: z.string().optional(),
+            })
+          )
+          .optional()
+          .describe("Deliverables completed at this milestone"),
+        attachments: z
+          .array(
+            z.object({
+              type: z.enum(["github_pr", "github_issue", "link", "file", "other"]).default("link"),
+              url: z.string(),
+              label: z.string().optional(),
+            })
+          )
+          .optional()
+          .describe("New attachments or evidence links discovered at this milestone"),
       },
     },
-    async ({ taskId, runId, summary, checkpointState, waitingReason, nextStep, provenanceSource, comment }) => {
+    async ({ taskId, runId, summary, checkpointState, waitingReason, nextStep, provenanceSource, comment, deliverables, attachments }) => {
       const perm = checkPermission("runs:write");
       if (perm) return perm;
 
@@ -798,6 +898,8 @@ async function createAtlasMcpServer(userId: string, credentialId: string, scopes
               take: 1,
               select: { revision: true },
             },
+            attachments: true,
+            deliverables: true,
           },
         });
 
@@ -829,41 +931,82 @@ async function createAtlasMcpServer(userId: string, credentialId: string, scopes
           });
         }
 
-        // Sync back to task status or broadcast updated task via SSE
+        const updatePayload: any = {};
         if (checkpointState === "finished") {
-          await domainUpdateTask(userId, taskId, {
-            status: "done",
-            waitingReason: null,
-          });
+          updatePayload.status = "done";
+          updatePayload.waitingReason = null;
         } else if (checkpointState === "waiting_external") {
-          await domainUpdateTask(userId, taskId, {
-            status: "in_progress",
-            waitingReason: waitingReason || summary,
-          });
+          updatePayload.status = "in_progress";
+          updatePayload.waitingReason = waitingReason || summary;
         } else if (checkpointState === "in_progress") {
-          await domainUpdateTask(userId, taskId, {
-            status: "in_progress",
-            waitingReason: null,
+          updatePayload.status = "in_progress";
+          updatePayload.waitingReason = null;
+        }
+
+        // Merge attachments if provided or infer from provenanceSource
+        const newAtts = attachments ? [...attachments] : [];
+        if (
+          provenanceSource &&
+          (provenanceSource.startsWith("http") || provenanceSource.includes("github.com/")) &&
+          checkpointState !== "finished" &&
+          !newAtts.some((a) => a.url === provenanceSource)
+        ) {
+          newAtts.push({
+            type: provenanceSource.includes("/pull/") ? "github_pr" : "link",
+            url: provenanceSource,
+            label: provenanceSource.includes("/pull/") ? `PR #${provenanceSource.split("/").pop()}` : "Ref Link",
           });
-        } else {
-          const currentTask = await db.task.findUnique({
-            where: { id: taskId },
-            include: {
-              tags: { select: { tag: { select: { name: true } } } },
-              relations: { select: { relationType: true, relatedTask: { select: { id: true, title: true } } } },
-              attachments: true,
-              deliverables: true,
-            },
-          });
-          if (currentTask) {
-            await broadcastSyncEvent(userId, "task:updated", {
-              task: currentTask,
-              id: taskId,
-              title: currentTask.title,
-              status: currentTask.status,
-              waitingReason: currentTask.waitingReason,
-            });
+        }
+        if (newAtts.length > 0) {
+          const mergedAtts: Array<{ type: any; label?: string; url: string }> = [
+            ...task.attachments.map((a) => ({ type: a.type, label: a.label ?? undefined, url: a.url })),
+          ];
+          for (const a of newAtts) {
+            if (!mergedAtts.some((m) => m.url === a.url)) {
+              mergedAtts.push({ type: a.type, label: a.label ?? undefined, url: a.url });
+            }
           }
+          updatePayload.attachments = mergedAtts;
+          await bridgeSourcesFromUrls(taskId, newAtts);
+        }
+
+        // Merge deliverables if provided or infer from provenanceSource
+        const newDels = deliverables ? [...deliverables] : [];
+        if (
+          provenanceSource &&
+          (provenanceSource.startsWith("http") || provenanceSource.includes("github.com/")) &&
+          checkpointState === "finished" &&
+          !newDels.some((d) => d.urlOrContent === provenanceSource)
+        ) {
+          newDels.push({
+            type: provenanceSource.includes("/pull/") ? "pr" : "doc",
+            label: provenanceSource.includes("/pull/") ? `PR #${provenanceSource.split("/").pop()}` : "Completed Artifact",
+            urlOrContent: provenanceSource,
+          });
+        }
+        if (newDels.length > 0) {
+          const mergedDels: Array<{ type: any; label?: string; urlOrContent: string }> = [
+            ...task.deliverables.map((d) => ({ type: d.type, label: d.label ?? undefined, urlOrContent: d.urlOrContent })),
+          ];
+          for (const d of newDels) {
+            if (!mergedDels.some((m) => m.urlOrContent === d.urlOrContent)) {
+              mergedDels.push({ type: d.type, label: d.label ?? undefined, urlOrContent: d.urlOrContent });
+            }
+          }
+          updatePayload.deliverables = mergedDels;
+          await bridgeSourcesFromUrls(taskId, newDels.map((d) => ({ url: d.urlOrContent })));
+        }
+
+        if (Object.keys(updatePayload).length > 0) {
+          await domainUpdateTask(userId, taskId, updatePayload);
+        } else {
+          await broadcastSyncEvent(userId, "task:updated", {
+            task,
+            id: taskId,
+            title: task.title,
+            status: task.status,
+            waitingReason: task.waitingReason,
+          });
         }
 
         // Ensure at least one agentRun exists for this task so session telemetry isn't empty
@@ -960,7 +1103,7 @@ async function createAtlasMcpServer(userId: string, credentialId: string, scopes
   server.registerTool(
     "atlas_update_task",
     {
-      description: "MID-RUN TASK ENRICHMENT: Call this during execution whenever new scope, tags (e.g. ['security', 'breaking-changes']), re-estimated size (xs/s/m/l/xl), waitingReason, or status transitions are discovered, keeping the quest card accurate.",
+      description: "MID-RUN TASK ENRICHMENT: Call this during execution whenever new scope, tags (e.g. ['security', 'breaking-changes']), attachments (research links, PRs, trace URLs), deliverables (RFCs, code outputs), or relations are discovered or refined.",
       inputSchema: {
         taskId: z.string().uuid().optional(),
         code: z.string().optional().describe("Task code, e.g. ATS-22 or ATL-18"),
@@ -982,10 +1125,78 @@ async function createAtlasMcpServer(userId: string, credentialId: string, scopes
             })
           )
           .optional()
-          .describe("Updated task relations (blocks, relates_to, duplicates)"),
+          .describe("Replace relations with this list"),
+        appendRelations: z
+          .array(
+            z.object({
+              relationType: z.enum(["blocks", "relates_to", "duplicates"]).default("relates_to"),
+              taskId: z.string().uuid().optional(),
+              code: z.string().optional().describe("Task code (e.g. ATS-25) to link against"),
+            })
+          )
+          .optional()
+          .describe("Append new relations to existing ones without wiping prior relations"),
+        attachments: z
+          .array(
+            z.object({
+              type: z.enum(["github_pr", "github_issue", "link", "file", "other"]).default("link"),
+              url: z.string(),
+              label: z.string().optional(),
+            })
+          )
+          .optional()
+          .describe("Replace attachments with this list"),
+        appendAttachments: z
+          .array(
+            z.object({
+              type: z.enum(["github_pr", "github_issue", "link", "file", "other"]).default("link"),
+              url: z.string(),
+              label: z.string().optional(),
+            })
+          )
+          .optional()
+          .describe("Append new attachments (links, PRs, docs, trace URLs) without wiping existing ones"),
+        deliverables: z
+          .array(
+            z.object({
+              type: z.enum(["pr", "doc", "design", "other"]).default("pr"),
+              urlOrContent: z.string(),
+              label: z.string().optional(),
+            })
+          )
+          .optional()
+          .describe("Replace deliverables with this list"),
+        appendDeliverables: z
+          .array(
+            z.object({
+              type: z.enum(["pr", "doc", "design", "other"]).default("pr"),
+              urlOrContent: z.string(),
+              label: z.string().optional(),
+            })
+          )
+          .optional()
+          .describe("Append new deliverables (work artifacts, PR links, RFCs) without wiping existing ones"),
       },
     },
-    async ({ taskId, code, status, title, description, projectName, createProjectIfNotExists, priority, size, waitingReason, tags, relations }) => {
+    async ({
+      taskId,
+      code,
+      status,
+      title,
+      description,
+      projectName,
+      createProjectIfNotExists,
+      priority,
+      size,
+      waitingReason,
+      tags,
+      relations,
+      appendRelations,
+      attachments,
+      appendAttachments,
+      deliverables,
+      appendDeliverables,
+    }) => {
       const perm = checkPermission("tasks:write");
       if (perm) return perm;
 
@@ -1002,6 +1213,16 @@ async function createAtlasMcpServer(userId: string, credentialId: string, scopes
         if (!resolvedTaskId) {
           return jsonError("Either taskId (UUID) or code (e.g. ATS-22) is required", "INVALID_INPUT");
         }
+
+        const currentTask = await db.task.findUnique({
+          where: { id: resolvedTaskId },
+          include: {
+            attachments: true,
+            deliverables: true,
+            relations: { select: { relationType: true, relatedTaskId: true } },
+          },
+        });
+        if (!currentTask) return jsonError("Task not found", "NOT_FOUND");
 
         const updateData: any = {};
         if (status !== undefined) updateData.status = status;
@@ -1054,32 +1275,53 @@ async function createAtlasMcpServer(userId: string, credentialId: string, scopes
           if (p) updateData.projectId = p.id;
         }
 
+        // Relations handling
         if (relations !== undefined) {
-          const resolvedRelations: Array<{ taskId: string; relationType: "blocks" | "relates_to" | "duplicates"; title?: string }> = [];
-          for (const rel of relations) {
-            let targetId = rel.taskId;
-            let targetTitle = "";
-            if (rel.taskId) {
-              const matched = await db.task.findUnique({
-                where: { id: rel.taskId },
-                select: { id: true, title: true },
-              });
-              if (matched) targetTitle = matched.title;
-            } else if (rel.code) {
-              const matched = await db.task.findFirst({
-                where: { ownerId: userId, code: { equals: rel.code.trim(), mode: "insensitive" }, deletedAt: null },
-                select: { id: true, title: true },
-              });
-              if (matched) {
-                targetId = matched.id;
-                targetTitle = matched.title;
-              }
-            }
-            if (targetId) {
-              resolvedRelations.push({ taskId: targetId, relationType: rel.relationType, title: targetTitle });
+          updateData.relations = await resolveRelations(relations);
+        } else if (appendRelations && appendRelations.length > 0) {
+          const newResolved = await resolveRelations(appendRelations);
+          const existing = currentTask.relations.map((r) => ({ taskId: r.relatedTaskId, relationType: r.relationType }));
+          const merged = [...existing];
+          for (const rel of newResolved) {
+            if (!merged.some((m) => m.taskId === rel.taskId && m.relationType === rel.relationType)) {
+              merged.push(rel);
             }
           }
-          updateData.relations = resolvedRelations;
+          updateData.relations = merged;
+        }
+
+        // Attachments handling
+        if (attachments !== undefined) {
+          updateData.attachments = attachments;
+          await bridgeSourcesFromUrls(resolvedTaskId, attachments);
+        } else if (appendAttachments && appendAttachments.length > 0) {
+          const merged: Array<{ type: any; label?: string; url: string }> = [
+            ...currentTask.attachments.map((a) => ({ type: a.type, label: a.label ?? undefined, url: a.url })),
+          ];
+          for (const a of appendAttachments) {
+            if (!merged.some((m) => m.url === a.url)) {
+              merged.push({ type: a.type, label: a.label ?? undefined, url: a.url });
+            }
+          }
+          updateData.attachments = merged;
+          await bridgeSourcesFromUrls(resolvedTaskId, appendAttachments);
+        }
+
+        // Deliverables handling
+        if (deliverables !== undefined) {
+          updateData.deliverables = deliverables;
+          await bridgeSourcesFromUrls(resolvedTaskId, deliverables.map((d) => ({ url: d.urlOrContent })));
+        } else if (appendDeliverables && appendDeliverables.length > 0) {
+          const merged: Array<{ type: any; label?: string; urlOrContent: string }> = [
+            ...currentTask.deliverables.map((d) => ({ type: d.type, label: d.label ?? undefined, urlOrContent: d.urlOrContent })),
+          ];
+          for (const d of appendDeliverables) {
+            if (!merged.some((m) => m.urlOrContent === d.urlOrContent)) {
+              merged.push({ type: d.type, label: d.label ?? undefined, urlOrContent: d.urlOrContent });
+            }
+          }
+          updateData.deliverables = merged;
+          await bridgeSourcesFromUrls(resolvedTaskId, appendDeliverables.map((d) => ({ url: d.urlOrContent })));
         }
 
         const updateRes = await domainUpdateTask(userId, resolvedTaskId, updateData);
@@ -1095,6 +1337,8 @@ async function createAtlasMcpServer(userId: string, credentialId: string, scopes
             title: updateRes.data.task.title,
             status: updateRes.data.task.status,
             waitingReason: updateRes.data.task.waitingReason,
+            attachmentsCount: (updateRes.data.task as any).attachments?.length ?? 0,
+            deliverablesCount: (updateRes.data.task as any).deliverables?.length ?? 0,
           },
         });
       } catch (err: any) {
@@ -1107,11 +1351,31 @@ async function createAtlasMcpServer(userId: string, credentialId: string, scopes
   server.registerTool(
     "atlas_finish_run",
     {
-      description: "TASK COMPLETION: Conclude an active agent execution run, updating status to completed and recording token metrics. Set taskCompleted=true when work is fully resolved to mark the quest 'done'.",
+      description: "TASK COMPLETION: Conclude an active agent execution run, updating status to completed and recording token metrics. When completing a task, ALWAYS pass 'deliverables' (e.g. PR URL, RFC doc link, commit SHA) so the completed work artifacts are registered on the quest card.",
       inputSchema: {
         runId: z.string().uuid(),
         status: z.enum(["completed", "failed"]).default("completed"),
         taskCompleted: z.boolean().default(false).describe("Set true ONLY if task is fully done"),
+        deliverables: z
+          .array(
+            z.object({
+              type: z.enum(["pr", "doc", "design", "other"]).default("pr"),
+              urlOrContent: z.string().describe("PR URL, document link, or work artifact"),
+              label: z.string().optional().describe("Label e.g. 'PR #5129', 'Architecture RFC'"),
+            })
+          )
+          .optional()
+          .describe("Work artifacts produced by this run to register on the task card"),
+        relations: z
+          .array(
+            z.object({
+              relationType: z.enum(["blocks", "relates_to", "duplicates"]).default("relates_to"),
+              taskId: z.string().uuid().optional(),
+              code: z.string().optional().describe("Task code (e.g. ATS-25) to link against"),
+            })
+          )
+          .optional()
+          .describe("Link follow-up or newly unblocked quests upon finishing"),
         usage: z
           .object({
             model: z.string(),
@@ -1124,7 +1388,7 @@ async function createAtlasMcpServer(userId: string, credentialId: string, scopes
           .optional(),
       },
     },
-    async ({ runId, status, taskCompleted, usage }) => {
+    async ({ runId, status, taskCompleted, deliverables, relations, usage }) => {
       const perm = checkPermission("runs:write");
       if (perm) return perm;
 
@@ -1158,14 +1422,52 @@ async function createAtlasMcpServer(userId: string, credentialId: string, scopes
           });
         }
 
+        const taskUpdatePayload: any = {};
         if (taskCompleted) {
-          await domainUpdateTask(userId, run.taskId, { status: "done" });
+          taskUpdatePayload.status = "done";
+        }
+
+        // Deliverables handling
+        if (deliverables && deliverables.length > 0) {
+          const existing = await db.deliverable.findMany({ where: { taskId: run.taskId } });
+          const merged: Array<{ type: any; label?: string; urlOrContent: string }> = [
+            ...existing.map((d) => ({ type: d.type, label: d.label ?? undefined, urlOrContent: d.urlOrContent })),
+          ];
+          for (const d of deliverables) {
+            if (!merged.some((m) => m.urlOrContent === d.urlOrContent)) {
+              merged.push({
+                type: d.type,
+                label: d.label || (d.urlOrContent.includes("/pull/") ? `PR #${d.urlOrContent.split("/").pop()}` : undefined),
+                urlOrContent: d.urlOrContent,
+              });
+            }
+          }
+          taskUpdatePayload.deliverables = merged;
+          await bridgeSourcesFromUrls(run.taskId, deliverables.map((d) => ({ url: d.urlOrContent })));
+        }
+
+        // Relations handling
+        if (relations && relations.length > 0) {
+          const newResolved = await resolveRelations(relations);
+          const existing = await db.taskRelation.findMany({ where: { taskId: run.taskId }, select: { relatedTaskId: true, relationType: true } });
+          const merged = existing.map((r) => ({ taskId: r.relatedTaskId, relationType: r.relationType }));
+          for (const rel of newResolved) {
+            if (!merged.some((m) => m.taskId === rel.taskId && m.relationType === rel.relationType)) {
+              merged.push(rel);
+            }
+          }
+          taskUpdatePayload.relations = merged;
+        }
+
+        if (Object.keys(taskUpdatePayload).length > 0) {
+          await domainUpdateTask(userId, run.taskId, taskUpdatePayload);
         }
 
         return jsonSuccess({
           message: "Run finished successfully",
           runId,
           taskCompleted,
+          deliverablesRegistered: deliverables?.length ?? 0,
         });
       } catch (err: any) {
         return jsonError(err?.message || "Failed to finish run", "INTERNAL");

@@ -91,6 +91,7 @@ export async function domainCreateTask(
             deliverables: deliverables && deliverables.length > 0 ? {
               create: deliverables.map((d) => ({
                 type: d.type as any,
+                label: d.label ?? undefined,
                 urlOrContent: d.urlOrContent ?? "",
               })),
             } : undefined,
@@ -225,6 +226,7 @@ export async function domainUpdateTask(
             deleteMany: {},
             create: deliverables.map((d) => ({
               type: d.type as any,
+              label: d.label ?? undefined,
               urlOrContent: d.urlOrContent ?? "",
             })),
           } : undefined,

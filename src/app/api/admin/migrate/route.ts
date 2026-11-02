@@ -36,7 +36,10 @@ export async function GET(req: Request) {
       EXCEPTION WHEN duplicate_object THEN null;
       END $$;
     `);
-    logs.push("Ensured agent in task_reporter enum and relates_to/duplicates in task_relation_type ✅");
+    await db.$executeRawUnsafe(`
+      ALTER TABLE "deliverables" ADD COLUMN IF NOT EXISTS "label" TEXT;
+    `);
+    logs.push("Ensured agent in task_reporter enum, relations types, and label on deliverables ✅");
 
     // Ensure MCP integration tables exist
     await db.$executeRawUnsafe(`
