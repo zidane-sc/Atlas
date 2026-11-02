@@ -3,6 +3,8 @@
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import type { ActionResult } from "@/lib/actions/types";
+import { domainUpdateTask } from "@/lib/services/tasks-domain";
+import { broadcastSyncEvent } from "@/lib/sync-events";
 
 export interface AgentFleetItem {
   id: string;
@@ -30,6 +32,8 @@ export interface AgentFleetItem {
     provenanceSource: string | null;
     createdAt: string;
   } | null;
+  latestLog?: string | null;
+  latestLogTime?: string | null;
   usage: {
     totalTokens: number;
     promptTokens: number;
@@ -63,6 +67,16 @@ function mapRunToFleetItem(run: any): AgentFleetItem {
   }
 
   const cp = run.checkpoints?.[0];
+  const rawComment = run.task?.comments?.[0]?.content;
+  const cleanComment = rawComment
+    ? rawComment.replace(/^⚡\s*\[MCP(?:\s*Run[^\]]*)?\]:\s*/i, "").trim()
+    : null;
+
+  const latestLog = cleanComment || cp?.summary || null;
+  const rawLogTime = run.task?.comments?.[0]?.createdAt || cp?.createdAt;
+  const latestLogTime = rawLogTime
+    ? (rawLogTime instanceof Date ? rawLogTime.toISOString() : String(rawLogTime))
+    : null;
 
   return {
     id: run.id,
@@ -92,6 +106,8 @@ function mapRunToFleetItem(run: any): AgentFleetItem {
           createdAt: cp.createdAt instanceof Date ? cp.createdAt.toISOString() : String(cp.createdAt),
         }
       : null,
+    latestLog,
+    latestLogTime,
     usage: {
       promptTokens,
       completionTokens,
@@ -135,6 +151,11 @@ export async function getAgentFleetStatus(): Promise<ActionResult<AgentFleetStat
             status: true,
             priority: true,
             project: { select: { name: true, colorVar: true } },
+            comments: {
+              orderBy: { createdAt: "desc" },
+              take: 1,
+              select: { content: true, createdAt: true },
+            },
           },
         },
         usageEvents: {
@@ -177,6 +198,11 @@ export async function getAgentFleetStatus(): Promise<ActionResult<AgentFleetStat
             status: true,
             priority: true,
             project: { select: { name: true, colorVar: true } },
+            comments: {
+              orderBy: { createdAt: "desc" },
+              take: 1,
+              select: { content: true, createdAt: true },
+            },
           },
         },
         usageEvents: {
@@ -248,6 +274,58 @@ export async function getAgentFleetStatus(): Promise<ActionResult<AgentFleetStat
     return {
       success: false,
       error: { code: "INTERNAL", message: err?.message || "Failed to load agent fleet status" },
+    };
+  }
+}
+
+export async function concludeAgentRunAction(
+  runId: string,
+  markTaskDone: boolean = false
+): Promise<ActionResult<{ runId: string; taskCompleted: boolean }>> {
+  try {
+    const session = await auth();
+    if (!session?.user?.email) {
+      return { success: false, error: { code: "UNAUTHORIZED", message: "Sign in required." } };
+    }
+
+    const user = await db.user.findUnique({
+      where: { email: session.user.email },
+      select: { id: true },
+    });
+    if (!user) {
+      return { success: false, error: { code: "NOT_FOUND", message: "User not found." } };
+    }
+
+    const run = await db.agentRun.findFirst({
+      where: { id: runId, task: { ownerId: user.id } },
+      select: { id: true, taskId: true },
+    });
+    if (!run) {
+      return { success: false, error: { code: "NOT_FOUND", message: "Agent run not found." } };
+    }
+
+    await db.agentRun.update({
+      where: { id: runId },
+      data: {
+        status: "completed",
+        endedAt: new Date(),
+      },
+    });
+
+    if (markTaskDone) {
+      await domainUpdateTask(user.id, run.taskId, { status: "done" });
+    }
+
+    await broadcastSyncEvent(user.id, "sync:reload", { agentRunConcluded: runId });
+
+    return {
+      success: true,
+      data: { runId, taskCompleted: markTaskDone },
+    };
+  } catch (err: any) {
+    return {
+      success: false,
+      error: { code: "INTERNAL", message: err?.message || "Failed to conclude agent run" },
     };
   }
 }

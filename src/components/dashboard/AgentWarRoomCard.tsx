@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { Bot, Terminal, Radio, Clock, Sparkles, ExternalLink, ShieldCheck, Cpu } from "lucide-react";
-import { getAgentFleetStatus, type AgentFleetStatus, type AgentFleetItem } from "@/lib/actions/agent";
+import { Terminal, Clock, ExternalLink, CheckCircle2, Square, Radio, ShieldCheck } from "lucide-react";
+import { getAgentFleetStatus, concludeAgentRunAction, type AgentFleetStatus, type AgentFleetItem } from "@/lib/actions/agent";
 import { useTasks } from "@/components/providers/TasksProvider";
+import { useNotifications } from "@/hooks/useNotifications";
 
 function formatElapsed(startedAtStr: string): string {
   const started = new Date(startedAtStr).getTime();
@@ -30,8 +31,10 @@ function formatTimeAgo(dateStr: string): string {
 
 export function AgentWarRoomCard() {
   const { tasks, allTimeTasks, openEditForm } = useTasks();
+  const { notify } = useNotifications();
   const [fleet, setFleet] = useState<AgentFleetStatus | null>(null);
   const [loading, setLoading] = useState(true);
+  const [acting, setActing] = useState(false);
   const [, setTick] = useState(0);
 
   const refreshFleet = useCallback(async () => {
@@ -49,14 +52,13 @@ export function AgentWarRoomCard() {
 
   useEffect(() => {
     void refreshFleet();
-    // Poll every 10 seconds for real-time telemetry
     const timer = setInterval(() => {
       void refreshFleet();
-    }, 10000);
+    }, 8000);
     return () => clearInterval(timer);
   }, [refreshFleet]);
 
-  // Second-level timer for active run elapsed clock
+  // Clock ticker for active elapsed time
   useEffect(() => {
     if (!fleet?.activeRuns?.length) return;
     const interval = setInterval(() => {
@@ -65,11 +67,31 @@ export function AgentWarRoomCard() {
     return () => clearInterval(interval);
   }, [fleet?.activeRuns?.length]);
 
+  const handleConclude = async (runId: string, markDone: boolean) => {
+    setActing(true);
+    try {
+      const res = await concludeAgentRunAction(runId, markDone);
+      if (res.success) {
+        notify(
+          markDone ? "Agent run concluded and quest marked DONE! ⚔️" : "Agent run concluded.",
+          "success"
+        );
+        await refreshFleet();
+      } else {
+        notify(res.error.message, "error");
+      }
+    } catch {
+      notify("Failed to conclude run", "error");
+    } finally {
+      setActing(false);
+    }
+  };
+
   if (loading && !fleet) {
     return (
-      <div className="border-2 border-border/60 bg-card/60 p-3 text-xs font-mono text-muted-foreground flex items-center gap-2">
-        <Radio size={14} className="animate-spin text-cyan-400" />
-        <span>Syncing Agent Fleet Telemetry…</span>
+      <div className="border border-border/70 bg-card/60 px-3 py-1.5 text-xs font-mono text-muted-foreground flex items-center gap-2">
+        <Radio size={13} className="animate-spin text-cyan-400" />
+        <span>Connecting to Agent War-Room telemetry…</span>
       </div>
     );
   }
@@ -78,15 +100,17 @@ export function AgentWarRoomCard() {
   const recentRun: AgentFleetItem | undefined = fleet?.recentRuns?.[0];
   const todayStats = fleet?.todayStats;
 
-  // Active Run State
+  // ─────────────────────────────────────────────────────────────
+  // 1. LIVE RUNNING STATE (Dynamic Cyber-HUD with Real Actions)
+  // ─────────────────────────────────────────────────────────────
   if (activeRun) {
     const targetTask =
       tasks.find((t) => t.id === activeRun.task.id) ||
       allTimeTasks.find((t) => t.id === activeRun.task.id);
 
     return (
-      <div className="border-2 border-cyan-500/80 bg-[var(--color-bg-panel)] p-3 sm:p-4 shadow-[0_0_20px_rgba(6,182,212,0.2)] animate-in fade-in duration-200">
-        {/* Header Bar */}
+      <div className="border-2 border-cyan-500 bg-[var(--color-bg-panel)] p-3.5 sm:p-4 shadow-[0_0_20px_rgba(6,182,212,0.22)] animate-in fade-in duration-200">
+        {/* Top Header */}
         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-cyan-500/30 pb-2.5">
           <div className="flex items-center gap-2.5">
             <span className="relative flex h-2.5 w-2.5">
@@ -94,37 +118,37 @@ export function AgentWarRoomCard() {
               <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-cyan-500" />
             </span>
             <span className="font-display text-xs text-cyan-400 tracking-wider">
-              ⚡ AGENT FLEET: LIVE RUNNING
+              ⚡ AGENT WAR-ROOM: LIVE RUNNING
             </span>
-            <span className="px-1.5 py-0.5 text-[10px] font-mono font-bold uppercase bg-cyan-950/60 border border-cyan-500/50 text-cyan-300">
+            <span className="px-1.5 py-0.5 text-[10px] font-mono font-bold uppercase bg-cyan-950/80 border border-cyan-500/60 text-cyan-300">
               {activeRun.agentName}
             </span>
           </div>
 
           <div className="flex items-center gap-3 text-xs font-mono">
-            <div className="flex items-center gap-1 text-muted-foreground">
-              <Clock size={12} className="text-cyan-400" />
+            <div className="flex items-center gap-1.5 text-cyan-300 font-bold">
+              <Clock size={13} className="text-cyan-400" />
               <span>Active {formatElapsed(activeRun.startedAt)}</span>
             </div>
             {todayStats && (
               <span className="hidden sm:inline border-l border-border/50 pl-3 text-muted-foreground">
-                Today: {todayStats.totalTokens.toLocaleString()} tokens
+                Today: {todayStats.totalTokens.toLocaleString()} tokens (${todayStats.totalCostUsd.toFixed(3)})
               </span>
             )}
           </div>
         </div>
 
-        {/* Quest Info Row */}
-        <div className="mt-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        {/* Task Identity & Location Row */}
+        <div className="mt-3 flex flex-col md:flex-row md:items-center justify-between gap-3">
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2 flex-wrap text-xs font-mono mb-1">
               {activeRun.task.projectName && (
-                <span className="px-1.5 py-0.2 border border-border/60 bg-secondary/80 text-muted-foreground">
+                <span className="px-1.5 py-0.2 border border-border/70 bg-secondary/80 text-muted-foreground">
                   {activeRun.task.projectName}
                 </span>
               )}
               {activeRun.chatName && (
-                <span className="text-[11px] text-muted-foreground truncate max-w-[200px]">
+                <span className="text-[11px] text-muted-foreground truncate max-w-[240px]">
                   📍 {activeRun.chatName}{activeRun.threadName ? ` > #${activeRun.threadName}` : ""}
                 </span>
               )}
@@ -140,26 +164,66 @@ export function AgentWarRoomCard() {
             </div>
           </div>
 
-          <button
-            type="button"
-            onClick={() => {
-              if (targetTask) openEditForm(targetTask);
-            }}
-            className="pixel-button shrink-0 flex items-center gap-1.5 border-2 border-cyan-500 bg-cyan-950/80 px-3 py-1.5 text-xs font-mono font-bold text-cyan-300 hover:bg-cyan-900 transition-colors cursor-pointer"
-          >
-            <Terminal size={13} />
-            <span>Inspect Quest</span>
-            <ExternalLink size={11} className="opacity-70" />
-          </button>
+          {/* Action Deck: Real Action Controls */}
+          <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
+            <button
+              type="button"
+              disabled={acting}
+              onClick={() => handleConclude(activeRun.id, true)}
+              className="pixel-button flex items-center gap-1.5 border border-emerald-500/80 bg-emerald-950/80 hover:bg-emerald-900 px-2.5 py-1.5 text-xs font-mono font-bold text-emerald-300 transition-colors cursor-pointer disabled:opacity-50"
+              title="Mark quest Done and conclude agent run"
+            >
+              <CheckCircle2 size={13} />
+              <span>Conclude &amp; Done</span>
+            </button>
+
+            <button
+              type="button"
+              disabled={acting}
+              onClick={() => handleConclude(activeRun.id, false)}
+              className="pixel-button flex items-center gap-1.5 border border-border bg-secondary hover:bg-secondary/80 px-2.5 py-1.5 text-xs font-mono text-muted-foreground hover:text-foreground transition-colors cursor-pointer disabled:opacity-50"
+              title="End active run without marking task done"
+            >
+              <Square size={12} />
+              <span>Conclude</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                if (targetTask) openEditForm(targetTask);
+              }}
+              className="pixel-button flex items-center gap-1 border border-cyan-500 bg-cyan-950/70 hover:bg-cyan-900 px-2.5 py-1.5 text-xs font-mono font-bold text-cyan-300 transition-colors cursor-pointer"
+              title="Open quest drawer"
+            >
+              <Terminal size={12} />
+              <span>Inspect</span>
+              <ExternalLink size={10} className="opacity-70" />
+            </button>
+          </div>
         </div>
 
-        {/* Live Brain Callouts */}
+        {/* Real-Time Terminal Log Ticker */}
+        {activeRun.latestLog && (
+          <div className="mt-3 bg-black/60 border border-cyan-500/40 px-3 py-2 font-mono text-xs text-cyan-300 flex items-center gap-2">
+            <span className="text-cyan-400 font-bold shrink-0">&gt;_</span>
+            <span className="text-[10px] text-muted-foreground uppercase shrink-0 font-bold">
+              STREAM:
+            </span>
+            <span className="truncate text-foreground/95 flex-1">
+              {activeRun.latestLog}
+            </span>
+            <span className="animate-pulse text-cyan-400 font-bold shrink-0">█</span>
+          </div>
+        )}
+
+        {/* Milestone & Target Callouts */}
         {activeRun.latestCheckpoint && (
-          <div className="mt-3 grid gap-2 sm:grid-cols-2 text-xs font-mono">
+          <div className="mt-2.5 grid gap-2 sm:grid-cols-2 text-xs font-mono">
             {activeRun.latestCheckpoint.nextStep && (
-              <div className="p-2 border border-cyan-500/40 bg-cyan-950/20">
-                <div className="text-[10px] uppercase font-bold text-cyan-400 mb-0.5 flex items-center gap-1">
-                  <span>🎯 Next Milestone Target</span>
+              <div className="p-2 border border-cyan-500/30 bg-cyan-950/20">
+                <div className="text-[10px] uppercase font-bold text-cyan-400 mb-0.5">
+                  🎯 Next Milestone Target
                 </div>
                 <div className="text-foreground leading-snug truncate">
                   {activeRun.latestCheckpoint.nextStep}
@@ -169,8 +233,8 @@ export function AgentWarRoomCard() {
 
             {activeRun.latestCheckpoint.waitingReason && (
               <div className="p-2 border border-amber-500/40 bg-amber-950/20">
-                <div className="text-[10px] uppercase font-bold text-amber-400 mb-0.5 flex items-center gap-1">
-                  <span>⏸️ Idling / Waiting On</span>
+                <div className="text-[10px] uppercase font-bold text-amber-400 mb-0.5">
+                  ⏸️ Idling / Waiting On
                 </div>
                 <div className="text-foreground leading-snug truncate">
                   {activeRun.latestCheckpoint.waitingReason}
@@ -179,114 +243,68 @@ export function AgentWarRoomCard() {
             )}
           </div>
         )}
-
-        {/* Telemetry Summary Strip */}
-        <div className="mt-2.5 pt-2 border-t border-cyan-500/20 flex flex-wrap items-center justify-between text-[11px] font-mono text-muted-foreground gap-2">
-          <div className="flex items-center gap-2 truncate">
-            <Cpu size={12} className="text-cyan-400 shrink-0" />
-            <span className="truncate">
-              Run tokens: {activeRun.usage.totalTokens.toLocaleString()} ({activeRun.usage.promptTokens.toLocaleString()} in / {activeRun.usage.completionTokens.toLocaleString()} out)
-            </span>
-          </div>
-          {activeRun.usage.costUsd > 0 && (
-            <span className="text-cyan-400 font-bold">
-              Est. Cost: ${activeRun.usage.costUsd.toFixed(4)}
-            </span>
-          )}
-        </div>
       </div>
     );
   }
 
-  // Standby / Idle State
+  // ─────────────────────────────────────────────────────────────
+  // 2. STANDBY / IDLE STATE (Sleek, Space-Saving Compact Strip)
+  // ─────────────────────────────────────────────────────────────
   const targetRecentTask = recentRun
     ? tasks.find((t) => t.id === recentRun.task.id) ||
       allTimeTasks.find((t) => t.id === recentRun.task.id)
     : null;
 
   return (
-    <div className="border-2 border-border/80 bg-[var(--color-bg-panel)] p-3.5 sm:p-4 shadow-[2px_2px_0_rgba(0,0,0,0.5)]">
-      {/* Header Bar */}
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/60 pb-2.5">
-        <div className="flex items-center gap-2">
-          <Bot size={16} className="text-[var(--color-primary-gold)]" />
-          <span className="font-display text-xs tracking-wider" style={{ color: "var(--color-primary-gold)" }}>
-            AGENT FLEET: MISSION CONTROL
-          </span>
-          <span className="text-[10px] font-mono font-bold uppercase px-2 py-0.5 border border-emerald-500/40 bg-emerald-950/40 text-emerald-400 flex items-center gap-1.5">
-            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-            STANDBY / READY
-          </span>
-        </div>
+    <div className="border border-border/80 bg-[var(--color-bg-panel)] px-3.5 py-2.5 text-xs font-mono flex flex-wrap items-center justify-between gap-2.5 shadow-sm">
+      {/* Left Identity + Status */}
+      <div className="flex items-center gap-2.5 min-w-0">
+        <ShieldCheck size={15} className="text-emerald-400 shrink-0" />
+        <span className="font-display text-xs tracking-wider text-[var(--color-primary-gold)] shrink-0">
+          AGENT FLEET
+        </span>
+        <span className="text-[10px] uppercase font-bold px-1.5 py-0.2 border border-emerald-500/40 bg-emerald-950/40 text-emerald-400 shrink-0">
+          STANDBY
+        </span>
 
-        {todayStats && (
-          <div className="flex items-center gap-2 text-xs font-mono text-muted-foreground">
-            <span className="text-foreground font-semibold">{todayStats.totalRuns} runs</span> today
-            <span>·</span>
-            <span>{todayStats.totalTokens.toLocaleString()} tokens</span>
-            {todayStats.totalCostUsd > 0 && (
-              <span className="text-emerald-400 font-bold">(${todayStats.totalCostUsd.toFixed(3)})</span>
-            )}
-          </div>
+        {recentRun && (
+          <span className="text-muted-foreground truncate hidden sm:inline ml-1">
+            · Last:{" "}
+            <button
+              type="button"
+              onClick={() => {
+                if (targetRecentTask) openEditForm(targetRecentTask);
+              }}
+              className="text-foreground font-semibold hover:underline cursor-pointer"
+            >
+              [{recentRun.task.code || "QUEST"}] {recentRun.task.title.slice(0, 40)}…
+            </button>{" "}
+            ({formatTimeAgo(recentRun.endedAt || recentRun.startedAt)})
+          </span>
         )}
       </div>
 
-      {/* Recent Mission Log Card */}
-      {recentRun ? (
-        <div className="mt-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-secondary/30 border border-border/70 p-2.5">
-          <div className="min-w-0 flex-1 font-mono text-xs">
-            <div className="flex items-center gap-2 mb-1 flex-wrap">
-              <span className="text-[10px] uppercase font-bold px-1.5 py-0.2 border border-border bg-secondary text-muted-foreground">
-                LATEST COMPLETED RUN
-              </span>
-              {recentRun.task.projectName && (
-                <span className="text-[10px] px-1.5 py-0.2 border border-border/50 text-muted-foreground">
-                  {recentRun.task.projectName}
-                </span>
-              )}
-              <span className="text-[11px] text-muted-foreground">
-                ended {formatTimeAgo(recentRun.endedAt || recentRun.startedAt)}
-              </span>
-            </div>
-
-            <div className="text-sm font-semibold text-foreground truncate flex items-center gap-1.5">
-              {recentRun.task.code && (
-                <span className="text-[var(--color-primary-gold)] font-mono font-bold shrink-0">
-                  [{recentRun.task.code}]
-                </span>
-              )}
-              <span className="truncate">{recentRun.task.title}</span>
-            </div>
-
-            {recentRun.latestCheckpoint?.summary && (
-              <div className="mt-1 text-xs text-muted-foreground truncate">
-                Outcome: <span className="text-foreground/90">{recentRun.latestCheckpoint.summary}</span>
-              </div>
+      {/* Right Stats & Quick Link */}
+      <div className="flex items-center gap-3 text-muted-foreground shrink-0 text-xs">
+        {todayStats && (
+          <div>
+            Compute Today: <strong className="text-foreground">{todayStats.totalTokens.toLocaleString()} tokens</strong>
+            {todayStats.totalCostUsd > 0 && (
+              <span className="text-emerald-400 font-bold ml-1">(${todayStats.totalCostUsd.toFixed(3)})</span>
             )}
           </div>
+        )}
 
+        {targetRecentTask && (
           <button
             type="button"
-            onClick={() => {
-              if (targetRecentTask) openEditForm(targetRecentTask);
-            }}
-            className="pixel-button shrink-0 flex items-center gap-1.5 border border-border hover:border-primary-gold bg-secondary/80 px-3 py-1.5 text-xs font-mono font-bold text-foreground hover:text-[var(--color-primary-gold)] transition-colors cursor-pointer"
+            onClick={() => openEditForm(targetRecentTask)}
+            className="text-[var(--color-primary-gold)] hover:underline flex items-center gap-1 cursor-pointer font-bold border-l border-border/60 pl-3"
           >
-            <Terminal size={13} />
-            <span>Inspect Quest</span>
-            <ExternalLink size={11} className="opacity-70" />
+            <span>Inspect Last</span>
+            <ExternalLink size={11} />
           </button>
-        </div>
-      ) : (
-        <div className="mt-3 text-xs font-mono text-muted-foreground p-3 border border-dashed border-border text-center">
-          Autonomous AI agent fleet ready on MCP (<code className="text-foreground">/api/mcp</code>). Trigger any quest via Hermes on Telegram to see live telemetry here.
-        </div>
-      )}
-
-      {/* Footer Info */}
-      <div className="mt-2.5 pt-2 border-t border-border/40 flex flex-wrap items-center justify-between text-[11px] font-mono text-muted-foreground">
-        <span>Listener: <code className="text-foreground">https://atlas-rpg.fly.dev/api/mcp</code> (HTTP JSON-RPC)</span>
-        <span className="text-emerald-400">Zero Idle Compute · Supabase SG</span>
+        )}
       </div>
     </div>
   );
