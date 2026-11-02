@@ -5,7 +5,7 @@ import { X } from 'lucide-react';
 import { useSettings } from '@/components/providers/SettingsProvider';
 import type { NotificationPayload } from '@/components/providers/NotificationProvider';
 import { getNotificationMessage, shouldPlaySound } from '@/lib/notification-events';
-import { playRetroBlip } from '@/lib/audio';
+import { playRetroBlip, playRetroLevelUp, playRetroAchievement, playRetroStreak, playChime } from '@/lib/audio';
 
 export function NotificationQueue({
   notifications,
@@ -36,7 +36,17 @@ export function NotificationQueue({
     if (latest.id === lastPlayedIdRef.current) return;
 
     if (shouldPlaySound(latest.event) && soundEnabled) {
-      playRetroBlip();
+      if (latest.event.type === 'gamification:level-up') {
+        playRetroLevelUp();
+      } else if (latest.event.type === 'gamification:achievement-unlocked') {
+        playRetroAchievement();
+      } else if (latest.event.type === 'gamification:streak-milestone') {
+        playRetroStreak();
+      } else if (latest.event.type === 'task:completed') {
+        playChime();
+      } else {
+        playRetroBlip();
+      }
       lastPlayedIdRef.current = latest.id;
     }
   }, [notifications, notificationsEnabled, soundEnabled]);

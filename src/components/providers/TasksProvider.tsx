@@ -41,7 +41,7 @@ import {
 import type { TaskFilters } from "@/lib/task-filters";
 import type { SavedFilterClient } from "@/lib/actions/filters";
 import { saveFilterAction as apiSaveFilter, deleteFilterAction as apiDeleteFilter, updateFilterAction as apiUpdateFilter } from "@/lib/actions/filters";
-import { playChime } from "@/lib/audio";
+import { playChime, playRetroCoin, playRetroCardMove, playRetroDelete, playRetroSparkle } from "@/lib/audio";
 
 interface SheetState {
   open: boolean;
@@ -62,7 +62,7 @@ interface CompletionOverlay {
   streak?: number;
 }
 
-export { playChime } from "@/lib/audio";
+export { playChime, playRetroCoin, playRetroCardMove, playRetroDelete } from "@/lib/audio";
 
 interface TasksContextValue {
   tasks: Task[];
@@ -339,6 +339,7 @@ export function TasksProvider({
         const tempId = crypto.randomUUID();
         const changedAt = new Date().toISOString();
         const optimisticTask = buildTaskFromValues(tempId, changedAt, values);
+        if (soundEnabled) playRetroCardMove();
         dispatch({ type: "insert", task: optimisticTask });
         notify("Quest created!", "success");
 
@@ -414,10 +415,13 @@ export function TasksProvider({
           setCompletions((c) => [...c, { id: cid, xp, title: values.title, streak: streakExtended ? newStreak : undefined }]);
           if (soundEnabled) {
             playChime();
+            setTimeout(() => playRetroCoin(), 120);
           }
           setTimeout(() => {
             setCompletions((c) => c.filter((x) => x.id !== cid));
           }, streakExtended ? 2500 : 1500);
+        } else if (prev.status !== values.status && soundEnabled) {
+          playRetroCardMove();
         }
 
         // Optimistic update
@@ -487,6 +491,7 @@ export function TasksProvider({
         const prev = tasks.find((t) => t.id === id);
         if (!prev) return;
 
+        if (soundEnabled) playRetroDelete();
         // Optimistic delete
         dispatch({ type: "delete", id });
         setSheet((s) => (s.task?.id === id ? { ...s, open: false } : s));
@@ -592,6 +597,10 @@ export function TasksProvider({
           setBonusXp(res.data.bonusXp);
           setBonusCoins(res.data.bonusCoins);
           setLastQuestClaimedAt(res.data.lastQuestClaimedAt);
+          if (soundEnabled) {
+            playRetroCoin();
+            setTimeout(() => playRetroSparkle(), 150);
+          }
           notify("Daily quest claimed! +XP and +Coins!", "success");
           return true;
         } else {

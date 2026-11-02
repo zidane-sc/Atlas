@@ -12,7 +12,7 @@ import { updateUserProfileAction } from "@/lib/actions/user";
 import { getWorkspaceHistoryForExport, getTasksForExport, importWorkspaceData, type ActivityLogExport, type WorkSessionExport } from "@/lib/actions/import";
 import { validateImportPayload } from "@/lib/validation/import-validation";
 import { ImportPreviewModal } from "@/components/ImportPreviewModal";
-import { playChime, playRetroBlip } from "@/lib/audio";
+import { playChime, playRetroBlip, playRetroCoin, playRetroLevelUp, playRetroCardMove } from "@/lib/audio";
 import {
   listCredentialsAction,
   createCredentialAction,
@@ -333,16 +333,40 @@ export default function Page() {
           label="Sound Effects (SFX)"
           description="Subtle 8-bit chimes on task complete, level-up, and UI interactions"
           extra={
-            <button
-              type="button"
-              onClick={() => {
-                playChime();
-              }}
-              className="pixel-button border border-border bg-card px-2 py-0.5 text-xs font-mono text-[var(--color-primary-gold)] hover:border-[var(--color-primary-gold)] cursor-pointer"
-              title="Click to play sample chime"
-            >
-              🔊 TEST
-            </button>
+            <div className="flex flex-wrap items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => playChime()}
+                className="pixel-button border border-border bg-card px-2 py-0.5 text-xs font-mono text-[var(--color-primary-gold)] hover:border-[var(--color-primary-gold)] cursor-pointer"
+                title="Play Quest Complete Fanfare"
+              >
+                ⚔️ Quest
+              </button>
+              <button
+                type="button"
+                onClick={() => playRetroCoin()}
+                className="pixel-button border border-border bg-card px-2 py-0.5 text-xs font-mono text-[var(--color-coin)] hover:border-[var(--color-coin)] cursor-pointer"
+                title="Play Coin Ding"
+              >
+                🪙 Coin
+              </button>
+              <button
+                type="button"
+                onClick={() => playRetroLevelUp()}
+                className="pixel-button border border-border bg-card px-2 py-0.5 text-xs font-mono text-cyan-400 hover:border-cyan-400 cursor-pointer"
+                title="Play Level Up Fanfare"
+              >
+                ⭐ Lv Up
+              </button>
+              <button
+                type="button"
+                onClick={() => playRetroCardMove()}
+                className="pixel-button border border-border bg-card px-2 py-0.5 text-xs font-mono text-muted-foreground hover:border-foreground cursor-pointer"
+                title="Play Tactile Card Snap"
+              >
+                🎴 Snap
+              </button>
+            </div>
           }
         />
         <Toggle

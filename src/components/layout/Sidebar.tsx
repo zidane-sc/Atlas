@@ -3,13 +3,15 @@
 import { useMemo, useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { LogOut, PanelLeftIcon, Plus, Search, X } from "lucide-react";
+import { LogOut, PanelLeftIcon, Plus, Search, X, Volume2, VolumeX } from "lucide-react";
 import { Companion } from "@/components/gamification/Companion";
 import { SaveAndQuitOverlay } from "@/components/gamification/SaveAndQuitOverlay";
 import { XpBar } from "@/components/gamification/XpBar";
 import { useTasks } from "@/components/providers/TasksProvider";
 import { useCommandPalette } from "@/components/providers/CommandPaletteProvider";
 import { useSidebar } from "@/components/providers/SidebarProvider";
+import { useSettings } from "@/components/providers/SettingsProvider";
+import { playRetroBlip } from "@/lib/audio";
 import { useNotifications } from "@/hooks/useNotifications";
 import { getNextStreakMilestone, calculateStreak, completedAt, formatLocalDate } from "@/lib/gamification";
 import { MOCK_NOW } from "@/lib/mock-data";
@@ -131,6 +133,7 @@ export function Sidebar() {
   const router = useRouter();
   const { tasks, allTimeTasks, characterSheet, openCreateForm, openEditForm, justCompleted, togglePin } = useTasks();
   const { collapsed, setCollapsed, mobileOpen, setMobileOpen } = useSidebar();
+  const { soundEnabled, updateSetting } = useSettings();
   const [showQuit, setShowQuit] = useState(false);
   const { setOpen: setCommandPaletteOpen } = useCommandPalette();
   const pathname = usePathname();
@@ -191,14 +194,28 @@ export function Sidebar() {
                 <div className="text-xs text-muted-foreground">Your Second Brain</div>
               </div>
             </div>
-            <button
-              type="button"
-              onClick={() => setMobileOpen(false)}
-              className="p-1 text-muted-foreground hover:text-foreground border border-border"
-              aria-label="Close menu"
-            >
-              <X size={16} />
-            </button>
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => {
+                  const next = !soundEnabled;
+                  void updateSetting("soundEnabled", next);
+                  if (next) setTimeout(() => playRetroBlip(), 50);
+                }}
+                className="p-1 text-muted-foreground hover:text-foreground border border-border cursor-pointer"
+                title={soundEnabled ? "Sound ON (Tap to mute)" : "Sound OFF (Tap to unmute)"}
+              >
+                {soundEnabled ? <Volume2 size={15} className="text-primary" /> : <VolumeX size={15} />}
+              </button>
+              <button
+                type="button"
+                onClick={() => setMobileOpen(false)}
+                className="p-1 text-muted-foreground hover:text-foreground border border-border cursor-pointer"
+                aria-label="Close menu"
+              >
+                <X size={16} />
+              </button>
+            </div>
           </div>
 
           {/* Desktop Header */}
@@ -222,14 +239,29 @@ export function Sidebar() {
                   </div>
                   <div className="text-xs text-muted-foreground mt-0.5">Your Second Brain</div>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setCollapsed(true)}
-                  aria-label="Collapse sidebar"
-                  className="shrink-0 items-center justify-center p-1 text-muted-foreground hover:text-foreground flex cursor-pointer"
-                >
-                  <PanelLeftIcon size={14} />
-                </button>
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const next = !soundEnabled;
+                      void updateSetting("soundEnabled", next);
+                      if (next) setTimeout(() => playRetroBlip(), 50);
+                    }}
+                    aria-label={soundEnabled ? "Mute audio" : "Enable audio"}
+                    className="p-1 text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
+                    title={soundEnabled ? "Sound ON (Click to mute)" : "Sound OFF (Click to unmute)"}
+                  >
+                    {soundEnabled ? <Volume2 size={14} className="text-primary" /> : <VolumeX size={14} />}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCollapsed(true)}
+                    aria-label="Collapse sidebar"
+                    className="shrink-0 items-center justify-center p-1 text-muted-foreground hover:text-foreground flex cursor-pointer"
+                  >
+                    <PanelLeftIcon size={14} />
+                  </button>
+                </div>
               </>
             )}
           </div>

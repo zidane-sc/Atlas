@@ -157,3 +157,129 @@ export function playRetroSparkle() {
     });
   });
 }
+
+/** Tactile mechanical card drop / status slide sound */
+export function playRetroCardMove() {
+  runWithContext((ctx) => {
+    const now = ctx.currentTime;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+
+    osc.type = "triangle";
+    osc.frequency.setValueAtTime(260, now);
+    osc.frequency.exponentialRampToValueAtTime(75, now + 0.07);
+
+    gain.gain.setValueAtTime(0.22, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.07);
+
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(now);
+    osc.stop(now + 0.08);
+  });
+}
+
+/** Triumphant 8-bit level up victory fanfare (NES style) */
+export function playRetroLevelUp() {
+  runWithContext((ctx) => {
+    const now = ctx.currentTime;
+    // Classic retro victory melody: G4, C5, E5, G5, E5, G5, C6 (sustained)
+    const melody = [
+      { f: 392.0, d: 0.09 },  // G4
+      { f: 523.25, d: 0.09 }, // C5
+      { f: 659.25, d: 0.09 }, // E5
+      { f: 783.99, d: 0.09 }, // G5
+      { f: 659.25, d: 0.07 }, // E5
+      { f: 783.99, d: 0.07 }, // G5
+      { f: 1046.5, d: 0.45 }, // C6 (long finish)
+    ];
+
+    let t = now;
+    melody.forEach((note) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+
+      osc.type = "square";
+      osc.frequency.setValueAtTime(note.f, t);
+
+      gain.gain.setValueAtTime(0, t);
+      gain.gain.linearRampToValueAtTime(0.18, t + 0.015);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + note.d);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+
+      osc.start(t);
+      osc.stop(t + note.d + 0.02);
+      t += note.d * 0.95;
+    });
+  });
+}
+
+/** Warm flame ignite sound for streak campfire */
+export function playRetroStreak() {
+  runWithContext((ctx) => {
+    const now = ctx.currentTime;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+
+    osc.type = "sawtooth";
+    osc.frequency.setValueAtTime(180, now);
+    osc.frequency.exponentialRampToValueAtTime(540, now + 0.16);
+
+    gain.gain.setValueAtTime(0.01, now);
+    gain.gain.linearRampToValueAtTime(0.14, now + 0.05);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.28);
+
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(now);
+    osc.stop(now + 0.3);
+  });
+}
+
+/** Triumphant sparkle for achievement unlock */
+export function playRetroAchievement() {
+  runWithContext((ctx) => {
+    const now = ctx.currentTime;
+    const notes = [440, 554.37, 659.25, 880, 1108.73]; // A4, C#5, E5, A5, C#6
+    notes.forEach((freq, idx) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+
+      osc.type = "square";
+      osc.frequency.setValueAtTime(freq, now + idx * 0.06);
+
+      gain.gain.setValueAtTime(0, now + idx * 0.06);
+      gain.gain.linearRampToValueAtTime(0.14, now + idx * 0.06 + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.06 + 0.28);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+
+      osc.start(now + idx * 0.06);
+      osc.stop(now + idx * 0.06 + 0.3);
+    });
+  });
+}
+
+/** Descending tone when a quest is deleted / canceled */
+export function playRetroDelete() {
+  runWithContext((ctx) => {
+    const now = ctx.currentTime;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+
+    osc.type = "square";
+    osc.frequency.setValueAtTime(330, now);
+    osc.frequency.exponentialRampToValueAtTime(110, now + 0.14);
+
+    gain.gain.setValueAtTime(0.15, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.14);
+
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(now);
+    osc.stop(now + 0.15);
+  });
+}
