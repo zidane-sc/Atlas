@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo, useRef } from "react";
-import { Check, ChevronDown, Copy, Trash2, Info, Pin, Bot, Cpu, ExternalLink, Clock, Sparkles, Search, X } from "lucide-react";
+import { Check, ChevronDown, Copy, Trash2, Info, Pin, Bot, Cpu, ExternalLink, Clock, Sparkles, Search, X, Pencil, Upload } from "lucide-react";
 import { DatePicker } from "@/components/ui/DatePicker";
 import { BattleTimer } from "@/components/gamification/BattleTimer";
 import {
@@ -187,6 +187,7 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
   const [relationSearch, setRelationSearch] = useState("");
   const [relationFocused, setRelationFocused] = useState(false);
   const relationInputRef = useRef<HTMLInputElement>(null);
+  const relationPickerRef = useRef<HTMLDivElement>(null);
   const [relationSelectedIndex, setRelationSelectedIndex] = useState(-1);
   const [isProjectPickerOpen, setIsProjectPickerOpen] = useState(false);
   const [projectSearch, setProjectSearch] = useState("");
@@ -307,10 +308,24 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
     return projects.find((p) => p.name === form.project);
   }, [projects, form.project]);
 
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (relationPickerRef.current && !relationPickerRef.current.contains(e.target as Node)) {
+        setRelationFocused(false);
+      }
+    };
+    if (relationFocused) {
+      document.addEventListener("mousedown", handleClickOutside);
+      return () => document.removeEventListener("mousedown", handleClickOutside);
+    }
+  }, [relationFocused]);
+
   const relationOptions = useMemo(() => {
-    return relationSearch
-      ? otherTasks.filter(t => t.title.toLowerCase().includes(relationSearch.toLowerCase()))
-      : sortTasksForPicker(otherTasks).slice(0, 5);
+    const q = relationSearch.trim().toLowerCase();
+    if (!q) return sortTasksForPicker(otherTasks).slice(0, 8);
+    return otherTasks
+      .filter((t) => t.title.toLowerCase().includes(q) || (t.code && t.code.toLowerCase().includes(q)))
+      .slice(0, 8);
   }, [relationSearch, otherTasks]);
 
   const set = <K extends keyof TaskFormValues>(key: K, value: TaskFormValues[K]) =>
@@ -892,41 +907,91 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
           </div>
         </Section>
 
-        <Section title="Relations" shape="◈" defaultOpen={false}>
-          <div className="flex flex-col gap-2">
+        <Section title={`Relations ${form.relations.length ? `(${form.relations.length})` : ""}`} shape="◈" defaultOpen={form.relations.length > 0}>
+          <div className="flex flex-col gap-3">
             {form.relations.length === 0 ? (
-              <p className="text-muted-foreground text-xs italic">No relations yet.</p>
+              <div className="p-3 border-2 border-dashed border-border/80 bg-secondary/20 text-center select-none">
+                <p className="text-xs font-mono text-muted-foreground italic">
+                  🔗 No quest dependencies or related tickets linked yet.
+                </p>
+              </div>
             ) : (
               <ul className="flex flex-col gap-1.5">
                 {form.relations.map((r) => {
+                  const targetTask = tasks.find((t) => t.id === r.taskId) || allTimeTasks.find((t) => t.id === r.taskId);
                   const isGone = !liveTaskIds.has(r.taskId);
                   return (
-                    <li key={r.taskId} className="flex items-center justify-between gap-2 p-1.5 bg-secondary/30 border border-border/60 text-xs font-mono">
-                      <span className="text-xs uppercase font-bold px-2 py-0.5 bg-muted/60 border border-border shrink-0 text-muted-foreground">
-                        {humanize(r.relationType)}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const target = tasks.find((t) => t.id === r.taskId) || allTimeTasks.find((t) => t.id === r.taskId);
-                          if (target) openEditForm(target);
-                        }}
-                        className={`flex-1 truncate text-left text-xs hover:underline cursor-pointer ${
-                          isGone ? "text-muted-foreground italic" : "text-foreground font-medium"
-                        }`}
-                        title={r.title}
-                      >
-                        {r.title}{isGone && " (trashed)"}
-                      </button>
-                      <button type="button" onClick={() => removeRelation(r.taskId)} className="shrink-0 px-1 py-0.5 hover:text-red-400 font-bold" style={{ color: "var(--color-status-blocked)" }} title="Remove link">
-                        ✕
-                      </button>
+                    <li
+                      key={r.taskId}
+                      className="flex items-center justify-between gap-2 p-2 bg-secondary/40 border border-border text-xs font-mono hover:bg-secondary/70 transition-colors"
+                    >
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span
+                          className={`text-[10px] uppercase font-bold px-1.5 py-0.5 border shrink-0 ${
+                            r.relationType === "blocks"
+                              ? "border-red-500/50 text-red-400 bg-red-950/30"
+                              : r.relationType === "duplicates"
+                              ? "border-purple-500/50 text-purple-400 bg-purple-950/30"
+                              : "border-cyan-500/50 text-cyan-400 bg-cyan-950/30"
+                          }`}
+                        >
+                          {r.relationType === "blocks" ? "⛔ BLOCKS" : r.relationType === "duplicates" ? "📑 DUPLICATES" : "🔗 RELATES TO"}
+                        </span>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (targetTask) openEditForm(targetTask);
+                          }}
+                          className={`truncate text-left hover:underline cursor-pointer flex items-center gap-1.5 ${
+                            isGone ? "text-muted-foreground italic" : "text-foreground font-medium"
+                          }`}
+                          title={r.title}
+                        >
+                          {targetTask?.code && (
+                            <span className="text-[var(--color-primary-gold)] font-bold shrink-0">
+                              [{targetTask.code}]
+                            </span>
+                          )}
+                          <span className="truncate">{r.title}{isGone && " (trashed)"}</span>
+                        </button>
+                      </div>
+
+                      <div className="flex items-center gap-2 shrink-0">
+                        {targetTask && (
+                          <span
+                            className="text-[10px] font-mono px-1.5 py-0.2 border shrink-0"
+                            style={{
+                              borderColor: `var(${STATUS_COLOR_VAR[targetTask.status]})`,
+                              color: `var(${STATUS_COLOR_VAR[targetTask.status]})`
+                            }}
+                          >
+                            {STATUS_LABEL[targetTask.status]}
+                          </span>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => removeRelation(r.taskId)}
+                          className="p-1 hover:text-red-400 text-muted-foreground font-bold transition-colors cursor-pointer"
+                          title="Remove relation"
+                        >
+                          <X size={14} />
+                        </button>
+                      </div>
                     </li>
                   );
                 })}
               </ul>
             )}
-            <div className="flex flex-col gap-2 border-t border-border pt-2">
+
+            {/* Link Quest Form */}
+            <div className="flex flex-col gap-2 border-t border-border pt-3">
+              <div className="flex items-center justify-between text-xs font-mono font-bold text-muted-foreground uppercase">
+                <span>+ Link Another Quest</span>
+                <span className="text-[10px] font-normal lowercase">search by code or title</span>
+              </div>
+
+              {/* Relation Type segmented selector */}
               <div className="flex flex-wrap gap-1">
                 {RELATION_TYPES.map((rt) => (
                   <button
@@ -943,120 +1008,280 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
                   </button>
                 ))}
               </div>
-              <div className="flex gap-2">
-                <input
-                  ref={relationInputRef}
-                  aria-label="Search quest"
-                  className={FIELD}
-                  placeholder="Search quest by title or code..."
-                  value={relationSearch}
-                  onChange={(e) => {
-                    setRelationSearch(e.target.value);
-                    setRelationSelectedIndex(-1);
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && relationTargetId) {
-                      e.preventDefault();
-                      addRelation();
-                      return;
-                    }
-                    const newState = handleDropdownKeydown(
-                      e,
-                      { selected: relationSelectedIndex, total: relationOptions.length },
-                      (idx) => {
-                        const t = relationOptions[idx];
-                        if (t) {
-                          void updateDrawerLastSelectedAction("task", t.id);
-                          setRelationTargetId(t.id);
-                          setRelationSearch("");
-                        }
-                      },
-                      () => { relationInputRef.current?.blur(); setRelationFocused(false); }
-                    );
-                    setRelationSelectedIndex(newState.selected);
-                  }}
-                  onFocus={() => { setRelationFocused(true); setRelationSelectedIndex(-1); }}
-                  onBlur={() => { setRelationFocused(false); setRelationSelectedIndex(-1); }}
-                />
-              </div>
-              {relationFocused && relationOptions.length > 0 && (
-                <ul className="border border-border max-h-20 overflow-y-auto bg-secondary text-xs">
-                  {relationOptions.map((t, idx) => (
-                    <li
-                      key={t.id}
-                      className={`px-2 py-1 cursor-pointer border-b border-border last:border-b-0 ${relationSelectedIndex === idx ? "bg-primary/20 font-semibold" : "hover:bg-primary/10"}`}
-                      onMouseDown={(e) => e.preventDefault()}
-                      onMouseEnter={() => setRelationSelectedIndex(idx)}
-                      onClick={() => { void updateDrawerLastSelectedAction("task", t.id); setRelationTargetId(t.id); setRelationSearch(""); setRelationFocused(false); relationInputRef.current?.blur(); }}
-                    >
-                      {t.title}
-                    </li>
-                  ))}
-                </ul>
-              )}
-              {relationTargetId && (
-                <div className="text-sm text-muted-foreground px-3 py-1.5 border border-border bg-muted/20">
-                  Selected: <span className="font-medium">{otherTasks.find(t => t.id === relationTargetId)?.title}</span>
+
+              {/* Selected Target Preview or Search Box */}
+              {relationTargetId ? (
+                (() => {
+                  const target = otherTasks.find(t => t.id === relationTargetId);
+                  return (
+                    <div className="flex items-center justify-between gap-2 p-2.5 border-2 border-primary bg-primary/10">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="text-base">🔗</span>
+                        <div className="min-w-0">
+                          <div className="text-xs font-mono font-bold text-foreground truncate flex items-center gap-1.5">
+                            {target?.code && <span className="text-[var(--color-primary-gold)]">[{target.code}]</span>}
+                            <span>{target?.title || "Selected Task"}</span>
+                          </div>
+                          {target && (
+                            <div className="text-[10px] font-mono text-muted-foreground mt-0.5">
+                              {target.project || "No Project"} · {STATUS_LABEL[target.status]} · {target.priority.toUpperCase()}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <Button type="button" size="sm" onClick={addRelation} className="font-bold">
+                          Add Link
+                        </Button>
+                        <button
+                          type="button"
+                          onClick={() => { setRelationTargetId(""); setRelationSearch(""); }}
+                          className="text-xs font-mono text-muted-foreground hover:text-red-400 px-2 py-1 cursor-pointer"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })()
+              ) : (
+                <div className="relative" ref={relationPickerRef}>
+                  <div className="relative flex items-center">
+                    <Search size={14} className="absolute left-2.5 text-muted-foreground pointer-events-none" />
+                    <input
+                      ref={relationInputRef}
+                      aria-label="Search quest to link"
+                      className={`${FIELD} pl-8`}
+                      placeholder="Search quest by code (e.g. ATS-28) or title..."
+                      value={relationSearch}
+                      onChange={(e) => {
+                        setRelationSearch(e.target.value);
+                        setRelationSelectedIndex(-1);
+                        setRelationFocused(true);
+                      }}
+                      onFocus={() => {
+                        setRelationFocused(true);
+                        setRelationSelectedIndex(-1);
+                      }}
+                      onKeyDown={(e) => {
+                        const newState = handleDropdownKeydown(
+                          e,
+                          { selected: relationSelectedIndex, total: relationOptions.length },
+                          (idx) => {
+                            const t = relationOptions[idx];
+                            if (t) {
+                              void updateDrawerLastSelectedAction("task", t.id);
+                              setRelationTargetId(t.id);
+                              setRelationSearch("");
+                              setRelationFocused(false);
+                            }
+                          },
+                          () => setRelationFocused(false)
+                        );
+                        setRelationSelectedIndex(newState.selected);
+                      }}
+                    />
+                    {relationSearch && (
+                      <button
+                        type="button"
+                        onClick={() => { setRelationSearch(""); setRelationFocused(false); }}
+                        className="absolute right-2.5 text-muted-foreground hover:text-foreground cursor-pointer"
+                      >
+                        <X size={12} />
+                      </button>
+                    )}
+                  </div>
+
+                  {relationFocused && relationOptions.length > 0 && (
+                    <div className="absolute top-full left-0 right-0 z-50 mt-1 max-h-60 overflow-y-auto border-2 border-primary bg-[var(--color-bg-panel)] shadow-[4px_4px_0_rgba(0,0,0,0.8)] p-1 space-y-1 animate-in fade-in zoom-in-95 duration-100">
+                      {relationOptions.map((t, idx) => (
+                        <div
+                          key={t.id}
+                          onMouseEnter={() => setRelationSelectedIndex(idx)}
+                          onClick={() => {
+                            void updateDrawerLastSelectedAction("task", t.id);
+                            setRelationTargetId(t.id);
+                            setRelationSearch("");
+                            setRelationFocused(false);
+                          }}
+                          className={`flex items-center justify-between p-2 border transition-all cursor-pointer ${
+                            relationSelectedIndex === idx
+                              ? "border-primary bg-primary/20 text-foreground"
+                              : "border-transparent hover:border-border hover:bg-secondary/60 text-muted-foreground hover:text-foreground"
+                          }`}
+                        >
+                          <div className="flex items-center gap-2 min-w-0">
+                            {t.code && (
+                              <span className="text-xs font-mono font-bold text-[var(--color-primary-gold)] shrink-0">
+                                {t.code}
+                              </span>
+                            )}
+                            <span className="text-xs font-mono font-medium text-foreground truncate">
+                              {t.title}
+                            </span>
+                          </div>
+
+                          <div className="flex items-center gap-1.5 shrink-0 ml-2 font-mono text-[10px]">
+                            {t.project && (
+                              <span className="px-1 py-0.2 border border-border/50 bg-secondary text-muted-foreground truncate max-w-[80px]">
+                                {t.project}
+                              </span>
+                            )}
+                            <span
+                              className="px-1 py-0.2 border"
+                              style={{
+                                borderColor: `var(${STATUS_COLOR_VAR[t.status]})`,
+                                color: `var(${STATUS_COLOR_VAR[t.status]})`
+                              }}
+                            >
+                              {STATUS_LABEL[t.status]}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
-              <Button type="button" size="sm" aria-label="Add relation" onClick={addRelation} disabled={!relationTargetId}>Add</Button>
             </div>
           </div>
         </Section>
 
-        <Section title="Attachments" shape="▶" defaultOpen={false}>
-          <div className="flex flex-col gap-2">
+        <Section title={`Attachments ${form.attachments.length ? `(${form.attachments.length})` : ""}`} shape="▶" defaultOpen={form.attachments.length > 0}>
+          <div className="flex flex-col gap-3">
             {form.attachments.length === 0 ? (
-              <p className="text-muted-foreground text-xs italic">No attachments yet.</p>
+              <div className="p-3 border-2 border-dashed border-border/80 bg-secondary/20 text-center select-none">
+                <p className="text-xs font-mono text-muted-foreground italic">
+                  📎 No links, PRs, or file attachments added yet.
+                </p>
+              </div>
             ) : (
-              <ul className="flex flex-col gap-1">
-                {form.attachments.map((a, i) => (
-                  editingAttachmentIndex === i ? (
-                    <li key={i} className="flex flex-col gap-2 border border-border p-2 bg-muted/20">
-                      <div className="flex gap-2">
-                        <select aria-label="Attachment type" className={FIELD} value={attachmentType} onChange={(e) => setAttachmentType(e.target.value as AttachmentType)}>
+              <ul className="flex flex-col gap-1.5">
+                {form.attachments.map((a, i) => {
+                  const isEditing = editingAttachmentIndex === i;
+                  if (isEditing) {
+                    return (
+                      <div key={i} className="flex flex-col gap-2 p-3 border-2 border-primary bg-secondary/80">
+                        <div className="text-xs font-mono font-bold text-primary flex items-center justify-between">
+                          <span>✏️ Edit Attachment #{i + 1}</span>
+                        </div>
+                        <div className="flex flex-wrap gap-1">
                           {ATTACHMENT_TYPES.map((t) => (
-                            <option key={t} value={t}>{humanize(t)}</option>
+                            <button
+                              key={t}
+                              type="button"
+                              onClick={() => setAttachmentType(t)}
+                              className={`px-2 py-1 text-xs font-mono font-bold border transition-all cursor-pointer ${
+                                attachmentType === t
+                                  ? "border-primary bg-primary/20 text-foreground shadow-[1px_1px_0_rgba(0,0,0,0.8)]"
+                                  : "border-border/70 bg-secondary text-muted-foreground hover:border-border hover:text-foreground"
+                              }`}
+                            >
+                              {t === "github_pr" ? "🐙 PR" : t === "github_issue" ? "🎯 Issue" : t === "link" ? "🔗 Link" : t === "file" ? "📁 File" : "📦 Other"}
+                            </button>
                           ))}
-                        </select>
-                        <input aria-label="Attachment label" className={FIELD} placeholder="Label" value={attachmentLabel} onChange={(e) => setAttachmentLabel(e.target.value)} />
+                        </div>
+                        <input
+                          aria-label="Attachment label"
+                          className={FIELD}
+                          placeholder="Label / Title"
+                          value={attachmentLabel}
+                          onChange={(e) => setAttachmentLabel(e.target.value)}
+                        />
+                        <input
+                          aria-label="Attachment URL"
+                          className={FIELD}
+                          placeholder="URL"
+                          value={attachmentUrl}
+                          onChange={(e) => setAttachmentUrl(e.target.value)}
+                        />
+                        <div className="flex gap-2 justify-end pt-1">
+                          <Button
+                            type="button"
+                            size="sm"
+                            onClick={() => {
+                              const newAttachments = [...form.attachments];
+                              newAttachments[i] = { type: attachmentType, label: attachmentLabel, url: attachmentUrl };
+                              set("attachments", newAttachments);
+                              setEditingAttachmentIndex(null);
+                              setAttachmentType("github_pr");
+                              setAttachmentLabel("");
+                              setAttachmentUrl("");
+                            }}
+                          >
+                            Save Changes
+                          </Button>
+                          <Button type="button" variant="ghost" size="sm" onClick={() => setEditingAttachmentIndex(null)}>
+                            Cancel
+                          </Button>
+                        </div>
                       </div>
-                      <input aria-label="Attachment URL" className={FIELD} placeholder="URL" value={attachmentUrl} onChange={(e) => setAttachmentUrl(e.target.value)} />
-                      <div className="flex gap-1 justify-end">
-                        <Button type="button" size="sm" onClick={() => {
-                          const newAttachments = [...form.attachments];
-                          newAttachments[i] = { type: attachmentType, label: attachmentLabel, url: attachmentUrl };
-                          set("attachments", newAttachments);
-                          setEditingAttachmentIndex(null);
-                          setAttachmentType("github_pr");
-                          setAttachmentLabel("");
-                          setAttachmentUrl("");
-                        }}>Save</Button>
-                        <Button type="button" variant="ghost" size="sm" onClick={() => setEditingAttachmentIndex(null)}>Cancel</Button>
+                    );
+                  }
+
+                  return (
+                    <li
+                      key={i}
+                      className="flex items-center justify-between gap-2 p-2 border border-border bg-secondary/40 text-xs font-mono hover:bg-secondary/70 transition-colors"
+                    >
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="px-1.5 py-0.5 border border-border/80 bg-secondary text-[10px] font-bold text-muted-foreground shrink-0 uppercase">
+                          {a.type === "github_pr" ? "🐙 PR" : a.type === "github_issue" ? "🎯 Issue" : a.type === "link" ? "🔗 Link" : a.type === "file" ? "📁 File" : "📦 Other"}
+                        </span>
+                        <div className="min-w-0">
+                          <div className="font-bold text-foreground truncate">{a.label}</div>
+                          {a.url && (
+                            <div className="flex items-center gap-1.5 text-muted-foreground mt-0.5">
+                              <a
+                                href={a.url.startsWith("http") ? a.url : `https://${a.url}`}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="text-primary hover:underline truncate max-w-[220px]"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                {a.url}
+                              </a>
+                              <CopyButton text={a.url} />
+                            </div>
+                          )}
+                        </div>
                       </div>
-                    </li>
-                  ) : (
-                    <li key={i} className="flex flex-col gap-1 border border-border p-2 bg-muted/20 cursor-pointer hover:bg-muted/30" onClick={() => {
-                      setAttachmentType(a.type);
-                      setAttachmentLabel(a.label);
-                      setAttachmentUrl(a.url || "");
-                      setEditingAttachmentIndex(i);
-                    }}>
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="text-muted-foreground capitalize text-xs">{humanize(a.type)}</span>
-                        <span className="flex-1 text-right text-sm">{a.label}</span>
-                        <button type="button" onClick={(e) => { e.stopPropagation(); removeAttachment(i); }} className="shrink-0" style={{ color: "var(--color-status-blocked)" }}>
-                          ✕
+
+                      <div className="flex items-center gap-1 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setAttachmentType(a.type);
+                            setAttachmentLabel(a.label);
+                            setAttachmentUrl(a.url || "");
+                            setEditingAttachmentIndex(i);
+                          }}
+                          className="p-1 hover:text-primary text-muted-foreground transition-colors cursor-pointer"
+                          title="Edit attachment"
+                        >
+                          <Pencil size={13} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => removeAttachment(i)}
+                          className="p-1 hover:text-red-400 text-muted-foreground transition-colors cursor-pointer"
+                          title="Delete attachment"
+                        >
+                          <X size={14} />
                         </button>
                       </div>
-                      {a.url && <a href={a.url} target="_blank" rel="noopener noreferrer" className="text-xs text-primary truncate hover:underline">{a.url}</a>}
                     </li>
-                  )
-                ))}
+                  );
+                })}
               </ul>
             )}
+
+            {/* Add Attachment Form Box */}
             {editingAttachmentIndex === null && (
-              <div className="flex flex-col gap-2 border-t border-border pt-2">
+              <div className="flex flex-col gap-2 border-t border-border pt-3">
+                <div className="text-xs font-mono font-bold text-muted-foreground uppercase">
+                  + Add Attachment / Link
+                </div>
                 <div className="flex flex-wrap gap-1">
                   {ATTACHMENT_TYPES.map((t) => (
                     <button
@@ -1073,12 +1298,25 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
                     </button>
                   ))}
                 </div>
-                <input aria-label="Attachment label" className={FIELD} placeholder="Label / Name (e.g. PR #123, Spec Doc)" value={attachmentLabel} onChange={(e) => setAttachmentLabel(e.target.value)} />
+                <input
+                  aria-label="Attachment label"
+                  className={FIELD}
+                  placeholder="Label / Title (e.g. PR #5129, Figma Design, Spec RFC)"
+                  value={attachmentLabel}
+                  onChange={(e) => setAttachmentLabel(e.target.value)}
+                />
                 <div className="flex gap-2">
-                  <input aria-label="Attachment URL" className={FIELD} placeholder="URL (optional)" value={attachmentUrl} onChange={(e) => setAttachmentUrl(e.target.value)} />
+                  <input
+                    aria-label="Attachment URL"
+                    className={FIELD}
+                    placeholder="URL (optional for files)"
+                    value={attachmentUrl}
+                    onChange={(e) => setAttachmentUrl(e.target.value)}
+                  />
                   {attachmentType === "file" && (
-                    <label className="cursor-pointer border-2 border-border bg-secondary px-2.5 py-1 text-xs font-bold text-foreground hover:bg-secondary/80 flex items-center shrink-0">
-                      {isUploadingFile ? "..." : "Upload"}
+                    <label className="cursor-pointer border-2 border-border bg-secondary px-3 py-1.5 text-xs font-bold font-mono text-foreground hover:bg-secondary/80 flex items-center gap-1.5 shrink-0 transition-colors">
+                      <Upload size={13} />
+                      <span>{isUploadingFile ? "..." : "Upload"}</span>
                       <input
                         type="file"
                         className="hidden"
@@ -1107,66 +1345,160 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
                       />
                     </label>
                   )}
-                  <Button type="button" size="sm" aria-label="Add attachment" onClick={addAttachment} disabled={!attachmentLabel.trim() || isUploadingFile}>Add</Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={addAttachment}
+                    disabled={!attachmentLabel.trim() || isUploadingFile}
+                    className="font-bold shrink-0"
+                  >
+                    Add
+                  </Button>
                 </div>
               </div>
             )}
           </div>
         </Section>
 
-        <Section title="Deliverables" shape="◆" defaultOpen={false}>
-          <div className="flex flex-col gap-2">
+        <Section title={`Deliverables ${form.deliverables.length ? `(${form.deliverables.length})` : ""}`} shape="◆" defaultOpen={form.deliverables.length > 0}>
+          <div className="flex flex-col gap-3">
             {form.deliverables.length === 0 ? (
-              <p className="text-muted-foreground text-xs italic">No deliverables yet.</p>
+              <div className="p-3 border-2 border-dashed border-border/80 bg-secondary/20 text-center select-none">
+                <p className="text-xs font-mono text-muted-foreground italic">
+                  🏆 No deliverables or completed work artifacts registered yet.
+                </p>
+              </div>
             ) : (
-              <ul className="flex flex-col gap-1">
-                {form.deliverables.map((d, i) => (
-                  editingDeliverableIndex === i ? (
-                    <li key={i} className="flex flex-col gap-2 border border-border p-2 bg-muted/20">
-                      <div className="flex gap-2">
-                        <select aria-label="Deliverable type" className={FIELD} value={deliverableType} onChange={(e) => setDeliverableType(e.target.value as DeliverableType)}>
+              <ul className="flex flex-col gap-1.5">
+                {form.deliverables.map((d, i) => {
+                  const isEditing = editingDeliverableIndex === i;
+                  if (isEditing) {
+                    return (
+                      <div key={i} className="flex flex-col gap-2 p-3 border-2 border-primary bg-secondary/80">
+                        <div className="text-xs font-mono font-bold text-primary flex items-center justify-between">
+                          <span>✏️ Edit Deliverable #{i + 1}</span>
+                        </div>
+                        <div className="flex flex-wrap gap-1">
                           {DELIVERABLE_TYPES.map((t) => (
-                            <option key={t} value={t}>{humanize(t)}</option>
+                            <button
+                              key={t}
+                              type="button"
+                              onClick={() => setDeliverableType(t)}
+                              className={`px-2.5 py-1 text-xs font-mono font-bold border transition-all cursor-pointer ${
+                                deliverableType === t
+                                  ? "border-primary bg-primary/20 text-foreground shadow-[1px_1px_0_rgba(0,0,0,0.8)]"
+                                  : "border-border/70 bg-secondary text-muted-foreground hover:border-border hover:text-foreground"
+                              }`}
+                            >
+                              {t === "pr" ? "🐙 Pull Request" : t === "doc" ? "📄 Document" : t === "design" ? "🎨 Design" : "📦 Other"}
+                            </button>
                           ))}
-                        </select>
-                        <input aria-label="Deliverable label" className={FIELD} placeholder="Label" value={deliverableLabel} onChange={(e) => setDeliverableLabel(e.target.value)} />
+                        </div>
+                        <input
+                          aria-label="Deliverable label"
+                          className={FIELD}
+                          placeholder="Label (e.g. Implementation PR, Spec RFC)"
+                          value={deliverableLabel}
+                          onChange={(e) => setDeliverableLabel(e.target.value)}
+                        />
+                        <input
+                          aria-label="Deliverable URL"
+                          className={FIELD}
+                          placeholder="URL or content (e.g. github.com/owner/repo/pull/1)"
+                          value={deliverableUrl}
+                          onChange={(e) => setDeliverableUrl(e.target.value)}
+                        />
+                        <div className="flex gap-2 justify-end pt-1">
+                          <Button
+                            type="button"
+                            size="sm"
+                            onClick={() => {
+                              const newDeliverables = [...form.deliverables];
+                              newDeliverables[i] = { type: deliverableType, label: deliverableLabel, urlOrContent: deliverableUrl || undefined };
+                              set("deliverables", newDeliverables);
+                              setEditingDeliverableIndex(null);
+                              setDeliverableType("pr");
+                              setDeliverableLabel("");
+                              setDeliverableUrl("");
+                            }}
+                          >
+                            Save Changes
+                          </Button>
+                          <Button type="button" variant="ghost" size="sm" onClick={() => setEditingDeliverableIndex(null)}>
+                            Cancel
+                          </Button>
+                        </div>
                       </div>
-                      <input aria-label="Deliverable URL" className={FIELD} placeholder="URL (optional)" value={deliverableUrl} onChange={(e) => setDeliverableUrl(e.target.value)} />
-                      <div className="flex gap-1 justify-end">
-                        <Button type="button" size="sm" onClick={() => {
-                          const newDeliverables = [...form.deliverables];
-                          newDeliverables[i] = { type: deliverableType, label: deliverableLabel, urlOrContent: deliverableUrl || undefined };
-                          set("deliverables", newDeliverables);
-                          setEditingDeliverableIndex(null);
-                          setDeliverableType("pr");
-                          setDeliverableLabel("");
-                          setDeliverableUrl("");
-                        }}>Save</Button>
-                        <Button type="button" variant="ghost" size="sm" onClick={() => setEditingDeliverableIndex(null)}>Cancel</Button>
+                    );
+                  }
+
+                  return (
+                    <li
+                      key={i}
+                      className="flex items-center justify-between gap-2 p-2 border border-border bg-secondary/40 text-xs font-mono hover:bg-secondary/70 transition-colors"
+                    >
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="px-1.5 py-0.5 border border-primary/40 bg-primary/10 text-[10px] font-bold text-primary shrink-0 uppercase">
+                          {d.type === "pr" ? "🐙 PR" : d.type === "doc" ? "📄 Doc" : d.type === "design" ? "🎨 Design" : "📦 Artifact"}
+                        </span>
+                        <div className="min-w-0">
+                          <div className="font-bold text-foreground truncate">{d.label || "Untitled Deliverable"}</div>
+                          {d.urlOrContent && (
+                            <div className="flex items-center gap-1.5 text-muted-foreground mt-0.5">
+                              {d.urlOrContent.startsWith("http") ? (
+                                <a
+                                  href={d.urlOrContent}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="text-primary hover:underline truncate max-w-[220px]"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  {d.urlOrContent}
+                                </a>
+                              ) : (
+                                <span className="truncate max-w-[220px]">{d.urlOrContent}</span>
+                              )}
+                              <CopyButton text={d.urlOrContent} />
+                            </div>
+                          )}
+                        </div>
                       </div>
-                    </li>
-                  ) : (
-                    <li key={i} className="flex flex-col gap-1 border border-border p-2 bg-muted/20 cursor-pointer hover:bg-muted/30" onClick={() => {
-                      setDeliverableType(d.type);
-                      setDeliverableLabel(d.label || "");
-                      setDeliverableUrl(d.urlOrContent || "");
-                      setEditingDeliverableIndex(i);
-                    }}>
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="text-muted-foreground capitalize text-xs">{humanize(d.type)}</span>
-                        <span className="flex-1 text-right text-sm">{d.label}</span>
-                        <button type="button" onClick={(e) => { e.stopPropagation(); removeDeliverable(i); }} className="shrink-0" style={{ color: "var(--color-status-blocked)" }}>
-                          ✕
+
+                      <div className="flex items-center gap-1 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setDeliverableType(d.type);
+                            setDeliverableLabel(d.label || "");
+                            setDeliverableUrl(d.urlOrContent || "");
+                            setEditingDeliverableIndex(i);
+                          }}
+                          className="p-1 hover:text-primary text-muted-foreground transition-colors cursor-pointer"
+                          title="Edit deliverable"
+                        >
+                          <Pencil size={13} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => removeDeliverable(i)}
+                          className="p-1 hover:text-red-400 text-muted-foreground transition-colors cursor-pointer"
+                          title="Delete deliverable"
+                        >
+                          <X size={14} />
                         </button>
                       </div>
-                      {d.urlOrContent && <a href={d.urlOrContent} target="_blank" rel="noopener noreferrer" className="text-xs text-primary truncate hover:underline">{d.urlOrContent}</a>}
                     </li>
-                  )
-                ))}
+                  );
+                })}
               </ul>
             )}
+
+            {/* Add Deliverable Form Box */}
             {editingDeliverableIndex === null && (
-              <div className="flex flex-col gap-2 border-t border-border pt-2">
+              <div className="flex flex-col gap-2 border-t border-border pt-3">
+                <div className="text-xs font-mono font-bold text-muted-foreground uppercase">
+                  + Add Deliverable Artifact
+                </div>
                 <div className="flex flex-wrap gap-1">
                   {DELIVERABLE_TYPES.map((t) => (
                     <button
@@ -1183,10 +1515,31 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
                     </button>
                   ))}
                 </div>
-                <input aria-label="Deliverable label" className={FIELD} placeholder="Label (e.g. Implementation PR, Spec RFC)" value={deliverableLabel} onChange={(e) => setDeliverableLabel(e.target.value)} />
+                <input
+                  aria-label="Deliverable label"
+                  className={FIELD}
+                  placeholder="Label (e.g. Implementation PR, Architecture RFC)"
+                  value={deliverableLabel}
+                  onChange={(e) => setDeliverableLabel(e.target.value)}
+                />
                 <div className="flex gap-2">
-                  <input aria-label="Deliverable URL" className={FIELD} placeholder="URL or content (e.g. github.com/owner/repo/pull/1)" value={deliverableUrl} onChange={(e) => setDeliverableUrl(e.target.value)} />
-                  <Button type="button" size="sm" aria-label="Add deliverable" onClick={addDeliverable} disabled={!deliverableLabel.trim()}>Add</Button>
+                  <input
+                    aria-label="Deliverable URL"
+                    className={FIELD}
+                    placeholder="URL or summary (e.g. github.com/owner/repo/pull/1)"
+                    value={deliverableUrl}
+                    onChange={(e) => setDeliverableUrl(e.target.value)}
+                  />
+                  <Button
+                    type="button"
+                    size="sm"
+                    aria-label="Add deliverable"
+                    onClick={addDeliverable}
+                    disabled={!deliverableLabel.trim()}
+                    className="font-bold shrink-0"
+                  >
+                    Add
+                  </Button>
                 </div>
               </div>
             )}
