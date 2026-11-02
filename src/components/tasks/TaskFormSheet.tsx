@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo, useRef } from "react";
-import { Check, ChevronDown, Copy, Trash2, Info, Pin, Bot, Cpu, ExternalLink, Clock, Sparkles } from "lucide-react";
+import { Check, ChevronDown, Copy, Trash2, Info, Pin, Bot, Cpu, ExternalLink, Clock, Sparkles, Search, X } from "lucide-react";
 import { DatePicker } from "@/components/ui/DatePicker";
 import { BattleTimer } from "@/components/gamification/BattleTimer";
 import {
@@ -24,7 +24,7 @@ import { useNotifications } from "@/hooks/useNotifications";
 import { calcTaskCoins, calcTaskXP } from "@/lib/gamification";
 import { getTaskDetails, type TaskAgentDetails } from "@/lib/actions/tasks";
 import type { TaskComment, TaskStatusLogEntry } from "@/types/task";
-import { PriorityMark } from "./PriorityMark";
+import { PriorityMark, PRIORITY_SHAPE_GLYPH } from "./PriorityMark";
 import { StatusBadge } from "./StatusBadge";
 import {
   ATTACHMENT_TYPES,
@@ -40,7 +40,7 @@ import { sortProjectsForPicker } from "@/lib/picker-sort";
 import { sortTasksForPicker } from "@/lib/picker-sort";
 import { handleDropdownKeydown, type DropdownNavState } from "@/lib/dropdown-nav";
 import { updateDrawerLastSelectedAction } from "@/lib/actions/user";
-import { STATUS_LABEL, TYPE_ICON } from "@/lib/mock-data";
+import { STATUS_LABEL, STATUS_COLOR_VAR, STATUS_SHAPE, PRIORITY_COLOR_VAR, PRIORITY_SHAPE, TYPE_ICON } from "@/lib/mock-data";
 import type {
   AttachmentType,
   DeliverableType,
@@ -188,10 +188,11 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
   const [relationFocused, setRelationFocused] = useState(false);
   const relationInputRef = useRef<HTMLInputElement>(null);
   const [relationSelectedIndex, setRelationSelectedIndex] = useState(-1);
+  const [isProjectPickerOpen, setIsProjectPickerOpen] = useState(false);
   const [projectSearch, setProjectSearch] = useState("");
-  const [projectFocused, setProjectFocused] = useState(false);
   const [projectSelectedIndex, setProjectSelectedIndex] = useState(-1);
-  const projectInputRef = useRef<HTMLInputElement>(null);
+  const projectPickerRef = useRef<HTMLDivElement>(null);
+  const projectSearchInputRef = useRef<HTMLInputElement>(null);
   const [editingAttachmentIndex, setEditingAttachmentIndex] = useState<number | null>(null);
   const [editingDeliverableIndex, setEditingDeliverableIndex] = useState<number | null>(null);
   const [isUploadingFile, setIsUploadingFile] = useState(false);
@@ -278,11 +279,33 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
     }
   }, [lastSyncEvent, task?.id]);
 
-  const projectOptions = useMemo(() => {
-    return projectSearch
-      ? projects.filter(p => p.name.toLowerCase().includes(projectSearch.toLowerCase()))
-      : sortProjectsForPicker(projects).slice(0, 5);
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (projectPickerRef.current && !projectPickerRef.current.contains(e.target as Node)) {
+        setIsProjectPickerOpen(false);
+      }
+    };
+    if (isProjectPickerOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+      return () => document.removeEventListener("mousedown", handleClickOutside);
+    }
+  }, [isProjectPickerOpen]);
+
+  const filteredProjects = useMemo(() => {
+    const list = sortProjectsForPicker(projects);
+    if (!projectSearch.trim()) return list;
+    const q = projectSearch.toLowerCase();
+    return list.filter(
+      (p) =>
+        p.name.toLowerCase().includes(q) ||
+        (p.code && p.code.toLowerCase().includes(q)) ||
+        p.category.toLowerCase().includes(q)
+    );
   }, [projectSearch, projects]);
+
+  const selectedProject = useMemo(() => {
+    return projects.find((p) => p.name === form.project);
+  }, [projects, form.project]);
 
   const relationOptions = useMemo(() => {
     return relationSearch
@@ -481,190 +504,389 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
       {/* Form body */}
       <div className="flex flex-col gap-3 p-4 pt-3 pb-24">
         <Section title="Core" shape="■" defaultOpen={true}>
-          <div className="flex flex-col gap-3">
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className={LC}>Status</label>
-                <select aria-label="Status" className={FIELD} value={form.status} onChange={(e) => set("status", e.target.value as TaskStatus)}>
-                  {(Object.keys(STATUS_LABEL) as TaskStatus[]).map((s) => (
-                    <option key={s} value={s}>{STATUS_LABEL[s]}</option>
-                  ))}
-                </select>
+          <div className="flex flex-col gap-4">
+            {/* 1. Status Segmented Buttons */}
+            <div>
+              <label className={LC}>Status</label>
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5">
+                {(Object.keys(STATUS_LABEL) as TaskStatus[]).map((s) => {
+                  const isSelected = form.status === s;
+                  const colorVar = STATUS_COLOR_VAR[s];
+                  return (
+                    <button
+                      key={s}
+                      type="button"
+                      onClick={() => set("status", s)}
+                      className={`flex items-center justify-center gap-1.5 px-2 py-2 text-xs font-mono font-bold border-2 transition-all cursor-pointer ${
+                        isSelected
+                          ? "bg-secondary text-foreground shadow-[2px_2px_0_rgba(0,0,0,0.8)]"
+                          : "border-border/60 bg-secondary/30 text-muted-foreground hover:border-border hover:text-foreground"
+                      }`}
+                      style={{
+                        borderColor: isSelected ? `var(${colorVar})` : undefined,
+                        color: isSelected ? `var(${colorVar})` : undefined,
+                      }}
+                    >
+                      <span className="text-sm leading-none" style={{ color: `var(${colorVar})` }}>{STATUS_SHAPE[s]}</span>
+                      <span className="truncate">{STATUS_LABEL[s]}</span>
+                    </button>
+                  );
+                })}
               </div>
+            </div>
+
+            {/* 2. Priority & Complexity Size Row */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+              {/* Priority */}
               <div>
-                <label className={`${LC} flex items-center gap-1`} title="High / Medium / Low">
-                  Priority <Info size={12} className="opacity-50" style={{ cursor: "help" }} />
+                <label className={`${LC} flex items-center justify-between`}>
+                  <span>Priority</span>
+                  <span className="text-[11px] font-normal text-muted-foreground">P0 · P1 · P2</span>
                 </label>
-                <select aria-label="Priority" className={FIELD} value={form.priority} onChange={(e) => set("priority", e.target.value as Priority)}>
-                  {(["high", "medium", "low"] as Priority[]).map((p) => (
-                    <option key={p} value={p}>{p.toUpperCase()}</option>
-                  ))}
-                </select>
+                <div className="grid grid-cols-3 gap-1.5">
+                  {(["high", "medium", "low"] as Priority[]).map((p) => {
+                    const isSelected = form.priority === p;
+                    const colorVar = PRIORITY_COLOR_VAR[p];
+                    return (
+                      <button
+                        key={p}
+                        type="button"
+                        onClick={() => set("priority", p)}
+                        className={`flex items-center justify-center gap-1.5 py-2 px-2 text-xs font-mono font-bold border-2 transition-all cursor-pointer ${
+                          isSelected
+                            ? "bg-secondary text-foreground shadow-[2px_2px_0_rgba(0,0,0,0.8)]"
+                            : "border-border/60 bg-secondary/30 text-muted-foreground hover:border-border hover:text-foreground"
+                        }`}
+                        style={{
+                          borderColor: isSelected ? `var(${colorVar})` : undefined,
+                          color: isSelected ? `var(${colorVar})` : undefined,
+                        }}
+                      >
+                        <span>{PRIORITY_SHAPE_GLYPH[PRIORITY_SHAPE[p]]}</span>
+                        <span>{p.toUpperCase()}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Size */}
+              <div>
+                <label className={`${LC} flex items-center justify-between`}>
+                  <span>Complexity / Size</span>
+                  <span className="text-[11px] font-normal text-muted-foreground">XS(&lt;1h) · M(2-4h) · XL</span>
+                </label>
+                <div className="grid grid-cols-6 gap-1">
+                  {[undefined, ...SIZE_OPTIONS].map((sz) => {
+                    const isSelected = form.size === sz;
+                    return (
+                      <button
+                        key={sz ?? "none"}
+                        type="button"
+                        onClick={() => set("size", sz)}
+                        className={`py-2 text-center text-xs font-mono font-bold border-2 transition-all cursor-pointer ${
+                          isSelected
+                            ? "border-primary bg-primary/15 text-primary shadow-[2px_2px_0_rgba(0,0,0,0.8)]"
+                            : "border-border/60 bg-secondary/30 text-muted-foreground hover:border-border hover:text-foreground"
+                        }`}
+                      >
+                        {sz ? sz.toUpperCase() : "—"}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className={LC}>Type</label>
-                <select aria-label="Type" className={FIELD} value={form.type} onChange={(e) => set("type", e.target.value as TaskType)}>
-                  {(Object.keys(TYPE_ICON) as TaskType[]).map((t) => (
-                    <option key={t} value={t}>{TYPE_ICON[t]} {t.charAt(0).toUpperCase() + t.slice(1)}</option>
-                  ))}
-                </select>
-              <div>
-                            <label className={`${LC} flex items-center gap-1`} title="Relative complexity/size. XS=<1hr, S=1-2hrs, M=2-4hrs, L=4-8hrs, XL=8-16hrs, XXL=>16hrs">
-                              Size <Info size={12} className="opacity-50" style={{ cursor: "help" }} />
-                            </label>
-                            <select
-                              aria-label="Size"
-                              className={FIELD}
-                              value={form.size ?? ""}
-                              onChange={(e) => set("size", e.target.value === "" ? undefined : (e.target.value as TaskSize))}
-                            >
-                              <option value="">—</option>
-                              {SIZE_OPTIONS.map((sz) => (
-                                <option key={sz} value={sz}>{sz.toUpperCase()}</option>
-                              ))}
-                            </select>
-                          </div>
-                        </div>
-              <div>
-                <label className={LC}>Reporter</label>
-                <select
-                  aria-label="Reporter"
-                  className={FIELD}
-                  value={form.reporter ?? "self"}
-                  onChange={(e) => set("reporter", e.target.value as (typeof REPORTER_OPTIONS)[number])}
+            {/* 3. Quest Type Chip Grid */}
+            <div>
+              <label className={LC}>Quest Type</label>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+                {(Object.keys(TYPE_ICON) as TaskType[]).map((t) => {
+                  const isSelected = form.type === t;
+                  return (
+                    <button
+                      key={t}
+                      type="button"
+                      onClick={() => set("type", t)}
+                      className={`flex items-center gap-2 px-2.5 py-1.5 text-xs font-mono border-2 transition-all cursor-pointer ${
+                        isSelected
+                          ? "border-primary bg-primary/15 text-foreground font-bold shadow-[2px_2px_0_rgba(0,0,0,0.8)]"
+                          : "border-border/60 bg-secondary/30 text-muted-foreground hover:border-border hover:text-foreground"
+                      }`}
+                    >
+                      <span className="text-base shrink-0">{TYPE_ICON[t]}</span>
+                      <span className="truncate">{t.charAt(0).toUpperCase() + t.slice(1)}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* 4. Dynamic Project & Due Date Row */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+              {/* Dynamic Project Picker */}
+              <div className="relative" ref={projectPickerRef}>
+                <label className={LC}>Project *</label>
+                <button
+                  type="button"
+                  onClick={() => setIsProjectPickerOpen((o) => !o)}
+                  className={`w-full flex items-center justify-between p-2.5 border-2 bg-secondary text-left transition-colors cursor-pointer ${
+                    isProjectPickerOpen ? "border-primary ring-1 ring-primary" : errors.project ? "border-status-blocked" : "border-border"
+                  }`}
+                  style={{
+                    borderLeftColor: selectedProject ? (selectedProject.customColor || `var(${selectedProject.colorVar})`) : undefined,
+                    borderLeftWidth: selectedProject ? "4px" : "2px"
+                  }}
                 >
-                  {REPORTER_OPTIONS.map((r) => (
-                    <option key={r} value={r}>{humanize(r)}</option>
-                  ))}
-                </select>
+                  {selectedProject ? (
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="text-lg shrink-0">{selectedProject.emoji}</span>
+                      <div className="min-w-0">
+                        <div className="font-bold text-sm text-foreground truncate flex items-center gap-1.5">
+                          <span>{selectedProject.name}</span>
+                          {selectedProject.code && (
+                            <span className="text-xs font-mono font-normal text-muted-foreground px-1 border border-border/60 bg-card">
+                              {selectedProject.code}
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-xs font-mono text-muted-foreground capitalize">
+                          [{selectedProject.category}] · {selectedProject.status}
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <span className="text-sm text-muted-foreground flex items-center gap-2">
+                      <span>📂</span>
+                      <span>Select project...</span>
+                    </span>
+                  )}
+                  <ChevronDown size={14} className={`text-muted-foreground transition-transform duration-200 shrink-0 ${isProjectPickerOpen ? "rotate-180 text-primary" : ""}`} />
+                </button>
+
+                {/* Project Popover */}
+                {isProjectPickerOpen && (
+                  <div
+                    className="absolute top-full left-0 right-0 z-50 mt-1 max-h-72 overflow-hidden flex flex-col border-2 border-primary bg-[var(--color-bg-panel)] shadow-[4px_4px_0_rgba(0,0,0,0.8)] animate-in fade-in zoom-in-95 duration-100"
+                  >
+                    {/* Search filter in project dropdown */}
+                    <div className="p-2 border-b border-border bg-secondary/80 flex items-center gap-2">
+                      <Search size={14} className="text-muted-foreground shrink-0" />
+                      <input
+                        ref={projectSearchInputRef}
+                        type="text"
+                        placeholder="Filter projects by name or code..."
+                        value={projectSearch}
+                        onChange={(e) => {
+                          setProjectSearch(e.target.value);
+                          setProjectSelectedIndex(-1);
+                        }}
+                        onKeyDown={(e) => {
+                          const newState = handleDropdownKeydown(
+                            e,
+                            { selected: projectSelectedIndex, total: filteredProjects.length },
+                            (idx) => {
+                              const p = filteredProjects[idx];
+                              if (p) {
+                                void updateDrawerLastSelectedAction("project", p.id);
+                                set("project", p.name);
+                                setProjectSearch("");
+                                setIsProjectPickerOpen(false);
+                              }
+                            },
+                            () => setIsProjectPickerOpen(false)
+                          );
+                          setProjectSelectedIndex(newState.selected);
+                        }}
+                        className="w-full bg-transparent text-xs font-mono text-foreground outline-none placeholder:text-muted-foreground"
+                        autoFocus
+                      />
+                      {projectSearch && (
+                        <button type="button" onClick={() => setProjectSearch("")} className="text-muted-foreground hover:text-foreground">
+                          <X size={12} />
+                        </button>
+                      )}
+                    </div>
+
+                    {/* List */}
+                    <div className="overflow-y-auto max-h-56 p-1 space-y-1">
+                      {filteredProjects.length === 0 ? (
+                        <div className="p-4 text-center text-xs font-mono text-muted-foreground italic">
+                          No project matching &quot;{projectSearch}&quot;
+                        </div>
+                      ) : (
+                        filteredProjects.map((p, idx) => {
+                          const isSelected = form.project === p.name;
+                          const isHighlighted = projectSelectedIndex === idx;
+                          return (
+                            <div
+                              key={p.id}
+                              onClick={() => {
+                                set("project", p.name);
+                                void updateDrawerLastSelectedAction("project", p.id);
+                                setIsProjectPickerOpen(false);
+                                setProjectSearch("");
+                              }}
+                              onMouseEnter={() => setProjectSelectedIndex(idx)}
+                              className={`flex items-center justify-between p-2 border transition-all cursor-pointer ${
+                                isSelected
+                                  ? "border-primary bg-primary/15 text-foreground font-semibold"
+                                  : isHighlighted
+                                  ? "border-border bg-secondary text-foreground"
+                                  : "border-transparent hover:border-border hover:bg-secondary/60 text-muted-foreground hover:text-foreground"
+                              }`}
+                              style={{
+                                borderLeftColor: p.customColor || `var(${p.colorVar})`,
+                                borderLeftWidth: "3px"
+                              }}
+                            >
+                              <div className="flex items-center gap-2 min-w-0">
+                                <span className="text-base shrink-0">{p.emoji}</span>
+                                <div className="min-w-0">
+                                  <div className="text-xs font-mono font-bold text-foreground truncate flex items-center gap-1.5">
+                                    <span>{p.name}</span>
+                                    {p.code && <span className="text-[10px] text-muted-foreground font-normal">({p.code})</span>}
+                                  </div>
+                                  {p.description && (
+                                    <div className="text-[11px] text-muted-foreground truncate max-w-[260px]">
+                                      {p.description}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+
+                              <div className="flex items-center gap-2 shrink-0 ml-2">
+                                <span className="text-[10px] font-mono px-1.5 py-0.2 border border-border/50 bg-secondary text-muted-foreground">
+                                  {p.category}
+                                </span>
+                                {isSelected && <Check size={14} className="text-primary font-bold" />}
+                              </div>
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+                  </div>
+                )}
+                {errors.project && <p className="mt-1 text-sm" style={{ color: "var(--color-status-blocked)" }}>{errors.project}</p>}
+              </div>
+
+              {/* Due Date Picker */}
+              <div>
+                <label className={`${LC} flex items-center justify-between`}>
+                  <span>Due Date</span>
+                  {form.dueDate && (
+                    <button
+                      type="button"
+                      onClick={() => set("dueDate", undefined)}
+                      className="text-xs font-mono text-muted-foreground hover:text-red-400 cursor-pointer"
+                    >
+                      Clear
+                    </button>
+                  )}
+                </label>
+                <DatePicker
+                  value={form.dueDate}
+                  onChange={(date) => set("dueDate", date ? date : undefined)}
+                />
               </div>
             </div>
 
+            {/* 5. Description */}
             <div>
               <label className={LC}>Description</label>
               <textarea
                 aria-label="Description"
-                className={`${FIELD} resize-none`}
+                className={`${FIELD} resize-none font-sans text-sm leading-relaxed`}
                 rows={4}
                 value={form.description ?? ""}
                 onChange={(e) => set("description", e.target.value)}
-                placeholder="Context, acceptance criteria..."
+                placeholder="Context, acceptance criteria, reproduction steps..."
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            {/* 6. Reporter & Optional Waiting On */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
               <div>
-                <label className={LC}>Project</label>
-                <div className="relative">
-                  <input
-                    ref={projectInputRef}
-                    aria-label="Project"
-                    className={FIELD}
-                    placeholder="Search project..."
-                    value={projectSearch || (form.project ? `${projects.find(p => p.name === form.project)?.emoji} ${form.project}` : "")}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      setProjectSearch(val);
-                      setProjectSelectedIndex(-1);
-                      if (!projects.some(p => `${p.emoji} ${p.name}` === val)) {
-                        set("project", "");
-                      }
-                    }}
-                    onKeyDown={(e) => {
-                      const newState = handleDropdownKeydown(
-                        e,
-                        { selected: projectSelectedIndex, total: projectOptions.length },
-                        (idx) => {
-                          const p = projectOptions[idx];
-                          if (p) {
-                            void updateDrawerLastSelectedAction("project", p.id);
-                            set("project", p.name);
-                            setProjectSearch("");
-                          }
-                        },
-                        () => { projectInputRef.current?.blur(); setProjectFocused(false); }
-                      );
-                      setProjectSelectedIndex(newState.selected);
-                    }}
-                    onFocus={(e) => {
-                      setProjectSearch("");
-                      setProjectSelectedIndex(-1);
-                      e.target.select();
-                      setProjectFocused(true);
-                    }}
-                    onBlur={() => { setProjectFocused(false); setProjectSelectedIndex(-1); }}
-                  />
-                  {projectFocused && projectOptions.length > 0 && (
-                    <ul className="border border-border max-h-20 overflow-y-auto bg-secondary text-xs absolute top-full left-0 right-0 z-10">
-                      {projectOptions.map((p, idx) => (
-                        <li
-                          key={p.id}
-                          className={`px-2 py-1 cursor-pointer border-b border-border last:border-b-0 ${projectSelectedIndex === idx ? "bg-primary/20 font-semibold" : "hover:bg-primary/10"}`}
-                          onMouseDown={(e) => e.preventDefault()}
-                          onMouseEnter={() => setProjectSelectedIndex(idx)}
-                          onClick={() => { void updateDrawerLastSelectedAction("project", p.id); set("project", p.name); setProjectSearch(""); setProjectFocused(false); projectInputRef.current?.blur(); }}
-                        >
-                          {p.emoji} {p.name}
-                        </li>
-                      ))}
-                    </ul>
-                  )}
+                <label className={LC}>Reporter</label>
+                <div className="grid grid-cols-3 gap-1.5">
+                  {REPORTER_OPTIONS.map((r) => {
+                    const isSelected = (form.reporter ?? "self") === r;
+                    return (
+                      <button
+                        key={r}
+                        type="button"
+                        onClick={() => set("reporter", r)}
+                        className={`flex items-center justify-center gap-1.5 py-1.5 px-2 text-xs font-mono border-2 transition-all cursor-pointer ${
+                          isSelected
+                            ? "border-primary bg-primary/15 text-foreground font-bold shadow-[2px_2px_0_rgba(0,0,0,0.8)]"
+                            : "border-border/60 bg-secondary/30 text-muted-foreground hover:border-border hover:text-foreground"
+                        }`}
+                      >
+                        <span>{r === "agent" ? "🤖" : r === "self" ? "👤" : "👥"}</span>
+                        <span>{humanize(r)}</span>
+                      </button>
+                    );
+                  })}
                 </div>
-                {errors.project && <p className="mt-1 text-sm" style={{ color: "var(--color-status-blocked)" }}>{errors.project}</p>}
               </div>
 
+              {form.status === "in_progress" ? (
+                <div>
+                  <label className={LC}>Waiting On / Blocker</label>
+                  <input
+                    aria-label="Waiting On"
+                    className={FIELD}
+                    value={form.waitingOn ?? ""}
+                    onChange={(e) => set("waitingOn", e.target.value)}
+                    placeholder="Who / what / PR review..."
+                  />
+                </div>
+              ) : <div />}
             </div>
 
-            {form.status === "in_progress" && (
-              <div>
-                <label className={LC}>Waiting On</label>
-                <input
-                  aria-label="Waiting On"
-                  className={FIELD}
-                  value={form.waitingOn ?? ""}
-                  onChange={(e) => set("waitingOn", e.target.value)}
-                  placeholder="Who / what / dependency..."
-                />
-              </div>
-            )}
-
+            {/* 7. Tags */}
             <div>
               <label className={LC}>Tags</label>
-              <div className="mb-3 flex flex-wrap gap-2">
+              <div className="mb-2 flex flex-wrap gap-1.5">
                 {form.tags.map((t) => (
                   <span
                     key={t}
-                    className="inline-flex items-center gap-1.5 border-2 px-2 py-1 text-xs font-medium text-foreground transition-colors"
-                    style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-bg-panel-alt)" }}
+                    className="inline-flex items-center gap-1.5 border border-border bg-secondary/50 px-2 py-0.5 text-xs font-mono text-foreground"
                   >
                     #{t}
                     <button
                       type="button"
                       onClick={() => removeTag(t)}
-                      className="hover:opacity-70 transition-opacity"
-                      style={{ color: "var(--color-status-blocked)" }}
+                      className="hover:opacity-70 text-muted-foreground hover:text-red-400 transition-colors cursor-pointer"
                       title="Remove tag"
                     >
                       ✕
                     </button>
                   </span>
                 ))}
+                {form.tags.length === 0 && (
+                  <span className="text-xs text-muted-foreground italic">No tags yet.</span>
+                )}
               </div>
               <div className="flex gap-2">
                 <input
                   aria-label="Tag"
                   className={`${FIELD} flex-1`}
+                  placeholder="Add tag (e.g. backend, bugfix)..."
                   value={tagInput}
                   onChange={(e) => setTagInput(e.target.value)}
                   onKeyDown={(e) => {
-                    if (e.key === "Enter") { e.preventDefault(); addTag(); }
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      addTag();
+                    }
                   }}
-                  placeholder="tag (Enter)"
                 />
-                <Button type="button" size="sm" aria-label="Add tag" onClick={addTag}>Add</Button>
+                <Button type="button" size="sm" onClick={addTag} disabled={!tagInput.trim()}>
+                  Add
+                </Button>
               </div>
             </div>
           </div>
@@ -705,17 +927,28 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
               </ul>
             )}
             <div className="flex flex-col gap-2 border-t border-border pt-2">
+              <div className="flex flex-wrap gap-1">
+                {RELATION_TYPES.map((rt) => (
+                  <button
+                    key={rt}
+                    type="button"
+                    onClick={() => setRelationType(rt)}
+                    className={`px-2.5 py-1 text-xs font-mono font-bold border transition-all cursor-pointer ${
+                      relationType === rt
+                        ? "border-primary bg-primary/20 text-foreground shadow-[1px_1px_0_rgba(0,0,0,0.8)]"
+                        : "border-border/70 bg-secondary text-muted-foreground hover:border-border hover:text-foreground"
+                    }`}
+                  >
+                    {rt === "blocks" ? "⛔ Blocks" : rt === "relates_to" ? "🔗 Relates to" : "📑 Duplicates"}
+                  </button>
+                ))}
+              </div>
               <div className="flex gap-2">
-                <select aria-label="Relation type" className="border-2 border-border bg-secondary px-3 py-1.5 text-sm text-foreground outline-none focus:border-primary w-32 shrink-0" value={relationType} onChange={(e) => setRelationType(e.target.value as RelationType)}>
-                  {RELATION_TYPES.map((rt) => (
-                    <option key={rt} value={rt}>{humanize(rt)}</option>
-                  ))}
-                </select>
                 <input
                   ref={relationInputRef}
                   aria-label="Search quest"
                   className={FIELD}
-                  placeholder="Search quest..."
+                  placeholder="Search quest by title or code..."
                   value={relationSearch}
                   onChange={(e) => {
                     setRelationSearch(e.target.value);
@@ -824,14 +1057,23 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
             )}
             {editingAttachmentIndex === null && (
               <div className="flex flex-col gap-2 border-t border-border pt-2">
-                <div className="flex gap-2">
-                  <select aria-label="Attachment type" className={FIELD} value={attachmentType} onChange={(e) => setAttachmentType(e.target.value as AttachmentType)}>
-                    {ATTACHMENT_TYPES.map((t) => (
-                      <option key={t} value={t}>{humanize(t)}</option>
-                    ))}
-                  </select>
-                  <input aria-label="Attachment label" className={FIELD} placeholder="Label" value={attachmentLabel} onChange={(e) => setAttachmentLabel(e.target.value)} />
+                <div className="flex flex-wrap gap-1">
+                  {ATTACHMENT_TYPES.map((t) => (
+                    <button
+                      key={t}
+                      type="button"
+                      onClick={() => setAttachmentType(t)}
+                      className={`px-2 py-1 text-xs font-mono font-bold border transition-all cursor-pointer ${
+                        attachmentType === t
+                          ? "border-primary bg-primary/20 text-foreground shadow-[1px_1px_0_rgba(0,0,0,0.8)]"
+                          : "border-border/70 bg-secondary text-muted-foreground hover:border-border hover:text-foreground"
+                      }`}
+                    >
+                      {t === "github_pr" ? "🐙 PR" : t === "github_issue" ? "🎯 Issue" : t === "link" ? "🔗 Link" : t === "file" ? "📁 File" : "📦 Other"}
+                    </button>
+                  ))}
                 </div>
+                <input aria-label="Attachment label" className={FIELD} placeholder="Label / Name (e.g. PR #123, Spec Doc)" value={attachmentLabel} onChange={(e) => setAttachmentLabel(e.target.value)} />
                 <div className="flex gap-2">
                   <input aria-label="Attachment URL" className={FIELD} placeholder="URL (optional)" value={attachmentUrl} onChange={(e) => setAttachmentUrl(e.target.value)} />
                   {attachmentType === "file" && (
@@ -925,16 +1167,25 @@ function TaskFormBody({ mode, task }: { mode: "create" | "edit"; task: Task | nu
             )}
             {editingDeliverableIndex === null && (
               <div className="flex flex-col gap-2 border-t border-border pt-2">
-                <div className="flex gap-2">
-                  <select aria-label="Deliverable type" className={FIELD} value={deliverableType} onChange={(e) => setDeliverableType(e.target.value as DeliverableType)}>
-                    {DELIVERABLE_TYPES.map((t) => (
-                      <option key={t} value={t}>{humanize(t)}</option>
-                    ))}
-                  </select>
-                  <input aria-label="Deliverable label" className={FIELD} placeholder="Label" value={deliverableLabel} onChange={(e) => setDeliverableLabel(e.target.value)} />
+                <div className="flex flex-wrap gap-1">
+                  {DELIVERABLE_TYPES.map((t) => (
+                    <button
+                      key={t}
+                      type="button"
+                      onClick={() => setDeliverableType(t)}
+                      className={`px-2.5 py-1 text-xs font-mono font-bold border transition-all cursor-pointer ${
+                        deliverableType === t
+                          ? "border-primary bg-primary/20 text-foreground shadow-[1px_1px_0_rgba(0,0,0,0.8)]"
+                          : "border-border/70 bg-secondary text-muted-foreground hover:border-border hover:text-foreground"
+                      }`}
+                    >
+                      {t === "pr" ? "🐙 Pull Request" : t === "doc" ? "📄 Document" : t === "design" ? "🎨 Design" : "📦 Other"}
+                    </button>
+                  ))}
                 </div>
+                <input aria-label="Deliverable label" className={FIELD} placeholder="Label (e.g. Implementation PR, Spec RFC)" value={deliverableLabel} onChange={(e) => setDeliverableLabel(e.target.value)} />
                 <div className="flex gap-2">
-                  <input aria-label="Deliverable URL" className={FIELD} placeholder="URL (optional)" value={deliverableUrl} onChange={(e) => setDeliverableUrl(e.target.value)} />
+                  <input aria-label="Deliverable URL" className={FIELD} placeholder="URL or content (e.g. github.com/owner/repo/pull/1)" value={deliverableUrl} onChange={(e) => setDeliverableUrl(e.target.value)} />
                   <Button type="button" size="sm" aria-label="Add deliverable" onClick={addDeliverable} disabled={!deliverableLabel.trim()}>Add</Button>
                 </div>
               </div>
