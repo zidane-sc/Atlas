@@ -33,6 +33,8 @@ export async function GET(req: Request) {
       DO $$ BEGIN
         ALTER TYPE "task_relation_type" ADD VALUE IF NOT EXISTS 'relates_to';
         ALTER TYPE "task_relation_type" ADD VALUE IF NOT EXISTS 'duplicates';
+        ALTER TYPE "deliverable_type" ADD VALUE IF NOT EXISTS 'doc';
+        ALTER TYPE "deliverable_type" ADD VALUE IF NOT EXISTS 'other';
       EXCEPTION WHEN duplicate_object THEN null;
       END $$;
     `);
